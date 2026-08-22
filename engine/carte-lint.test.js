@@ -16,6 +16,7 @@ import {
   EFFETTI, EFFETTI_DIFFERITI, TRIGGER_TRAPPOLA, LIMITI
 } from './vocabolario.js';
 import { infliggiDanno } from './core-rules.js';
+import { dotazioneIniziale, EROI_DI_PARTENZA, MAGICHE_DI_PARTENZA } from './dotazione.js';
 
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const RADICE = path.resolve(QUI, '..');
@@ -105,6 +106,25 @@ check('ci sono carte da controllare', carte.length > 0);
   const corazzato = { pv: 100, pvMax: 100, difesa: 95 };
   const nettoTetto = infliggiDanno(corazzato, 50);
   check('la difesa non supera mai il tetto massimo (80%): resta almeno il 20% del danno', Math.abs(nettoTetto - 10) < 1e-9);
+}
+
+// --- 4ter. LA DOTAZIONE INIZIALE REGALA CARTE CHE ESISTONO DAVVERO ---
+// Un id sbagliato qui non farebbe rumore: il giocatore nuovo si
+// ritroverebbe la collezione mezza vuota e nessuno protesterebbe.
+{
+  const perId = Object.fromEntries(carte.map(({ dati }) => [dati.id, dati]));
+  const fantasmi = Object.keys(dotazioneIniziale()).filter((id) => !perId[id]);
+  check('ogni carta della dotazione iniziale esiste in cards/data', fantasmi.length === 0,
+    'non esistono: ' + fantasmi.join(', '));
+
+  const semi = EROI_DI_PARTENZA.map((id) => perId[id] && perId[id].seme);
+  check('la squadra di partenza ha un eroe per ciascun seme',
+    new Set(semi).size === 4 && !semi.includes(undefined),
+    'semi trovati: ' + JSON.stringify(semi));
+
+  const nonMagiche = MAGICHE_DI_PARTENZA.filter((id) => !perId[id] || perId[id].seme);
+  check('le Carte Magiche di partenza sono davvero Carte Magiche', nonMagiche.length === 0,
+    nonMagiche.join(', '));
 }
 
 // --- 5. IL CONTROLLO PIÙ IMPORTANTE ---

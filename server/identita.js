@@ -30,6 +30,7 @@
 // senza internet, e il giorno in cui Google cambia indirizzo si tocca
 // un file solo.
 // ============================================================
+import { oltreLaDotazione } from '../engine/dotazione.js';
 
 export const FORNITORI = ['google', 'facebook'];
 
@@ -182,11 +183,18 @@ export function creaAccessi({ archivio, anagrafe, verificatori = {}, orologio = 
   }
 
   // Aveva qualcosa da perdere, l'ospite che stiamo abbandonando?
+  // "Roba" vuol dire quello che si è GUADAGNATO, non quello che si è
+  // ricevuto entrando. Da quando ogni giocatore nasce con una dotazione
+  // di carte, contarle tutte avrebbe fatto scattare l'avviso "stai
+  // lasciando indietro qualcosa" a chiunque — anche a chi aveva aperto
+  // la pagina cinque minuti prima e non aveva fatto niente. E quello
+  // che lascia indietro sono le stesse carte che ha già dall'altra
+  // parte: avvisarlo sarebbe solo rumore.
   async function portaviRoba(gettone) {
     if (typeof gettone !== 'string' || gettone.length < 32) return null;
     const g = await anagrafe.carica(gettone);
     if (!g) return null;
-    const carte = Object.values(g.collezione || {}).reduce((a, b) => a + b, 0);
+    const carte = oltreLaDotazione(g.collezione);
     if (!g.serie.saldo && !carte) return null;
     return { sharkini: g.serie.saldo, carte };
   }

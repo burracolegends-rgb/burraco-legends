@@ -32,18 +32,22 @@ import {
   saldoPuoPagare, spendi, RICARICHE
 } from '../engine/sharkini.js';
 import { OFFERTE, offertaPerCarte, apriPacchetto, SOGLIA_PITY } from '../engine/pacchetti.js';
+import { dotazioneIniziale, aggiungiDotazione } from '../engine/dotazione.js';
 
 const gettoneNuovo = () => randomBytes(32).toString('hex');
 
-// Come nasce un giocatore. Tutto a zero: niente sharkini in regalo
-// alla partenza — il primo premio giornaliero è lì apposta.
+// Come nasce un giocatore. Sharkini a zero — il primo premio
+// giornaliero è lì apposta — ma le CARTE no: senza una dotazione
+// iniziale non avrebbe niente con cui scendere in campo, ora che si
+// gioca solo con le carte che si possiedono davvero.
 function giocatoreNuovo(nome, quando) {
   return {
     creatoIl: quando,
     ultimaVisita: quando,
     nome: nome || null,
     serie: { ...SERIE_NUOVA },     // saldo, giorno, ultimoRitiro
-    collezione: {},                // idCarta → quante copie
+    collezione: dotazioneIniziale(),  // idCarta → quante copie
+    dotazioneRicevuta: true,       // il regalo si fa una volta sola
     contatorePity: 0,              // carte aperte dall'ultima garanzia
     pacchettiAperti: 0,
     carteAperte: 0,
@@ -69,6 +73,16 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
       if (trovato) {
         trovato.ultimaVisita = adesso;
         if (nome && !trovato.nome) trovato.nome = nome;
+        // CHI C'ERA GIÀ PRIMA DELLA DOTAZIONE.
+        // Chi si è iscritto quando le carte non si possedevano ancora
+        // ha la collezione vuota: senza questo, dopo l'aggiornamento
+        // non potrebbe più giocare — non possiede niente da schierare.
+        // Il regalo si aggiunge a quello che ha, non lo sostituisce, e
+        // il segno resta scritto: non si riceve due volte.
+        if (!trovato.dotazioneRicevuta) {
+          trovato.collezione = aggiungiDotazione(trovato.collezione);
+          trovato.dotazioneRicevuta = true;
+        }
         await archivio.scrivi(chiaveDi(gettone), trovato);
         return { ok: true, gettone, nuovo: false, giocatore: trovato };
       }
@@ -222,9 +236,57 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
   }
 
   // ----------------------------------------------------------
+  // POSSIEDI DAVVERO QUESTE CARTE?
+  // Si chiede prima di sedersi al tavolo. Il mazzo lo manda il browser,
+  // quindi non si crede a una riga: gli id devono corrispondere a copie
+  // vere nella collezione tenuta qui.
+  //
+  // Un mazzo può nominare la stessa carta più volte? Per le Carte
+  // Magiche no (devono essere tre diverse), ma il controllo conta
+  // comunque le ripetizioni: se domani quella regola cambiasse, questo
+  // non diventerebbe di colpo il punto debole.
+  // ----------------------------------------------------------
+  async function possiedeTutte(gettone, ids) {
+    const g = await carica(gettone);
+    if (!g) return { ok: false, motivo: 'Non ti conosco.' };
+    const servono = {};
+    for (const id of ids) servono[id] = (servono[id] || 0) + 1;
+    const mancanti = Object.keys(servono).filter((id) => (g.collezione[id] || 0) < servono[id]);
+    if (mancanti.length) return { ok: false, motivo: 'Non possiedi: ' + mancanti.join(', '), mancanti };
+    return { ok: true };
+  }
+
+  // ----------------------------------------------------------
+  // UNA CARTA MAGICA SI CONSUMA
+  // Giocata una volta, sparisce dalla collezione: è il prezzo, adesso
+  // che non costano più punti magia.
+  //
+  // IL PAVIMENTO A ZERO NON È PIGNOLERIA. Chi apre due tavoli in
+  // parallelo con lo stesso mazzo passa il controllo del possesso tutte
+  // e due le volte — quel controllo si fa quando ci si siede, e in quel
+  // momento la copia c'è ancora. Poi la gioca in tutte e due le
+  // partite. Senza pavimento la collezione andrebbe sotto zero e la
+  // stessa copia sarebbe stata spesa due volte; con il pavimento, la
+  // seconda volta semplicemente non c'è più niente da togliere, e chi
+  // legge il registro se ne accorge dal `mancava`.
+  // ----------------------------------------------------------
+  async function consumaCarta(gettone, idCarta) {
+    const g = await carica(gettone);
+    if (!g) return { ok: false, motivo: 'Non ti conosco.' };
+    const quante = g.collezione[idCarta] || 0;
+    if (quante <= 0) return { ok: true, consumata: false, mancava: true, rimaste: 0 };
+    const rimaste = quante - 1;
+    if (rimaste > 0) g.collezione[idCarta] = rimaste;
+    else delete g.collezione[idCarta];   // zero copie = non ce l'hai, non "ne hai zero"
+    await salva(gettone, g);
+    return { ok: true, consumata: true, rimaste };
+  }
+
+  // ----------------------------------------------------------
   async function quanti() { return (await archivio.tutte()).filter((k) => k.startsWith('giocatore:')).length; }
 
-  return { entra, stato, ritiraIlPremio, compraPacchetto, ricarica, quanti, vetrina, carica };
+  return { entra, stato, ritiraIlPremio, compraPacchetto, ricarica, quanti, vetrina, carica,
+           possiedeTutte, consumaCarta };
 }
 
 export { OFFERTE, RICARICHE };

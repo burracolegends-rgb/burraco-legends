@@ -126,12 +126,22 @@ function mazzoValido(mazzo) {
 
 // Da un mazzo (o dal nulla) alla squadra vera, con le statistiche prese
 // dalle carte del server.
+//
+// LE CARTE MAGICHE NON SI REGALANO PIÙ QUI.
+// Prima chi non aveva un mazzo valido riceveva anche tre Carte Magiche
+// della squadra di prova. Adesso che le carte si consumano dalla
+// collezione, quello sarebbe stato un rubinetto aperto: bastava non
+// scegliere un mazzo per averne tre gratis a ogni partita, per sempre.
+// Gli EROI restano — senza quattro eroi non si può nemmeno cominciare —
+// ma le Carte Magiche arrivano solo da chi le possiede davvero, e chi
+// non ne ha gioca senza. Il regalo si fa una volta sola, alla nascita
+// del giocatore: vedi engine/dotazione.js.
 function squadreDiProva(mazzi) {
   const scelto = [mazzoValido(mazzi && mazzi[0]), mazzoValido(mazzi && mazzi[1])];
   const squadre = [0, 1].map((i) =>
     squadra(scelto[i] ? scelto[i].personaggi : SQUADRE_DI_PROVA.personaggi[i]));
   const magiche = [0, 1].map((i) =>
-    (scelto[i] ? scelto[i].magiche : SQUADRE_DI_PROVA.magiche[i])
+    (scelto[i] ? scelto[i].magiche : [])
       .map((id) => CARTE[id]).filter(Boolean));
 
   return {
@@ -141,10 +151,70 @@ function squadreDiProva(mazzi) {
   };
 }
 
+// ------------------------------------------------------------
+// IL MAZZO CON CUI SI SCENDE IN CAMPO DAVVERO
+//
+// Tre casi, in ordine:
+//
+// 1. Ha scelto un mazzo e possiede tutto quello che c'è dentro → gioca
+//    con quello.
+// 2. Non ha scelto niente (o ha scelto carte che non ha), ma so chi è →
+//    gliene costruisco uno con quello che possiede. Serve davvero: un
+//    giocatore che ha ricevuto la dotazione ma non è mai passato dalla
+//    schermata del mazzo possiede delle Carte Magiche, e sarebbe
+//    assurdo farlo giocare senza.
+// 3. Non so chi è (nessun gettone) → squadra di prova, zero Carte
+//    Magiche. Non c'è nessuna collezione da cui scalare, quindi non c'è
+//    niente da giocare.
+// ------------------------------------------------------------
+function mazzoAutomatico(collezione) {
+  const posseduta = (id) => (collezione[id] || 0) > 0;
+  const personaggi = {};
+  for (const seme of SEMI) {
+    // fra quelli che ha su quel seme, il più raro: è la scelta che
+    // farebbe lui, e comunque la rifà quando vuole dalla sua schermata
+    const suoi = Object.keys(collezione)
+      .map((id) => CARTE[id])
+      .filter((c) => c && c.seme === seme && posseduta(c.id))
+      .sort((a, b) => (b.rarita || 0) - (a.rarita || 0));
+    if (!suoi.length) return null;          // gli manca un seme: niente da fare
+    personaggi[seme] = suoi[0].id;
+  }
+  const magiche = Object.keys(collezione)
+    .map((id) => CARTE[id])
+    .filter((c) => c && !c.seme && posseduta(c.id))
+    .sort((a, b) => (b.rarita || 0) - (a.rarita || 0))
+    .slice(0, 3)
+    .map((c) => c.id);
+  return { personaggi, carteMagiche: magiche };
+}
+
+async function mazzoDaGiocare(gettone, mazzoChiesto) {
+  const suo = await anagrafe.stato(gettone);
+  if (!suo || !suo.ok) return null;         // non so chi sei: squadra di prova
+  const collezione = suo.collezione || {};
+
+  const pulito = mazzoValido(mazzoChiesto);
+  if (pulito) {
+    const tutte = [...pulito.personaggi, ...pulito.magiche];
+    const possesso = await anagrafe.possiedeTutte(gettone, tutte);
+    // Se ha chiesto carte che non possiede non si rifiuta la partita: si
+    // scende in campo con quello che ha davvero. Una partita che non
+    // comincia è peggio di una partita con un mazzo diverso — e il
+    // messaggio glielo dà la sua schermata del mazzo, non il tavolo.
+    if (possesso.ok) return mazzoChiesto;
+  }
+  return mazzoAutomatico(collezione);
+}
+
 // STUDIO_SECONDI serve alle prove automatiche, che non possono stare
 // trenta secondi ferme ad aspettare. In partita vera non si tocca.
 const stanze = creaRegistroStanze({
   squadre: squadreDiProva,
+  // Una Carta Magica giocata se ne va anche dalla collezione: vale un
+  // solo utilizzo. `anagrafe` nasce qualche riga più sotto, e va bene —
+  // questa funzione la si chiama a partita in corso, non adesso.
+  cartaGiocata: (gettone, idCarta) => anagrafe.consumaCarta(gettone, idCarta),
   ...(process.env.STUDIO_SECONDI !== undefined
       ? { studioSecondi: Number(process.env.STUDIO_SECONDI) || 0 } : {})
 });
@@ -266,14 +336,18 @@ const server = http.createServer(async (req, res) => {
     if (via === '/api/apri' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
-      const r = stanze.apri(nomePulito(corpo.nome), chiChiama(req), corpo.mazzo);
+      // il mazzo si controlla PRIMA di sedersi: dentro la stanza deve
+      // entrare solo roba che quel giocatore possiede davvero
+      const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
+      const r = stanze.apri(nomePulito(corpo.nome), chiChiama(req), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 429, r);
     }
 
     if (via === '/api/entra' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
-      const r = stanze.entra(corpo.codice, nomePulito(corpo.nome), corpo.mazzo);
+      const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
+      const r = stanze.entra(corpo.codice, nomePulito(corpo.nome), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 404, r);
     }
 

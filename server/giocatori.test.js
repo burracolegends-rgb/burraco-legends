@@ -9,9 +9,17 @@ import { archivioInMemoria, archivioSuFile } from './archivio.js';
 import { creaAnagrafe } from './giocatori.js';
 import { OFFERTE, SOGLIA_PITY } from '../engine/pacchetti.js';
 import { PREMI_SETTIMANA, RICARICHE } from '../engine/sharkini.js';
+import { dotazioneIniziale } from '../engine/dotazione.js';
 
 let ko = 0;
 const check = (l, c) => { console.log((c ? 'OK   ' : 'FAIL ') + l); if (!c) ko++; };
+
+// Nessuno parte più con l'album vuoto: alla nascita si riceve una
+// dotazione di carte (engine/dotazione.js), altrimenti non si potrebbe
+// scendere in campo — ora che si gioca solo con le carte che si
+// possiedono. I conti qui sotto partono da lì invece che da zero, così
+// restano giusti anche se domani la dotazione cambia.
+const DI_PARTENZA = Object.values(dotazioneIniziale()).reduce((a, b) => a + b, 0);
 
 const GIORNO = 86400000;
 let ORA = Date.parse('2026-08-14T12:00:00Z');
@@ -39,7 +47,8 @@ console.log('--- CHI SEI ---');
   check('alla prima visita si riceve un gettone', typeof primo.gettone === 'string' && primo.gettone.length >= 64);
   check('ed è un giocatore nuovo', primo.nuovo === true);
   check('che parte da zero sharkini', primo.giocatore.serie.saldo === 0);
-  check('e con l\'album vuoto', Object.keys(primo.giocatore.collezione).length === 0);
+  check('ma con le carte della dotazione iniziale, non con l\'album vuoto',
+    Object.keys(primo.giocatore.collezione).length > 0 && primo.giocatore.dotazioneRicevuta === true);
 
   const ritorno = await a.entra(primo.gettone);
   check('tornando col proprio gettone ci si ritrova', ritorno.nuovo === false);
@@ -104,7 +113,7 @@ console.log('\n--- I PACCHETTI SI PAGANO ---');
   const senzaSoldi = await a.compraPacchetto(gettone, 5);
   check('a saldo zero non si compra niente', senzaSoldi.ok === false);
   check('e si dice quanto manca', senzaSoldi.manca === 18000);
-  check('l\'album resta vuoto', (await a.stato(gettone)).carteInTutto === 0);
+  check('l\'album resta quello di partenza', (await a.stato(gettone)).carteInTutto === DI_PARTENZA);
 
   const inventato = await a.compraPacchetto(gettone, 7);
   check('un taglio che non esiste viene rifiutato', inventato.ok === false);
@@ -122,7 +131,7 @@ console.log('\n--- I PACCHETTI SI PAGANO ---');
   check('ora il pacchetto si apre', comprato.ok === true);
   check('e sono uscite 5 carte', comprato.carte.length === 5);
   check('il prezzo è stato scalato', comprato.saldo === saldoPrima - 18000);
-  check('le carte sono finite nell\'album', comprato.carteInTutto === 5);
+  check('le carte sono finite nell\'album', comprato.carteInTutto === DI_PARTENZA + 5);
   check('e ogni carta esiste nel catalogo',
     comprato.carte.every((c) => CATALOGO.some((x) => x.id === c.carta.id)));
   check('la garanzia ha contato le carte aperte', comprato.contatorePity === 5);
@@ -131,12 +140,12 @@ console.log('\n--- I PACCHETTI SI PAGANO ---');
   // più piccolo, sennò è il saldo a fermarmi e non provo niente
   const secondo = await a.compraPacchetto(gettone, 3);
   check('il secondo pacchetto scala di nuovo', secondo.saldo === saldoPrima - 18000 - 12000);
-  check('e l\'album cresce', secondo.carteInTutto === 8);
+  check('e l\'album cresce', secondo.carteInTutto === DI_PARTENZA + 8);
 
   const terzo = await a.compraPacchetto(gettone, 5);
   check('finiti gli sharkini non si compra più', terzo.ok === false);
   check('e il saldo è rimasto quello', (await a.stato(gettone)).saldo === 3000);
-  check('l\'album non è cresciuto', (await a.stato(gettone)).carteInTutto === 8);
+  check('l\'album non è cresciuto', (await a.stato(gettone)).carteInTutto === DI_PARTENZA + 8);
 }
 
 // ============================================================
@@ -226,8 +235,8 @@ console.log('\n--- UN GIOCATORE NON TOCCA L\'ALTRO ---');
 
   const sDue = await a.stato(due.gettone);
   check('il secondo ha ancora zero sharkini', sDue.saldo === 0);
-  check('e l\'album vuoto', sDue.carteInTutto === 0);
-  check('mentre il primo ha le sue carte', (await a.stato(uno.gettone)).carteInTutto === 5);
+  check('e solo le carte di partenza', sDue.carteInTutto === DI_PARTENZA);
+  check('mentre il primo ha anche quelle che ha aperto', (await a.stato(uno.gettone)).carteInTutto === DI_PARTENZA + 5);
   check('col gettone dell\'uno non si guarda l\'altro',
     (await a.stato(uno.gettone)).saldo !== sDue.saldo);
 }
@@ -257,7 +266,7 @@ console.log('\n--- IL MAGAZZINO SU FILE ---');
   const ripreso = await a2.stato(gettone);
   check('spegnendo e riaccendendo, il giocatore c\'è ancora', ripreso.ok === true);
   check('col suo saldo', ripreso.saldo === comprato.saldo);
-  check('e con le sue carte', ripreso.carteInTutto === 5);
+  check('e con le sue carte', ripreso.carteInTutto === DI_PARTENZA + 5);
   check('e la sua serie di accessi', ripreso.premio.giaRitiratoOggi === true);
 
   // un file rovinato non deve far perdere tutto in silenzio

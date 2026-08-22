@@ -4,6 +4,9 @@
 import { archivioInMemoria } from './archivio.js';
 import { creaAnagrafe } from './giocatori.js';
 import { creaAccessi, FORNITORI } from './identita.js';
+import { dotazioneIniziale } from '../engine/dotazione.js';
+
+const DI_PARTENZA = Object.values(dotazioneIniziale()).reduce((a, b) => a + b, 0);
 
 let ko = 0;
 const check = (l, c) => { console.log((c ? 'OK   ' : 'FAIL ') + l); if (!c) ko++; };
@@ -58,7 +61,10 @@ console.log('\n--- COLLEGARE SENZA PERDERE NIENTE ---');
   await anagrafe.ricarica(ospite.gettone, 'borsa');
   const comprato = await anagrafe.compraPacchetto(ospite.gettone, 5);
   const prima = await anagrafe.stato(ospite.gettone);
-  check('l\'ospite ha accumulato roba', prima.saldo === 15000 && prima.carteInTutto === 5);
+  // "accumulato" = quello che si è procurato da sé. Le carte della
+  // dotazione iniziale ce le ha anche l'altro suo profilo: non sono
+  // roba che rischia di perdere collegandosi.
+  check('l\'ospite ha accumulato roba', prima.saldo === 15000 && prima.carteInTutto === DI_PARTENZA + 5);
 
   // e adesso collega Google
   const collegato = await accessi.entraCon('google', 'google:pietro-123', ospite.gettone);

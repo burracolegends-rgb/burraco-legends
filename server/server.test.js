@@ -26,6 +26,13 @@ process.env.NON_AVVIARE = '1';            // il server non si mette in ascolto d
 process.env.STUDIO_SECONDI = '0';         // niente attesa di trenta secondi: qui si prova, non si gioca
 
 const { server, stanze } = await import('./server.js');
+import { dotazioneIniziale } from '../engine/dotazione.js';
+
+// Nessuno nasce piu' con l'album vuoto: alla creazione si ricevono le
+// carte della dotazione iniziale (engine/dotazione.js), senza le quali
+// non si potrebbe scendere in campo — ora che si gioca solo con le
+// carte che si possiedono davvero.
+const DI_PARTENZA = Object.values(dotazioneIniziale()).reduce((a, b) => a + b, 0);
 
 let ko = 0;
 const check = (l, c) => { console.log((c ? 'OK   ' : 'FAIL ') + l); if (!c) ko++; };
@@ -205,7 +212,9 @@ console.log('\n--- IL BORSELLINO PASSA DAL SERVER ---');
   const io1 = (await posta('/api/io', { nome: 'Pietro' })).corpo;
   check('alla prima visita si riceve un gettone', typeof io1.gettone === 'string' && io1.gettone.length >= 64);
   check('e si parte da zero sharkini', io1.saldo === 0);
-  check('con l\'album vuoto', io1.carteInTutto === 0);
+  // niente sharkini in regalo, ma le CARTE sì: senza dotazione iniziale
+  // non avrebbe niente con cui scendere in campo
+  check('ma con le carte della dotazione iniziale', io1.carteInTutto > 0);
   check('e il premio di oggi da ritirare', io1.premio.puoRitirare === true);
 
   const ritorno = (await posta('/api/io', { gettone: io1.gettone })).corpo;
@@ -216,7 +225,7 @@ console.log('\n--- IL BORSELLINO PASSA DAL SERVER ---');
   check('senza sharkini non si apre nessun pacchetto', scrocco.ok === false);
   check('e si dice quanto manca', scrocco.manca === 108000);
   check('l\'album è rimasto vuoto',
-    (await posta('/api/io', { gettone: io1.gettone })).corpo.carteInTutto === 0);
+    (await posta('/api/io', { gettone: io1.gettone })).corpo.carteInTutto === DI_PARTENZA);
 
   // e con un gettone inventato
   const finto = (await posta('/api/compra', { gettone: 'z'.repeat(64), carte: 5 })).corpo;
@@ -239,15 +248,15 @@ console.log('\n--- IL BORSELLINO PASSA DAL SERVER ---');
   const pacco = (await posta('/api/compra', { gettone: io1.gettone, carte: 5 })).corpo;
   check('ora il pacchetto si apre', pacco.ok === true && pacco.carte.length === 5);
   check('il prezzo è stato scalato dal server', pacco.saldo === 33100 - 18000);
-  check('le carte sono nell\'album', pacco.carteInTutto === 5);
+  check('le carte sono nell\'album', pacco.carteInTutto === DI_PARTENZA + 5);
   check('e ogni carta ha una rarità vera',
     pacco.carte.every((c) => c.rarita >= 1 && c.rarita <= 5));
 
   // due giocatori non si toccano
   const io2 = (await posta('/api/io', { nome: 'Amico' })).corpo;
-  check('un altro giocatore parte comunque da zero', io2.saldo === 0 && io2.carteInTutto === 0);
+  check('un altro giocatore parte comunque da zero', io2.saldo === 0 && io2.carteInTutto === DI_PARTENZA);
   check('e il primo ha ancora le sue cose',
-    (await posta('/api/io', { gettone: io1.gettone })).corpo.carteInTutto === 5);
+    (await posta('/api/io', { gettone: io1.gettone })).corpo.carteInTutto === DI_PARTENZA + 5);
 
   // il gettone di uno non serve a guardare l'altro
   check('i due gettoni sono diversi', io1.gettone !== io2.gettone);
@@ -272,7 +281,7 @@ console.log('\n--- SI PUÒ CHIEDERE UN PACCHETTO STORTO? ---');
     check(etichetta + ' → rifiutato', r.ok === false);
   }
   const s = (await posta('/api/io', { gettone: mio.gettone })).corpo;
-  check('dopo tutti quei tentativi l\'album è ancora vuoto', s.carteInTutto === 0);
+  check('dopo tutti quei tentativi l\'album è ancora vuoto', s.carteInTutto === DI_PARTENZA);
   check('e il saldo è intatto', s.saldo === 375000);
 }
 
@@ -295,18 +304,50 @@ console.log('\n--- IL MAZZO IN RETE ---');
   const eroiDi = (vista, chi) =>
     Object.fromEntries(Object.entries(vista.giocatori[chi].personaggi).map(([s, c]) => [s, c.cardId]));
 
-  const casa = (await posta('/api/apri', { nome: 'Pietro', mazzo: MIO })).corpo;
-  await posta('/api/entra', { codice: casa.codice, nome: 'Amico' });      // lui senza mazzo
+  // SI GIOCA SOLO CON LE CARTE CHE SI POSSIEDONO.
+  // MIO qui sopra chiede eroi che nessun giocatore nuovo ha (002, 006):
+  // e' proprio il tentativo che deve fallire. Chi possiede davvero le
+  // sue carte gioca con quelle — e per distinguerlo dalla squadra
+  // predefinita lo si fa sedere al SECONDO posto, la cui squadra di
+  // ripiego e' un'altra (002/004/006/008).
+  const suoDavvero = {
+    personaggi: { '♥': 'personaggio_001', '♦': 'personaggio_003', '♣': 'personaggio_005', '♠': 'personaggio_007' },
+    carteMagiche: ['sorpresa_001', 'trappola_001', 'trappola_002']
+  };
+  const tesserato = (await posta('/api/io', { nome: 'Tesserato' })).corpo;
+
+  const casa = (await posta('/api/apri', { nome: 'Pietro', mazzo: MIO })).corpo;   // senza gettone
+  await posta('/api/entra', {
+    codice: casa.codice, nome: 'Tesserato',
+    mazzo: suoDavvero, gettone: tesserato.gettone
+  });
   const v = (await chiedi('/api/stato?codice=' + casa.codice + '&segreto=' +
     encodeURIComponent(casa.segreto) + '&da=-1')).corpo.vista;
 
-  check('chi ha scelto un mazzo scende in campo con quello',
-    JSON.stringify(eroiDi(v, 0)) === JSON.stringify(MIO.personaggi),
+  check('chi possiede il suo mazzo scende in campo con quello',
+    JSON.stringify(eroiDi(v, 1)) === JSON.stringify(suoDavvero.personaggi),
+    JSON.stringify(eroiDi(v, 1)));
+  check('IL TENTATIVO CHE CONTA: un mazzo di carte che non possiedi non passa',
+    JSON.stringify(eroiDi(v, 0)) !== JSON.stringify(MIO.personaggi),
     JSON.stringify(eroiDi(v, 0)));
   check('chi non ha scelto niente ha la squadra predefinita',
-    JSON.stringify(eroiDi(v, 1)) !== JSON.stringify(MIO.personaggi));
+    JSON.stringify(eroiDi(v, 0)) === JSON.stringify({
+      '♥': 'personaggio_001', '♦': 'personaggio_003', '♣': 'personaggio_005', '♠': 'personaggio_007'
+    }));
   check('le statistiche sono quelle vere della carta',
-    v.giocatori[0].personaggi['♥'].pvMax === 140 && v.giocatori[0].personaggi['♥'].att === 120);
+    v.giocatori[1].personaggi['♥'].pvMax === 100 && v.giocatori[1].personaggi['♥'].att === 90);
+
+  // e chi non dice chi e' non porta in campo nessuna Carta Magica: non
+  // c'e' una collezione da cui prenderle, e regalarle sarebbe un
+  // rubinetto aperto ora che si consumano
+  check('senza gettone non si scende in campo con Carte Magiche',
+    (v.giocatori[0].magia === null) || (v.giocatori[0].magia.selezione || []).length === 0,
+    JSON.stringify(v.giocatori[0].magia));
+  // di lui si vede solo QUANTE ne ha: la selezione dell'avversario resta
+  // coperta, ed e' giusto che questa vista non la mostri
+  check('chi le possiede invece ce le ha',
+    v.giocatori[1].magia && v.giocatori[1].magia.selezioneQuante === 3,
+    JSON.stringify(v.giocatori[1].magia));
 
   // ---- e adesso i tentativi di barare ----
   const IMBROGLI = [
@@ -339,6 +380,63 @@ console.log('\n--- IL MAZZO IN RETE ---');
       pvMassimo <= 200 && attMassimo <= 200 && quantiDiversi === 4 && suoi.length === 4,
       'pv ' + pvMassimo + ', att ' + attMassimo + ', eroi diversi ' + quantiDiversi);
   }
+}
+
+// ============================================================
+// IL CONTROLLO PIÙ IMPORTANTE DI TUTTO IL FILE, ADESSO.
+// Una Carta Magica giocata deve sparire DAVVERO dalla collezione di chi
+// la gioca: vale un solo utilizzo. Se questo controllo passa ma la
+// carta resta nell'album, le carte diventano infinite e tutto il resto
+// non conta niente.
+// ============================================================
+console.log('\n--- UNA CARTA MAGICA GIOCATA SPARISCE DALL\'ALBUM ---');
+{
+  const SUO = {
+    personaggi: { '♥': 'personaggio_001', '♦': 'personaggio_003', '♣': 'personaggio_005', '♠': 'personaggio_007' },
+    carteMagiche: ['sorpresa_001', 'trappola_001', 'trappola_002']
+  };
+  const chi = (await posta('/api/io', { nome: 'Spendaccione' })).corpo;
+  const primaCopie = chi.collezione['sorpresa_001'];
+  check('parte con le copie della dotazione', primaCopie > 0);
+
+  const t = (await posta('/api/apri', { nome: 'Spendaccione', mazzo: SUO, gettone: chi.gettone })).corpo;
+  await posta('/api/entra', { codice: t.codice, nome: 'Altro' });
+
+  // tocca a chi ha aperto: gioca la Carta Magica in prima posizione
+  const giocata = (await posta('/api/mossa', {
+    codice: t.codice, segreto: t.segreto, azione: { tipo: 'magia', indice: 0 }
+  })).corpo;
+  check('la Carta Magica si gioca senza punti magia', giocata.ok === true, giocata.motivo);
+
+  // il taglio sulla collezione non blocca la partita: si scrive per
+  // conto suo. Quindi qui si aspetta, invece di dare per scontato che
+  // sia gia' successo.
+  let dopo = null;
+  for (let i = 0; i < 40 && (dopo === null || dopo === primaCopie); i++) {
+    await new Promise((ok) => setTimeout(ok, 25));
+    dopo = (await posta('/api/io', { gettone: chi.gettone })).corpo.collezione['sorpresa_001'] || 0;
+  }
+  check('LA COPIA GIOCATA E\' SPARITA DALL\'ALBUM', dopo === primaCopie - 1,
+    'prima ' + primaCopie + ', dopo ' + dopo);
+
+  // e non si rigioca: quel posto e' speso per il resto della partita
+  const ancora = (await posta('/api/mossa', {
+    codice: t.codice, segreto: t.segreto, azione: { tipo: 'magia', indice: 0 }
+  })).corpo;
+  check('la stessa carta non si rigioca nella stessa partita', ancora.ok === false);
+
+  const dopoIlRifiuto = (await posta('/api/io', { gettone: chi.gettone })).corpo.collezione['sorpresa_001'] || 0;
+  check('e il rifiuto non consuma una seconda copia', dopoIlRifiuto === dopo);
+
+  // chi non dice chi e' non puo' consumare niente di nessuno
+  const anonimo = (await posta('/api/apri', { nome: 'Anonimo', mazzo: SUO })).corpo;
+  await posta('/api/entra', { codice: anonimo.codice, nome: 'Altro' });
+  const suaMossa = (await posta('/api/mossa', {
+    codice: anonimo.codice, segreto: anonimo.segreto, azione: { tipo: 'magia', indice: 0 }
+  })).corpo;
+  check('senza gettone non ci sono Carte Magiche da giocare', suaMossa.ok === false);
+  check('e l\'album di chi le possiede non e\' stato toccato',
+    ((await posta('/api/io', { gettone: chi.gettone })).corpo.collezione['sorpresa_001'] || 0) === dopo);
 }
 
 console.log('\n' + (ko === 0 ? 'Tutti i controlli passati.' : ko + ' controlli falliti.'));

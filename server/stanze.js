@@ -76,7 +76,8 @@ const segretoNuovo = () => randomBytes(24).toString('hex');
 export function creaRegistroStanze({ orologio = Date.now, squadre = null,
                                     stanzeMassime = STANZE_MASSIME,
                                     tavoliPerIndirizzo = TAVOLI_PER_INDIRIZZO,
-                                    studioSecondi = SECONDI_DI_STUDIO } = {}) {
+                                    studioSecondi = SECONDI_DI_STUDIO,
+                                    cartaGiocata = null } = {}) {
   const stanze = new Map();
   const aperture = new Map();      // indirizzo → quando ha aperto i suoi tavoli
 
@@ -97,7 +98,15 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
   // controlla ogni carta contro il catalogo vero. Qui si tiene da parte
   // e basta — le stanze non sanno niente di eroi e carte magiche, ed e'
   // giusto che continuino a non saperlo.
-  function apri(nome, indirizzo, mazzo) {
+  //
+  // Insieme al mazzo si siede anche il GETTONE di chi gioca, e vale la
+  // stessa regola: qui dentro e' una stringa opaca, non si legge e non
+  // si interpreta. Serve a una cosa sola — dire a chi tiene le
+  // collezioni QUALE giocatore ha appena consumato una carta. Non entra
+  // in nessuna vista e non finisce nel registro: il registro serve a
+  // rigiocare le partite, e per rigiocarle non serve sapere di chi
+  // erano le carte.
+  function apri(nome, indirizzo, mazzo, gettone = null) {
     if (stanze.size >= stanzeMassime) {
       return { ok: false, motivo: 'Il server è pieno di tavoli in questo momento. Riprova fra poco.' };
     }
@@ -118,7 +127,7 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
       versione: 0,                   // sale a ogni cambiamento: i client chiedono "novità dopo la N?"
       registro: [],                  // ogni mossa, per rigiocare
       posti: [
-        { segreto: segretoNuovo(), nome: nome || 'Giocatore 1', collegatoAlle: adesso, mazzo: mazzo || null },
+        { segreto: segretoNuovo(), nome: nome || 'Giocatore 1', collegatoAlle: adesso, mazzo: mazzo || null, gettone: gettone || null },
         null
       ],
       ultimoEsito: null,          // il resoconto pubblico dell'ultima mossa
@@ -128,12 +137,12 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
     return { ok: true, codice, giocatore: 0, segreto: stanza.posti[0].segreto };
   }
 
-  function entra(codice, nome, mazzo) {
+  function entra(codice, nome, mazzo, gettone = null) {
     const stanza = stanze.get(String(codice || '').toUpperCase().trim());
     if (!stanza) return { ok: false, motivo: 'Questo codice non corrisponde a nessun tavolo.' };
     if (stanza.posti[1]) return { ok: false, motivo: 'Il tavolo è già al completo.' };
 
-    stanza.posti[1] = { segreto: segretoNuovo(), nome: nome || 'Giocatore 2', collegatoAlle: orologio(), mazzo: mazzo || null };
+    stanza.posti[1] = { segreto: segretoNuovo(), nome: nome || 'Giocatore 2', collegatoAlle: orologio(), mazzo: mazzo || null, gettone: gettone || null };
     avviaPartita(stanza);
     return { ok: true, codice: stanza.codice, giocatore: 1, segreto: stanza.posti[1].segreto };
   }
@@ -305,6 +314,28 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
       accettata: esito.ok,
       motivo: esito.ok ? null : esito.motivo
     });
+
+    // UNA CARTA MAGICA GIOCATA SE NE VA DAVVERO.
+    // Il motore sa che quel posto è speso per questa partita, ma non sa
+    // niente di collezioni — ed è giusto: deve restare rigiocabile dal
+    // registro senza toccare i dati di nessuno. Quindi il colpo lo
+    // batte qui, dove il gettone c'è.
+    //
+    // Si avvisa SOLO se la mossa è andata a buon fine: una carta
+    // rifiutata resta al suo posto e non si paga.
+    //
+    // Non si aspetta l'esito della scrittura: la partita non deve
+    // fermarsi perché il magazzino è lento. Se la scrittura fallisce, la
+    // carta resta al giocatore — di due errori possibili, tenersi una
+    // carta già giocata è il meno grave: perderne una che si possiede
+    // ancora sarebbe una copia sparita nel nulla.
+    if (esito.ok && cartaGiocata && esito.carta && esito.carta.id) {
+      const chi = stanza.posti[io] && stanza.posti[io].gettone;
+      if (chi) {
+        Promise.resolve(cartaGiocata(chi, esito.carta.id))
+          .catch((e) => console.error('[stanze] la carta giocata non si è potuta scalare:', e && e.message));
+      }
+    }
 
     // anche una mossa rifiutata può aver cambiato la partita, se nel
     // frattempo era scaduto un turno: in quel caso l'altro va svegliato

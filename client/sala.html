@@ -217,6 +217,16 @@ function mazzoDaPortare() {
   return undefined;
 }
 
+// CHI SI SIEDE.
+// Il gettone va spedito insieme al mazzo: senza, il server non sa di
+// chi sono le carte. E deve saperlo, perche' una Carta Magica giocata
+// si consuma davvero dalla collezione di chi la gioca — vale un solo
+// utilizzo. Senza gettone si scende in campo con gli eroi predefiniti
+// e nessuna Carta Magica: non c'e' nessuna collezione da cui prenderle.
+function gettoneDaPortare() {
+  try { return localStorage.getItem('bb_gettone') || undefined; } catch (e) { return undefined; }
+}
+
 // A schermo, cosi' si sa con che squadra si sta per giocare invece di
 // scoprirlo a partita iniziata.
 (function diCheMazzoSiGioca() {
@@ -235,7 +245,7 @@ $('apri').addEventListener('click', async () => {
   zitto();
   $('apri').disabled = true;
   try {
-    const r = await chiedi('/api/apri', { nome: $('nome').value, mazzo: mazzoDaPortare() });
+    const r = await chiedi('/api/apri', { nome: $('nome').value, mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
     if (!r.ok) { dice(r.motivo || 'Non è stato possibile aprire il tavolo.'); $('apri').disabled = false; return; }
     mio = r;
     $('scelta').classList.add('nascosto');
@@ -284,7 +294,7 @@ $('entra').addEventListener('click', async () => {
   zitto();
   $('entra').disabled = true;
   try {
-    const r = await chiedi('/api/entra', { codice: $('codice').value, nome: $('nome').value, mazzo: mazzoDaPortare() });
+    const r = await chiedi('/api/entra', { codice: $('codice').value, nome: $('nome').value, mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
     if (!r.ok) { dice(r.motivo || 'Questo codice non funziona.'); $('entra').disabled = false; return; }
     mio = r;
     vaiAlTavolo();
