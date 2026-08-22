@@ -351,29 +351,42 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
   // intervalli: è l'unica cosa che muove la partita senza che nessuno
   // abbia scritto.
   // ----------------------------------------------------------
+  // UN TAVOLO ROTTO NON DEVE FERMARE GLI ALTRI.
+  // Questa funzione gira una volta al secondo su OGNI tavolo aperto, fuori
+  // da qualunque richiesta e quindi fuori dalla protezione che le
+  // richieste hanno (vedi server.js). Prima, un errore in un solo tavolo
+  // — uno stato imprevisto, un bug in una carta nuova — interrompeva il
+  // giro a metà: i tavoli dopo quello rotto non ricevevano il battito
+  // quel turno, e se l'errore risaliva fino a chi ha chiamato battito(),
+  // faceva cadere l'intero processo. Un giocatore su un tavolo sano non
+  // deve pagare per un bug in un tavolo che non è nemmeno il suo.
   function battito() {
     const adesso = orologio();
     let scadenze = 0;
     for (const [codice, stanza] of stanze) {
-      if (stanza.partita && stanza.partita.status === 'in_progress') {
-        const r = faiScorrereIlTempo(stanza.partita, adesso);
-        if (r.scaduto) {
-          scadenze++;
-          stanza.registro.push({
-            versione: stanza.versione + 1, tipo: 'tempo_scaduto',
-            quando: adesso, scartata: r.scartata ? r.scartata.id : null
-          });
-          stanza.ultimoEsito = {
-            giocatore: stanza.partita.currentPlayerIndex === 0 ? 1 : 0,
-            tipo: 'tempo_scaduto', quando: adesso,
-            scartata: r.scartata ? r.scartata.id : null
-          };
-          cambiata(stanza);
+      try {
+        if (stanza.partita && stanza.partita.status === 'in_progress') {
+          const r = faiScorrereIlTempo(stanza.partita, adesso);
+          if (r.scaduto) {
+            scadenze++;
+            stanza.registro.push({
+              versione: stanza.versione + 1, tipo: 'tempo_scaduto',
+              quando: adesso, scartata: r.scartata ? r.scartata.id : null
+            });
+            stanza.ultimoEsito = {
+              giocatore: stanza.partita.currentPlayerIndex === 0 ? 1 : 0,
+              tipo: 'tempo_scaduto', quando: adesso,
+              scartata: r.scartata ? r.scartata.id : null
+            };
+            cambiata(stanza);
+          }
         }
-      }
-      if (adesso - stanza.ultimoContatto > STANZA_ABBANDONATA_MS) {
-        for (const sveglia of stanza.inAttesa) sveglia();
-        stanze.delete(codice);
+        if (adesso - stanza.ultimoContatto > STANZA_ABBANDONATA_MS) {
+          for (const sveglia of stanza.inAttesa) sveglia();
+          stanze.delete(codice);
+        }
+      } catch (e) {
+        console.error('[battito] tavolo', codice, 'in errore, salto solo lui:', e);
       }
     }
     // le aperture vecchie non contano più: via dalla memoria

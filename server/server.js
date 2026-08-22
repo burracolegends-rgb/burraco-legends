@@ -28,6 +28,31 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { creaRegistroStanze } from './stanze.js';
+
+// ------------------------------------------------------------
+// UN ERRORE IMPREVISTO NON DEVE SPEGNERE IL SERVER PER TUTTI.
+// Senza queste due righe, Node fa quello che fa di norma: un'eccezione
+// non presa in nessun punto, o una promise rifiutata che nessuno
+// aspetta, spengono l'INTERO processo — anche se è successa dentro il
+// controllo di un tavolo, o dentro un pacchetto di terze parti, in un
+// punto che non ha niente a che fare con chi sta giocando altrove.
+// Ogni partita in corso, di chiunque, sparirebbe per un errore che
+// magari riguardava un solo tavolo.
+//
+// Le richieste vere e proprie sono già protette (vedi il try/catch
+// attorno alle rotte più sotto, e quello dentro battito() per ogni
+// singolo tavolo): questa è la rete sotto la rete, per qualunque altro
+// punto che oggi non è ancora protetto o che lo sarà domani per un bug
+// non ancora scritto. Si registra l'errore e si va avanti — è la scelta
+// giusta per un server che tiene in memoria tavoli indipendenti fra
+// loro: uno storto non deve portarsi dietro tutti gli altri.
+// ------------------------------------------------------------
+process.on('uncaughtException', (e) => {
+  console.error('[server] eccezione non gestita, il processo CONTINUA:', e);
+});
+process.on('unhandledRejection', (e) => {
+  console.error('[server] promise rifiutata senza nessuno che l\'aspettasse:', e);
+});
 import { archivioSuFile } from './archivio.js';
 import { creaAnagrafe } from './giocatori.js';
 import { creaAccessi, verificatoreGoogle, verificatoreFacebook, FORNITORI } from './identita.js';

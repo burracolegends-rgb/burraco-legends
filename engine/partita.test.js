@@ -578,8 +578,8 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   for (const s of ['♥', '♦', '♣']) state.players[1].characters[s].pv = 0;
 
   const res = usaAbilitaSpeciale(state, 0, '♠', null, T0 + 1000);
-  check('l'abilità parte anche senza scegliere un bersaglio', res.ok === true, res.reason);
-  check('e il colpo va sull'unico ancora in piedi',
+  check('l\'abilità parte anche senza scegliere un bersaglio', res.ok === true, res.reason);
+  check('e il colpo va sull\'unico ancora in piedi',
     res.colpi.length === 1 && res.colpi[0].suit === '♠');
   check('i caduti restano a zero, nessun danno sprecato su di loro',
     ['♥', '♦', '♣'].every((s) => state.players[1].characters[s].pv === 0));
