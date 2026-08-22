@@ -51,7 +51,7 @@ export const EFFECT_CATALOG = {
   ricarica_sorpresa:   { categoria: 'personaggi', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' }
 };
 
-const TARGETS = ['avversario', 'se_stesso', 'personaggio_specifico', 'tutti'];
+const TARGETS = ['avversario', 'tutti_avversari', 'se_stesso', 'alleato_casuale', 'tutti_alleati', 'personaggio_specifico'];
 const SUITS = ['♥', '♦', '♣', '♠'];
 
 // Una carta può portare un solo `effect` (forma vecchia) oppure una lista
@@ -134,18 +134,66 @@ export function resetTurnoMagie(magicState) { magicState.giocateQuestoTurno = 0;
 // rigiocare uguale e i registri delle mosse non servono a niente.
 function caso(ctx) { return (ctx && ctx.rng) ? ctx.rng : Math.random; }
 
-function resolveTargetCharacters(target, casterCharacters, opponentCharacters, suit, rng = Math.random) {
-  if (target === 'se_stesso') {
-    return suit ? [suit] : SUITS.filter((s) => casterCharacters[s].pv > 0);
+// ------------------------------------------------------------
+// CHI COLPISCE UN EFFETTO
+//
+// Un bersaglio dice DUE cose: da che parte del tavolo si guarda (i miei
+// o i suoi) e quanti se ne prendono. Prima erano due decisioni separate:
+// questa funzione diceva QUANTI, e ogni singolo effetto ricavava per
+// conto proprio DA CHE PARTE — con due regole diverse a seconda che
+// l'effetto facesse male o bene.
+//
+// Il risultato: "tutti" voleva dire "tutti i nemici" su un danno e
+// "tutti i miei" su una cura. Comodo per caso, ma impossibile da
+// scrivere su una carta senza sapere a memoria quale effetto segue
+// quale regola — e soprattutto rendeva certe carte INESPRIMIBILI:
+// "riduci la difesa di TUTTI gli avversari" non si poteva dire in alcun
+// modo, perché "tutti" su un effetto difensivo virava sui propri.
+//
+// Adesso il bersaglio dice tutto da solo, in un posto solo. La parola
+// ambigua "tutti" è sparita: al suo posto ci sono "tutti_alleati" e
+// "tutti_avversari", che non si possono fraintendere.
+//
+// I MORTI NON SI CONTANO, MAI. Né per essere colpiti (il danno andrebbe
+// sprecato) né per essere curati — curare un personaggio a zero PV lo
+// riporterebbe in vita, e la resurrezione non è una regola di questo
+// gioco: non deve entrarci di soppiatto da una cura ad area.
+// ------------------------------------------------------------
+const BERSAGLI_RISOLTI = {
+  se_stesso:             { lato: 'mio', quanti: 'suo_o_tutti' },
+  alleato_casuale:       { lato: 'mio', quanti: 'casuale' },
+  tutti_alleati:         { lato: 'mio', quanti: 'tutti' },
+  avversario:            { lato: 'suo', quanti: 'casuale' },
+  tutti_avversari:       { lato: 'suo', quanti: 'tutti' },
+  personaggio_specifico: { lato: 'suo', quanti: 'scelto' }
+};
+
+function risolviBersaglio(target, ctx, predefinito, rng) {
+  const nome = target || predefinito;
+  const def = BERSAGLI_RISOLTI[nome];
+  // un bersaglio sconosciuto non colpisce niente: il controllo delle
+  // carte lo boccia prima, questo è solo per non far danni se passa
+  if (!def) return { pool: ctx.opponentCharacters, lato: 'opponent', suits: [] };
+
+  const pool = def.lato === 'mio' ? ctx.casterCharacters : ctx.opponentCharacters;
+  // `lato` viaggia con l'effetto che dura nel tempo: quando scadrà, chi
+  // lo toglie deve sapere su quale dei due schieramenti era stato messo
+  // (vedi tickActiveEffects). Sono le stesse due parole che quello legge.
+  const lato = def.lato === 'mio' ? 'caster' : 'opponent';
+  const vivi = () => SUITS.filter((s) => pool[s] && pool[s].pv > 0);
+
+  if (def.quanti === 'scelto') return { pool, lato, suits: ctx.suit ? [ctx.suit] : [] };
+  if (def.quanti === 'tutti') return { pool, lato, suits: vivi() };
+  if (def.quanti === 'suo_o_tutti') {
+    // con un seme indicato è QUEL personaggio (l'eroe che sta agendo);
+    // senza, sono tutti i propri ancora in piedi
+    return { pool, lato, suits: ctx.suit ? [ctx.suit] : vivi() };
   }
-  if (target === 'tutti') return SUITS;
-  if (target === 'personaggio_specifico') return suit ? [suit] : [];
-  // 'avversario' (default): un personaggio avversario specifico se indicato,
-  // altrimenti uno scelto a caso fra quelli ancora vivi
-  if (suit) return [suit];
-  const alive = SUITS.filter((s) => opponentCharacters[s].pv > 0);
-  if (alive.length === 0) return [];
-  return [alive[interoCasuale(rng, alive.length)]];
+  // 'casuale': quello indicato se c'è, altrimenti uno a caso fra i vivi
+  if (ctx.suit) return { pool, lato, suits: [ctx.suit] };
+  const in_piedi = vivi();
+  if (in_piedi.length === 0) return { pool, lato, suits: [] };
+  return { pool, lato, suits: [in_piedi[interoCasuale(rng, in_piedi.length)]] };
 }
 
 // ------------------------------------------------------------
@@ -165,16 +213,14 @@ export function applyEffect(card, ctx) {
 
   switch (effect) {
     case 'danno_diretto': {
-      const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) infliggiDanno(pool[s], param);
-      return { ok: true, applied: true, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
     }
     case 'danno_percentuale': {
-      const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) infliggiDanno(pool[s], pool[s].pvMax * (param / 100));
-      return { ok: true, applied: true, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
     }
     // Danno calcolato sull'ATT di un PROPRIO eroe, non sui PV del bersaglio
     // né sui punti delle carte. È quello che usano le abilità speciali, ma
@@ -185,20 +231,19 @@ export function applyEffect(card, ctx) {
         SUITS.reduce((best, s) => (ctx.casterCharacters[s].att > ctx.casterCharacters[best].att ? s : best), SUITS[0]);
       const attaccante = ctx.casterCharacters[semeAtt];
       if (!attaccante) return { ok: true, applied: false, note: 'eroe attaccante non trovato' };
-      const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       const danno = attaccante.att * (param / 100);
       for (const s of suits) infliggiDanno(pool[s], danno);
-      return { ok: true, applied: true, colpiti: suits, danno, semeAttaccante: semeAtt };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, danno, semeAttaccante: semeAtt };
     }
     case 'cura_diretta': {
-      const suits = resolveTargetCharacters(target || 'se_stesso', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'avversario') ? ctx.opponentCharacters : ctx.casterCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].pv = Math.min(pool[s].pvMax, pool[s].pv + param);
-      return { ok: true, applied: true, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
     }
     case 'scarto_forzato': {
-      const hand = (target === 'se_stesso') ? ctx.casterHand : ctx.opponentHand;
+      const mia = BERSAGLI_RISOLTI[target || 'avversario'] && BERSAGLI_RISOLTI[target || 'avversario'].lato === 'mio';
+      const hand = mia ? ctx.casterHand : ctx.opponentHand;
       const n = Math.min(param || 1, hand.length);
       const scartate = [];
       for (let i = 0; i < n; i++) {
@@ -226,16 +271,14 @@ export function applyEffect(card, ctx) {
       return { ok: true, applied: false, note: `parametro brucia_carta "${parametro}" non gestito` };
     }
     case 'boost_att': {
-      const suits = resolveTargetCharacters(target || 'se_stesso', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'avversario') ? ctx.opponentCharacters : ctx.casterCharacters;
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].att += param;
-      return { ok: true, applied: true, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: (target === 'avversario') ? 'opponent' : 'caster', turniRimasti: durata_turni } };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
     }
     case 'boost_difesa': {
-      const suits = resolveTargetCharacters(target || 'se_stesso', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'avversario') ? ctx.opponentCharacters : ctx.casterCharacters;
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) + param;
-      return { ok: true, applied: true, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: (target === 'avversario') ? 'opponent' : 'caster', turniRimasti: durata_turni } };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
     }
     // RECUPERA UNA CARTA GIÀ SPESA.
     // Prima rimetteva a "non usata" il flag della Sorpresa, quando il

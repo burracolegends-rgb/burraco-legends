@@ -127,13 +127,23 @@ export const TRIGGER_ABILITA = {
 // carta diventerebbe un'altra decisione da prendere e il turno si
 // allungherebbe. `personaggio_specifico` è quindi riservato alle abilità.
 // ------------------------------------------------------------
+// Un bersaglio dice due cose insieme: da CHE PARTE del tavolo (i miei o
+// i suoi) e QUANTI. La vecchia parola "tutti" ne diceva solo una, e
+// l'altra la indovinava l'effetto: "tutti" voleva dire "tutti i nemici"
+// su un danno e "tutti i miei" su una cura. Nessuna carta l'ha mai usata
+// — per fortuna, perché rendeva inesprimibile "riduci la difesa di tutti
+// gli avversari". Al suo posto ci sono due parole che non si possono
+// fraintendere. I personaggi a zero PV non contano mai: né da colpire
+// (danno sprecato) né da curare (sarebbe una resurrezione).
 export const BERSAGLI = {
-  avversario:            'un personaggio avversario (a caso fra quelli vivi)',
-  se_stesso:             'un proprio personaggio',
-  personaggio_specifico: 'un personaggio scelto dal giocatore — SOLO nelle abilità speciali',
-  tutti:                 'tutti e quattro i personaggi'
+  avversario:            'un personaggio avversario, a caso fra quelli vivi',
+  tutti_avversari:       'tutti i personaggi avversari ancora vivi',
+  se_stesso:             'il personaggio che agisce (o tutti i propri, se nessuno agisce)',
+  alleato_casuale:       'un proprio personaggio, a caso fra quelli vivi',
+  tutti_alleati:         'tutti i propri personaggi ancora vivi',
+  personaggio_specifico: 'un personaggio scelto dal giocatore — SOLO nelle abilità speciali'
 };
-export const BERSAGLI_CARTE_MAGICHE = ['avversario', 'se_stesso', 'tutti'];
+export const BERSAGLI_CARTE_MAGICHE = ['avversario', 'tutti_avversari', 'se_stesso', 'alleato_casuale', 'tutti_alleati'];
 
 // ------------------------------------------------------------
 // CONDIZIONI

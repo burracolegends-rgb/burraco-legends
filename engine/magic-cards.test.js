@@ -12,6 +12,8 @@ function check(label, cond) {
   else { console.log('FAIL ' + label); failures++; }
 }
 
+const SEMI = ['♥', '♦', '♣', '♠'];
+
 function freshCharacters() {
   const c = {};
   for (const s of ['♥', '♦', '♣', '♠']) c[s] = { pv: 100, pvMax: 100, att: 100 };
@@ -168,6 +170,52 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
 
   const senzaContesto = applyEffect(distruggi, {});
   check('senza magicStateOpponent nel contesto non esplode', senzaContesto.ok === true && senzaContesto.applied === false);
+}
+
+// --- I BERSAGLI DICONO DA CHE PARTE, NON SOLO QUANTI ---
+// Prima il bersaglio diceva solo QUANTI, e ogni effetto indovinava da
+// che parte: "tutti" colpiva i nemici su un danno e aiutava i propri su
+// una cura. Comodo per caso, ma "riduci la difesa di TUTTI gli
+// avversari" non si poteva proprio scrivere.
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  const ctx = { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 };
+
+  applyEffect({ effect: 'danno_diretto', parametro: '10', target: 'tutti_avversari', durata_turni: 0 }, ctx);
+  check('tutti_avversari colpisce tutti e quattro i suoi', SEMI.every((s) => suoi[s].pv === 90));
+  check('e non tocca nessuno dei miei', SEMI.every((s) => miei[s].pv === 100));
+
+  applyEffect({ effect: 'cura_diretta', parametro: '5', target: 'tutti_alleati', durata_turni: 0 }, ctx);
+  check('tutti_alleati guarda dalla mia parte', SEMI.every((s) => miei[s].pv === 100));
+
+  // il pezzo che prima era IMPOSSIBILE da esprimere
+  applyEffect({ effect: 'boost_difesa', parametro: '20', target: 'tutti_avversari', durata_turni: 2 }, ctx);
+  check('un effetto difensivo puo finalmente puntare TUTTI gli avversari',
+    SEMI.every((s) => suoi[s].difesaPercent === 20));
+  check('e non e finito addosso ai miei', SEMI.every((s) => !miei[s].difesaPercent));
+
+  const r = applyEffect({ effect: 'boost_att', parametro: '10', target: 'tutti_avversari', durata_turni: 2 }, ctx);
+  check('l effetto che dura ricorda su quale schieramento sta', r.effettoAttivo.pool === 'opponent');
+}
+
+// --- alleato_casuale: uno solo, e vivo ---
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  miei[SEMI[0]].pv = 0; miei[SEMI[1]].pv = 0; miei[SEMI[2]].pv = 0;   // resta solo l ultimo
+  const r = applyEffect({ effect: 'cura_diretta', parametro: '10', target: 'alleato_casuale', durata_turni: 0 },
+    { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0.5 });
+  check('alleato_casuale ne prende uno solo', r.colpiti.length === 1);
+  check('e non e mai un caduto', r.colpiti[0] === SEMI[3]);
+}
+
+// --- I MORTI NON SI CURANO: niente resurrezione di soppiatto ---
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  miei[SEMI[0]].pv = 0;
+  applyEffect({ effect: 'cura_diretta', parametro: '50', target: 'tutti_alleati', durata_turni: 0 },
+    { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 });
+  check('una cura ad area NON riporta in vita chi e caduto', miei[SEMI[0]].pv === 0);
+  check('mentre gli altri restano curati', miei[SEMI[1]].pv === 100);
 }
 
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));
