@@ -97,7 +97,7 @@ console.log('\n--- LE CARTE MAGICHE ---');
   check('le mie carte magiche le vedo per intero', Array.isArray(mio.selezione) && mio.selezione.length === 2);
   check('quelle dell\'avversario restano coperte', suo.selezione === undefined);
   check('so solo quante ne ha scelte', suo.selezioneQuante === 1);
-  check('so se ha già speso la sorpresa', suo.sorpresaUsata === false);
+  check('so QUANTE carte ha già speso, non quali', suo.consumateQuante === 0 && suo.consumate === undefined);
 
   // e adesso armo una trappola: l'altro deve vedere che c'è, non quale
   s.players[0].magic.trappoleArmate.push({

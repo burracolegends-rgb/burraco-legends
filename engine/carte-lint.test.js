@@ -76,10 +76,16 @@ check('ci sono carte da controllare', carte.length > 0);
 
 // --- 4. ogni carta dice quanto costa in punti magia ---
 {
+  // I punti magia li pagano SOLO le abilità degli eroi.
   const senzaCosto = carte.filter(({ file: f, dati }) =>
-    f.startsWith('personaggio_') ? (dati.abilita && dati.abilita.costo === undefined) : dati.costo === undefined);
-  check('ogni carta dichiara il proprio costo in punti magia', senzaCosto.length === 0,
+    f.startsWith('personaggio_') && dati.abilita && dati.abilita.costo === undefined);
+  check('ogni abilità di eroe dichiara il proprio costo in punti magia', senzaCosto.length === 0,
     senzaCosto.map((c) => c.file).join(', '));
+
+  // ...e le Carte Magiche NON devono averlo: si consumano, non si pagano.
+  const conCosto = carte.filter(({ file: f, dati }) => !f.startsWith('personaggio_') && dati.costo !== undefined);
+  check('nessuna Carta Magica dichiara un costo in punti magia', conCosto.length === 0,
+    conCosto.map((c) => c.file).join(', ') + ' — le Carte Magiche non costano punti magia, valgono un utilizzo e si consumano');
 }
 
 // --- 4bis. "difesa" non è cosmetica: riduce il danno per davvero ---
@@ -140,10 +146,10 @@ check('ci sono carte da controllare', carte.length > 0);
   const enumSbagliato = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'restrict_draw_source', parametro: 'quello_che_voglio', trigger: 'on_activate', durata_turni: 0 });
   check('un parametro fuori dai valori ammessi viene bocciato', !enumSbagliato.ok);
 
-  const costoAssurdo = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '10', trigger: 'on_activate', durata_turni: 0, costo: 99 });
-  check('un costo fuori scala viene bocciato', !costoAssurdo.ok);
+  const conCosto = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '10', trigger: 'on_activate', durata_turni: 0, costo: 4 });
+  check('una Carta Magica con un costo in punti magia viene bocciata', !conCosto.ok && conCosto.errori.some((e) => /non va più messo/.test(e)));
 
-  const buona = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '30', trigger: 'on_activate', target: 'avversario', durata_turni: 0, costo: 4 });
+  const buona = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '30', trigger: 'on_activate', target: 'avversario', durata_turni: 0 });
   check('una carta scritta bene passa', buona.ok, buona.errori.join('; '));
 }
 

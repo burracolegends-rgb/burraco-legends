@@ -42,7 +42,7 @@
 
 import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno } from './core-rules.js';
 import { attachAbility, tickCharacterAbility, checkAbilityTrigger } from './character-abilities.js';
-import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect } from './magic-cards.js';
+import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata } from './magic-cards.js';
 import { elencoEffetti, CONDIZIONI } from './vocabolario.js';
 
 export const TURN_SECONDS = 60;      // spec §2: 1 minuto per turno a giocatore
@@ -87,15 +87,21 @@ function defaultCharacters() {
 // PUNTI MAGIA
 // Sostituiscono la vecchia barra di carica sui singoli eroi: non si
 // caricano più le carte una per una, c'è UNA riserva sola per giocatore.
-// Cresce di 2 a ogni proprio turno e non supera i 15. Le Carte Magiche e
-// le abilità speciali si pagano da qui.
+// Cresce di 2 a ogni proprio turno e non supera i 15.
+//
+// SI PAGANO SOLO LE ABILITÀ DEGLI EROI.
+// Le Carte Magiche costavano punti magia anche loro (spec §7bis). Non
+// più: il prezzo di una Carta Magica è la carta stessa, che si spende
+// per sempre dalla collezione di chi la gioca. Erano due monete per la
+// stessa cosa, e quella vera è la carta.
 // ------------------------------------------------------------
 export const PUNTI_MAGIA_MAX = 15;
 export const PUNTI_MAGIA_PER_TURNO = 2;
 export const COSTO_MAGIA_DEFAULT = 4;   // provvisorio, uguale per tutte per le prove
 
-export function costoDiCarta(carta) {
-  const c = carta && (carta.costo ?? carta.puntiMagia);
+// Quanto costa in punti magia l'abilità speciale di un eroe.
+export function costoDiCarta(abilita) {
+  const c = abilita && (abilita.costo ?? abilita.puntiMagia);
   return (c === undefined || c === null) ? COSTO_MAGIA_DEFAULT : Number(c);
 }
 
@@ -956,7 +962,7 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
     return { ok: false, reason: 'Questo eroe ha già usato la sua abilità in questo turno.' };
   }
 
-  const costoAbilita = (eroe._ability && (eroe._ability.costo ?? eroe._ability.puntiMagia)) ?? COSTO_MAGIA_DEFAULT;
+  const costoAbilita = costoDiCarta(eroe._ability);
   if ((player.puntiMagia || 0) < costoAbilita) {
     return { ok: false, reason: 'Punti magia insufficienti: servono ' + costoAbilita + ', ne hai ' + (player.puntiMagia || 0) + '.' };
   }
@@ -1022,13 +1028,17 @@ export function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.n
   const carta = ms.selection[indiceCarta];
   if (!carta) return { ok: false, reason: 'Carta non trovata.' };
 
-  const costo = costoDiCarta(carta);
-  if ((player.puntiMagia || 0) < costo) {
-    return { ok: false, reason: 'Punti magia insufficienti: servono ' + costo + ', ne hai ' + (player.puntiMagia || 0) + '.' };
+  // UNA CARTA, UN UTILIZZO.
+  // Le Carte Magiche non costano più punti magia (quelli restano alle
+  // abilità degli eroi): il loro prezzo è la carta stessa, che si spende
+  // per sempre. Quindi l'unico limite è il posto — giocato una volta,
+  // quel posto è vuoto fino a fine partita.
+  if (cartaConsumata(ms, indiceCarta)) {
+    return { ok: false, reason: 'Questa Carta Magica l\'hai già usata: ogni carta vale un solo utilizzo.' };
   }
 
-  // la condizione si controlla PRIMA di spendere: se non è vera la carta
-  // resta in mano e i punti non si perdono
+  // la condizione si controlla PRIMA di consumare: se non è vera la
+  // carta resta al suo posto e non si spende niente
   const cond = condizioneSoddisfatta(state, playerIndex, carta.condizione);
   if (!cond.ok) return { ok: false, reason: cond.motivo };
 
@@ -1043,18 +1053,19 @@ export function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.n
   if (carta.tipo === 'sorpresa') {
     const r = activateSorpresa(ms, carta, ctx);
     if (!r.ok) return r;
-    player.puntiMagia -= costo;
+    ms.consumate.push(indiceCarta);
     // UNA CARTA PUÒ FARE PIÙ COSE: si scorrono tutti i suoi effetti
     const esiti = applicaEffettiCarta(state, playerIndex, carta, ctx);
     if (checkKO(state, opponentIndex(playerIndex))) r.matchEnded = true;
-    return { ...r, tipo: 'sorpresa', carta, costo, esiti, puntiRimasti: player.puntiMagia };
+    return { ...r, tipo: 'sorpresa', carta, esiti, consumata: indiceCarta };
   }
 
-  // TRAPPOLA: si paga quando la si schiera sul campo, non quando scatta
+  // TRAPPOLA: si spende quando la si schiera sul campo, non quando
+  // scatta. Se scade senza mai partire, è comunque spesa.
   const r = armTrappola(ms, carta);
   if (!r.ok) return r;
-  player.puntiMagia -= costo;
-  return { ...r, tipo: 'trappola', carta, costo, puntiRimasti: player.puntiMagia };
+  ms.consumate.push(indiceCarta);
+  return { ...r, tipo: 'trappola', carta, consumata: indiceCarta };
 }
 
 // ------------------------------------------------------------

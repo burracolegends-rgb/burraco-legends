@@ -2,7 +2,6 @@
   "id": "trappola_003",
   "tipo": "trappola",
   "rarita": 5,
-  "costo": 5,
   "trigger": "avversario_usa_abilita",
   "target": "avversario",
   "effect": "skip_fase_attacco",

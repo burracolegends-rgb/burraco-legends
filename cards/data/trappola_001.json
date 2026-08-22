@@ -6,6 +6,5 @@
   "parametro": "1",
   "trigger": "avversario_pesca",
   "target": "avversario",
-  "durata_turni": 0,
-  "costo": 4
+  "durata_turni": 0
 }

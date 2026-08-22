@@ -688,16 +688,17 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 26. Le CARTE MAGICHE restano invece una per turno ---
 {
-  const SORPRESA = { id: 's', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '10', trigger: 'on_activate', target: 'avversario', durata_turni: 0, costo: 4 };
-  const TRAPPOLA = { id: 't', tipo: 'trappola', effect: 'scarto_forzato', parametro: '1', trigger: 'avversario_pesca', target: 'avversario', durata_turni: 0, costo: 4 };
+  const SORPRESA = { id: 's', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '10', trigger: 'on_activate', target: 'avversario', durata_turni: 0 };
+  const TRAPPOLA = { id: 't', tipo: 'trappola', effect: 'scarto_forzato', parametro: '1', trigger: 'avversario_pesca', target: 'avversario', durata_turni: 0 };
   const state = createMatch({ now: T0, rng: () => 0.5, magiche: [[SORPRESA, TRAPPOLA], []] });
-  state.players[0].puntiMagia = 15;
 
   const uno = giocaCartaMagica(state, 0, 0, T0 + 1000);
   check('la prima Carta Magica del turno si gioca', uno.ok === true);
   const due = giocaCartaMagica(state, 0, 1, T0 + 2000);
   check('la seconda Carta Magica nello stesso turno è rifiutata', due.ok === false && /una sola/i.test(due.reason));
-  check('i punti della carta rifiutata non vengono spesi', state.players[0].puntiMagia === 11);
+  // la carta rifiutata resta al suo posto: non si consuma per un turno
+  // sbagliato, altrimenti un tocco distratto costerebbe una copia vera
+  check('la carta rifiutata non si consuma', state.players[0].magic.consumate.length === 1);
 }
 
 // --- 27. Il monte tempo è di 6 minuti a testa (era 15: troppi) ---

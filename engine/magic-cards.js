@@ -48,7 +48,7 @@ export const EFFECT_CATALOG = {
   // --- Personaggi ---
   boost_att:           { categoria: 'personaggi', descrizione: 'Aumenta ATT di un personaggio (temporaneo)' },
   boost_difesa:        { categoria: 'personaggi', descrizione: 'Riduce danno subito (temporaneo)' },
-  ricarica_sorpresa:   { categoria: 'personaggi', descrizione: 'Ricarica la Carta Sorpresa' }
+  ricarica_sorpresa:   { categoria: 'personaggi', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' }
 };
 
 const TARGETS = ['avversario', 'se_stesso', 'personaggio_specifico', 'tutti'];
@@ -100,18 +100,28 @@ export function validateSelection(cards) {
 export function makeMagicState(selectedCards) {
   return {
     selection: selectedCards,      // le 3 carte scelte, definizioni complete
-    sorpresaUsed: false,           // 1 sola utilizzabile per partita, indipendentemente da quante ne hai
     trappoleArmate: [],            // { cardId, effect, parametro, trigger, target, turniRimasti }
-    trappoleUsateCount: 0,         // quante ne sono state armate in totale (max 3)
     giocateQuestoTurno: 0,         // UNA SOLA carta magica per turno (regola del committente)
-    // Quali carte sono già state giocate, per id. Serve a toglierle dal
-    // tavolo: una carta usata che resta al suo posto fa credere di
-    // averla ancora. "sorpresaUsed" da solo non basta — dice CHE una
-    // sorpresa è stata usata, non QUALE — e una trappola sparisce da
-    // trappoleArmate quando scatta, quindi tornerebbe a sembrare intatta.
+    // QUALI POSTI SONO SPESI.
+    // Ogni carta portata in partita vale UN SOLO utilizzo: giocata, quel
+    // posto è vuoto per il resto della partita. Prima non c'era: i limiti
+    // erano "una Sorpresa in tutto" e "tre Trappole in tutto", che però
+    // contavano QUANTE carte, non QUALI — e la stessa Trappola si poteva
+    // armare tre volte di fila. Con le carte che si consumano davvero
+    // dalla collezione, quel buco costerebbe copie vere al giocatore.
+    // Si segnano gli INDICI, non gli id: è il posto a essere speso.
+    consumate: [],
+    // Quali carte sono già state giocate, per id. Serve al tavolo per
+    // mostrarle spente: una carta usata che resta al suo posto fa
+    // credere di averla ancora.
     giocate: [],
     effettiAttivi: []              // buff/debuff con durata: { effect, parametro, target, suit, turniRimasti, ownerIndex }
   };
+}
+
+// Quel posto è già stato speso in questa partita?
+export function cartaConsumata(magicState, indiceCarta) {
+  return !!magicState && (magicState.consumate || []).includes(indiceCarta);
 }
 
 // Da chiamare all'inizio del turno del proprietario: sblocca la carta
@@ -227,9 +237,27 @@ export function applyEffect(card, ctx) {
       for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) + param;
       return { ok: true, applied: true, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: (target === 'avversario') ? 'opponent' : 'caster', turniRimasti: durata_turni } };
     }
+    // RECUPERA UNA CARTA GIÀ SPESA.
+    // Prima rimetteva a "non usata" il flag della Sorpresa, quando il
+    // limite era "una Sorpresa per partita". Quel limite non c'è più:
+    // lasciato com'era, questo effetto non avrebbe fatto più niente —
+    // e una carta che non fa niente è esattamente il guasto che il
+    // vocabolario esiste per impedire. Adesso libera il posto speso più
+    // recente, così quella carta torna giocabile in questa partita.
+    // Non tocca la collezione: la copia consumata resta consumata,
+    // quello che si recupera è l'uso dentro la partita in corso.
     case 'ricarica_sorpresa': {
-      if (ctx.magicStateCaster) ctx.magicStateCaster.sorpresaUsed = false;
-      return { ok: true, applied: true };
+      const ms = ctx.magicStateCaster;
+      if (!ms || !(ms.consumate || []).length) {
+        return { ok: true, applied: false, note: 'nessuna Carta Magica da recuperare' };
+      }
+      const recuperata = ms.consumate.pop();
+      const carta = ms.selection && ms.selection[recuperata];
+      if (carta) {
+        const i = ms.giocate.lastIndexOf(carta.id);
+        if (i !== -1) ms.giocate.splice(i, 1);
+      }
+      return { ok: true, applied: true, recuperata };
     }
     // Effetti che modificano il FLUSSO di gioco: qui vengono "armati" come
     // effetto attivo con la sua durata, ma serve un aggancio nel motore di
@@ -256,12 +284,16 @@ export function applyEffect(card, ctx) {
 }
 
 // ------------------------------------------------------------
-// SORPRESA — usabile quando si vuole, 1 sola per partita anche se
-// selezionate di più (spec §6)
+// SORPRESA — usabile quando si vuole, una volta sola: giocata, quel
+// posto è speso (il conto lo tiene `giocaCartaMagica`, che sa l'indice).
+//
+// NON c'è più il limite "una sola Sorpresa per partita": le carte
+// portate in campo sono tre e ognuna vale un utilizzo, quindi il limite
+// vero è quante ne hai. E non costano più punti magia: quelli restano
+// per le abilità degli eroi.
 // ------------------------------------------------------------
 export function activateSorpresa(magicState, card, ctx) {
   if (card.tipo !== 'sorpresa') return { ok: false, reason: 'Non è una Carta Sorpresa.' };
-  if (magicState.sorpresaUsed) return { ok: false, reason: 'Hai già usato la tua Carta Sorpresa in questa partita.' };
   if (magicState.giocateQuestoTurno >= 1) return { ok: false, reason: 'Puoi giocare una sola Carta Magica per turno.' };
   // Una carta può avere più effetti (`effetti: [...]`). Qui si applica il
   // PRIMO; gli altri li applica il motore di partita, che sa anche dove
@@ -271,7 +303,6 @@ export function activateSorpresa(magicState, card, ctx) {
   if (!primo) return { ok: false, reason: 'La carta non dichiara nessun effetto.' };
   const result = applyEffect(primo, ctx);
   if (!result.ok) return result;
-  magicState.sorpresaUsed = true;
   magicState.giocate = magicState.giocate || [];
   magicState.giocate.push(card.id);
   magicState.giocateQuestoTurno++;
@@ -282,12 +313,20 @@ export function activateSorpresa(magicState, card, ctx) {
 }
 
 // ------------------------------------------------------------
-// TRAPPOLA — si attiva e resta coperta, fino a 3 per partita, scade
-// dopo N turni se il trigger non si verifica mai (spec §6)
+// TRAPPOLA — si schiera coperta e scade dopo N turni se il trigger non
+// si verifica mai (spec §6).
+//
+// Il vecchio limite "massimo 3 Trappole per partita" non serve più, e
+// soprattutto contava male: contava QUANTE trappole erano state armate,
+// non QUALI — così la stessa carta si poteva armare tre volte. Adesso
+// ogni carta portata in campo vale un solo utilizzo, e il conto lo
+// tiene `giocaCartaMagica` sull'indice del posto.
+//
+// SI CONSUMA QUANDO LA SCHIERI, non quando scatta (regola del
+// committente): se scade senza mai partire, è comunque spesa.
 // ------------------------------------------------------------
 export function armTrappola(magicState, card, expiryTurns = TRAP_EXPIRY_TURNS_DEFAULT) {
   if (card.tipo !== 'trappola') return { ok: false, reason: 'Non è una Carta Trappola.' };
-  if (magicState.trappoleUsateCount >= 3) return { ok: false, reason: 'Hai già usato 3 Carte Trappola in questa partita.' };
   if (magicState.giocateQuestoTurno >= 1) return { ok: false, reason: 'Puoi giocare una sola Carta Magica per turno.' };
   magicState.giocateQuestoTurno++;
   magicState.trappoleArmate.push({
@@ -295,7 +334,6 @@ export function armTrappola(magicState, card, expiryTurns = TRAP_EXPIRY_TURNS_DE
     trigger: card.trigger || 'on_activate', target: card.target,
     turniRimasti: expiryTurns
   });
-  magicState.trappoleUsateCount++;
   magicState.giocate = magicState.giocate || [];
   magicState.giocate.push(card.id);
   return { ok: true };

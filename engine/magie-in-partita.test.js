@@ -9,6 +9,7 @@ import {
   giocaCartaMagica, haEffetto, imponiEffetto, condizioneSoddisfatta, usaAbilitaSpeciale
 } from './partita.js';
 import { controllaCartaMagica, controllaCartaPersonaggio } from './vocabolario.js';
+import { resetTurnoMagie } from './magic-cards.js';
 
 let failures = 0;
 const check = (l, c) => { console.log((c ? 'OK   ' : 'FAIL ') + l); if (!c) failures++; };
@@ -239,7 +240,9 @@ function partita(magiche) {
   check('le altre restano sul monte', state.scarti.length === 2);
 }
 
-// --- 12. PUNTI MAGIA: le carte si pagano ---
+// --- 12. LE CARTE MAGICHE NON COSTANO PUNTI MAGIA ---
+// Li costavano; adesso il loro prezzo è la carta stessa, che vale un
+// solo utilizzo. I punti magia restano alle abilità degli eroi.
 {
   const state = createMatch({ now: T0, rng: () => 0.5, magiche: [[SORPRESA_DANNO], [SORPRESA_DANNO]] });
   // chi apre la partita ha gia' i punti del suo primo turno: il primo
@@ -247,14 +250,34 @@ function partita(magiche) {
   check('chi inizia parte con i punti del primo turno', state.players[0].puntiMagia === 2);
   check('l\'altro parte da zero: il suo turno non e\' ancora cominciato', state.players[1].puntiMagia === 0);
 
-  const senzaPunti = giocaCartaMagica(state, 0, 0, T0 + 1000);
-  check('con soli 2 punti la carta da 4 non si può giocare', senzaPunti.ok === false && /Punti magia insufficienti/.test(senzaPunti.reason));
+  state.players[0].puntiMagia = 0;
+  const r = giocaCartaMagica(state, 0, 0, T0 + 1000);
+  check('con ZERO punti magia la carta si gioca lo stesso', r.ok === true);
+  check('e i punti magia restano a zero: non è quello il prezzo', state.players[0].puntiMagia === 0);
+  check('il risultato non parla più di costo', r.costo === undefined);
+}
 
-  state.players[0].puntiMagia = 4;
-  const r = giocaCartaMagica(state, 0, 0, T0 + 2000);
-  check('con 4 punti la carta si gioca', r.ok === true);
-  check('la carta costa 4 punti', r.costo === 4);
-  check('i punti vengono scalati', state.players[0].puntiMagia === 0 && r.puntiRimasti === 0);
+// --- 12bis. UNA CARTA, UN UTILIZZO ---
+// La stessa carta non si rigioca: quel posto è speso. Prima questo buco
+// c'era davvero — armTrappola contava QUANTE trappole, non QUALI, e la
+// stessa carta si poteva armare tre volte di fila.
+{
+  const TRAPPOLA = { id: 't_una', tipo: 'trappola', trigger: 'avversario_pesca', durata_turni: 0,
+                     effect: 'scarto_forzato', parametro: '1', target: 'avversario' };
+  const state = createMatch({ now: T0, rng: () => 0.5, magiche: [[TRAPPOLA, SORPRESA_DANNO], []] });
+
+  const prima = giocaCartaMagica(state, 0, 0, T0 + 1000);
+  check('la trappola si schiera', prima.ok === true);
+  check('il motore dice quale posto ha speso', prima.consumata === 0);
+
+  // turno nuovo: il limite "una per turno" non c'entra più
+  resetTurnoMagie(state.players[0].magic);
+  const ancora = giocaCartaMagica(state, 0, 0, T0 + 2000);
+  check('la STESSA carta non si può rigiocare', ancora.ok === false && /un solo utilizzo/.test(ancora.reason));
+  check('e non è finita due volte sul campo', state.players[0].magic.trappoleArmate.length === 1);
+
+  const altra = giocaCartaMagica(state, 0, 1, T0 + 3000);
+  check('ma l\'altra carta portata in campo si gioca', altra.ok === true && altra.consumata === 1);
 }
 
 // --- 13. I punti magia crescono di 2 a turno, fino a 15 ---
@@ -311,23 +334,25 @@ function partita(magiche) {
 // --- 15. LE CONDIZIONI ---
 {
   const CONDIZIONATA = {
-    id: 's_cond', tipo: 'sorpresa', trigger: 'on_activate', costo: 4,
+    id: 's_cond', tipo: 'sorpresa', trigger: 'on_activate',
     effect: 'danno_diretto', parametro: '30', target: 'avversario', durata_turni: 0,
     condizione: { tipo: 'pozzetto_preso', chi: 'io' }
   };
   const state = partita([[CONDIZIONATA], [SORPRESA_DANNO]]);
   const io = state.players[0];
-  const puntiPrima = io.puntiMagia;
 
   const no = giocaCartaMagica(state, 0, 0, T0 + 1000);
   check('senza il pozzetto la carta condizionata è rifiutata', no.ok === false);
   check('il messaggio spiega la condizione', /pozzetto/i.test(no.reason));
-  check('i punti magia NON si perdono se la condizione non è vera', io.puntiMagia === puntiPrima);
+  // il punto vero: una carta rifiutata NON si consuma. Adesso che il
+  // prezzo è la carta stessa, questo conta molto più di prima — un
+  // rifiuto che consuma sarebbe una copia persa per niente.
+  check('la carta rifiutata NON si consuma', io.magic.consumate.length === 0);
 
   io.pozzettoTaken = true;
   const si = giocaCartaMagica(state, 0, 0, T0 + 2000);
   check('preso il pozzetto, la stessa carta si gioca', si.ok === true);
-  check('ora i punti si spendono', io.puntiMagia === puntiPrima - 4);
+  check('e ADESSO si consuma', io.magic.consumate.includes(0));
 }
 {
   // condizioni numeriche e riferite all'avversario
@@ -366,7 +391,7 @@ function partita(magiche) {
 // --- 17. LE TRAPPOLE SCATTANO ANCHE SULL'ABILITÀ AVVERSARIA ---
 {
   const TRAPPOLA_SU_ABILITA = {
-    id: 't_abil', tipo: 'trappola', costo: 4, durata_turni: 0,
+    id: 't_abil', tipo: 'trappola', durata_turni: 0,
     effect: 'scarto_forzato', parametro: '1', trigger: 'avversario_usa_abilita', target: 'avversario'
   };
   const abil = { trigger: 'attivazione_manuale', effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico', costo: 4 };
@@ -381,7 +406,7 @@ function partita(magiche) {
   // il giocatore 1 schiera la trappola
   state.currentPlayerIndex = 1;
   const schierata = giocaCartaMagica(state, 1, 0, T0 + 1000);
-  check('la trappola si schiera e si paga subito', schierata.ok === true && state.players[1].puntiMagia === 11);
+  check('la trappola si schiera senza spendere punti magia', schierata.ok === true && state.players[1].puntiMagia === 15);
   check('è sul campo, in attesa', state.players[1].magic.trappoleArmate.length === 1);
 
   // il giocatore 0 usa l'abilità: la trappola deve scattare

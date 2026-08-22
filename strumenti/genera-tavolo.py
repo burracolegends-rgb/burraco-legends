@@ -269,18 +269,17 @@ BATTLE_CSS = r'''
       background: repeating-linear-gradient(45deg, #2e2547 0 4px, #241d38 4px 8px);
     }
     .bcard.magica.coperta .sigillo { text-shadow: none; opacity: 0.75; }
-    /* costo in punti magia, in alto a destra sulla carta */
-    .bcard .costo-magia {
-      position: absolute; top: 1px; right: 1px; z-index: 2;
-      min-width: calc(var(--battle-w) * 0.24); height: calc(var(--battle-w) * 0.24);
-      border-radius: 50%; background: var(--charge); color: #06202f;
+    /* Le Carte Magiche non costano più punti magia: al posto del vecchio
+       gettone col prezzo, una fascia che dice che quella carta è finita.
+       Vale un solo utilizzo, e dopo sparisce anche dalla collezione. */
+    .bcard .segno-usata {
+      position: absolute; top: 50%; left: 0; right: 0; z-index: 2;
+      transform: translateY(-50%) rotate(-12deg);
+      text-align: center; letter-spacing: 0.12em;
       font-size: calc(var(--battle-w) * 0.15); font-weight: 900;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 6px rgba(69,182,255,0.8);
+      color: #ffdada; background: rgba(120,20,30,0.78);
+      padding: 2px 0; box-shadow: 0 0 8px rgba(0,0,0,0.5);
     }
-    /* carta che non puoi permetterti: spenta */
-    .bcard.magica.senza-punti { opacity: 0.45; filter: saturate(0.5); }
-    .bcard.magica.senza-punti .costo-magia { background: #6b7d8c; color: #223; box-shadow: none; }
     .bcard.coperta:hover { transform: none; }
 
     /* --- Pannello che si apre accanto alla carta ---
@@ -1396,21 +1395,23 @@ function disegnaStriscia(contenitore, indiceGiocatore, mie) {
     }
     const t = testo(carta.id);
     const armata = ms.trappoleArmate.some((x) => x.cardId === carta.id);
-    const usata = carta.tipo === 'sorpresa' && ms.sorpresaUsed;
-    const stato = usata ? ' — già usata' : (armata ? ' — armata, in attesa che scatti' : '');
-    const costo = carta.costo ?? 4;
-    const senzaPunti = g.puntiMagia < costo;
+    // OGNI CARTA VALE UN SOLO UTILIZZO: spenta quando il suo posto è
+    // speso. Prima si guardava "sorpresaUsed", che diceva CHE una
+    // sorpresa era stata giocata ma non QUALE — e le Trappole non si
+    // spegnevano affatto.
+    const usata = (ms.consumate || []).includes(i);
+    const stato = usata ? ' — già usata, non torna' : (armata ? ' — armata, in attesa che scatti' : '');
     html += '<div class="bcard magica ' + carta.tipo + (usata ? ' usata' : '') + (armata ? ' armata' : '') +
-            (senzaPunti ? ' senza-punti' : '') +
             '" data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione + stato) + '"' +
-            ' data-carica="Costa ' + costo + ' punti magia (ne hai ' + g.puntiMagia + ')"' +
+            ' data-carica="' + (usata ? 'Già usata: ogni Carta Magica vale un solo utilizzo.'
+                                      : 'Non costa punti magia. Vale un solo utilizzo: giocata, sparisce anche dalla tua collezione.') + '"' +
             ' data-tipo="' + carta.tipo + '"' +
             ' data-stelle="' + stelle(carta.rarita || 1) + '"' +
             ' onclick="ui.magica(' + i + ')">' +
             '<div class="sigillo">' + (carta.tipo === 'sorpresa' ? '✦' : '⚡') + '</div>' +
             '<div class="etichetta">' + (carta.tipo === 'sorpresa' ? 'SORPRESA' : 'TRAPPOLA') + '</div>' +
             '<div class="nome-magia">' + t.nome + '</div>' +
-            '<div class="costo-magia">' + costo + '</div>' +
+            (usata ? '<div class="segno-usata">USATA</div>' : '') +
           '</div>';
   });
   contenitore.innerHTML = html;
@@ -2000,9 +2001,11 @@ function giocatoreDaVista(g, mio, prefisso) {
     puntiMagia: g.puntiMagia,
     magic: g.magia ? {
       selection: g.magia.selezione || [],
-      sorpresaUsed: g.magia.sorpresaUsata,
+      // quali posti sono spesi. Del mio lato arriva l'elenco; di quello
+      // avversario arriva solo il numero, e la selezione è coperta.
+      consumate: g.magia.consumate || [],
+      consumateQuante: g.magia.consumateQuante || 0,
       trappoleArmate: g.magia.trappoleArmate || Array.from({ length: g.magia.trappoleArmateQuante || 0 }, () => ({ coperta: true })),
-      trappoleUsateCount: g.magia.trappoleUsate,
       giocateQuestoTurno: g.magia.giocateQuestoTurno,
       giocate: g.magia.giocate || [],
       effettiAttivi: g.magia.effettiAttivi || [],
@@ -2854,7 +2857,7 @@ const ui = {
     const ms = magie[0], carta = ms.selection[i];
     if (!carta) return;
     if (ms.giocateQuestoTurno >= 1) { avviso('Puoi giocare una sola Carta Magica per turno.'); return; }
-    if (carta.tipo === 'sorpresa' && ms.sorpresaUsed) { avviso('Hai già usato la tua Carta Sorpresa.'); return; }
+    if ((ms.consumate || []).includes(i)) { avviso('Questa carta l\'hai già usata: ogni Carta Magica vale un solo utilizzo.'); return; }
     const t = testo(carta.id);
 
     const pvPrima = {};

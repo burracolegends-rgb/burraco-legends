@@ -61,9 +61,13 @@ function magiaVisibile(magic, proprio) {
   if (proprio) {
     return {
       selezione: magic.selection,
-      sorpresaUsata: magic.sorpresaUsed,
+      // QUALI posti sono spesi: ogni carta vale un solo utilizzo, e il
+      // tavolo deve poterle mostrare spente. Prima qui c'erano
+      // "sorpresaUsata" e "trappoleUsate", che contavano quante carte
+      // erano state giocate ma non quali — con l'uno-per-carta serve
+      // sapere esattamente quale posto è vuoto.
+      consumate: magic.consumate || [],
       trappoleArmate: magic.trappoleArmate,
-      trappoleUsate: magic.trappoleUsateCount,
       giocateQuestoTurno: magic.giocateQuestoTurno,
       giocate: magic.giocate || [],
       effettiAttivi: magic.effettiAttivi
@@ -73,10 +77,11 @@ function magiaVisibile(magic, proprio) {
     // solo quelle ancora in mano: una carta giocata sparisce dal tavolo
     // anche dal posto dell'avversario, dove si vedeva come carta coperta
     selezioneQuante: Math.max(0, conta(magic.selection) - conta(magic.giocate)),
-    sorpresaUsata: magic.sorpresaUsed,
+    // di lui si sa QUANTE ne ha spese, non quali: la selezione
+    // dell'avversario resta coperta
+    consumateQuante: conta(magic.consumate),
     // solo il numero di trappole in campo: quale sia si scopre quando scatta
     trappoleArmateQuante: conta(magic.trappoleArmate),
-    trappoleUsate: magic.trappoleUsateCount,
     giocateQuestoTurno: magic.giocateQuestoTurno,
     // gli effetti già in corso invece si vedono: il loro risultato è
     // sul tavolo, nasconderli renderebbe il gioco incomprensibile

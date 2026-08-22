@@ -2,7 +2,6 @@
   "id": "sorpresa_003",
   "tipo": "sorpresa",
   "rarita": 4,
-  "costo": 5,
   "trigger": "on_activate",
   "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.",
   "effetti": [

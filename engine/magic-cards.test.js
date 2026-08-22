@@ -30,7 +30,10 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
   check('carta con effect sconosciuto è rifiutata', validateSelection([sorpresaDanno, sorpresaBoost, { id: 'x', tipo: 'trappola', effect: 'non_esiste', durata_turni: 0 }]).ok === false);
 }
 
-// --- Sorpresa: danno diretto, 1 sola utilizzabile per partita ---
+// --- Sorpresa: danno diretto, e la carta risulta giocata ---
+// Il vecchio limite "una sola Sorpresa per partita" non c'è più: ogni
+// carta portata in campo vale un utilizzo, quindi due Sorprese diverse
+// si possono giocare tutte e due (in turni diversi).
 {
   const magicState = makeMagicState([sorpresaDanno, sorpresaBoost, trappolaScarto]);
   const casterCharacters = freshCharacters();
@@ -40,10 +43,14 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
   const r1 = activateSorpresa(magicState, sorpresaDanno, ctx);
   check('Sorpresa danno_diretto applicata', r1.ok === true && r1.applied === true);
   check('personaggio avversario colpito perde 30 PV', opponentCharacters['♥'].pv === 70);
-  check('sorpresaUsed è ora true', magicState.sorpresaUsed === true);
+  check('la carta risulta giocata', magicState.giocate.includes(sorpresaDanno.id));
 
+  const subito = activateSorpresa(magicState, sorpresaBoost, ctx);
+  check('una seconda Sorpresa nello STESSO turno è rifiutata', subito.ok === false && /una sola/i.test(subito.reason));
+
+  resetTurnoMagie(magicState);
   const r2 = activateSorpresa(magicState, sorpresaBoost, ctx);
-  check('seconda Sorpresa nella stessa partita viene rifiutata (anche se diversa)', r2.ok === false);
+  check('ma nel turno dopo una seconda Sorpresa diversa si gioca', r2.ok === true);
 }
 
 // --- Sorpresa: boost_att applica e poi svanisce con tickActiveEffects ---
@@ -64,8 +71,12 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
   check('dopo 2 turni il boost svanisce e l\'ATT torna a 100', casterCharacters['♥'].att === 100 && magicState.effettiAttivi.length === 0);
 }
 
-// --- Trappola: fino a 3 armabili, la quarta viene rifiutata ---
+// --- Trappola: se ne possono armare quante se ne portano ---
 // (con reset del turno fra una e l'altra: se ne gioca una sola per turno)
+// Il vecchio tetto "massimo 3 per partita" non c'è più: il tetto vero è
+// quante carte hai portato, e ognuna vale un utilizzo. Il conto di QUALE
+// posto è speso lo tiene giocaCartaMagica (vedi partita.test.js), che è
+// l'unica porta da cui una carta entra davvero in partita.
 {
   const magicState = makeMagicState([trappolaScarto, trappolaScarto, trappolaScarto]);
   check('prima trappola armata', armTrappola(magicState, trappolaScarto).ok === true);
@@ -73,8 +84,7 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
   check('seconda trappola armata (turno successivo)', armTrappola(magicState, trappolaScarto).ok === true);
   resetTurnoMagie(magicState);
   check('terza trappola armata (turno successivo)', armTrappola(magicState, trappolaScarto).ok === true);
-  resetTurnoMagie(magicState);
-  check('quarta trappola rifiutata (limite 3 per partita)', armTrappola(magicState, trappolaScarto).ok === false);
+  check('tutte e tre sono sul campo', magicState.trappoleArmate.length === 3);
 }
 
 // --- UNA SOLA Carta Magica per turno (regola del committente) ---

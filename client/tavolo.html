@@ -1435,18 +1435,17 @@
       background: repeating-linear-gradient(45deg, #2e2547 0 4px, #241d38 4px 8px);
     }
     .bcard.magica.coperta .sigillo { text-shadow: none; opacity: 0.75; }
-    /* costo in punti magia, in alto a destra sulla carta */
-    .bcard .costo-magia {
-      position: absolute; top: 1px; right: 1px; z-index: 2;
-      min-width: calc(var(--battle-w) * 0.24); height: calc(var(--battle-w) * 0.24);
-      border-radius: 50%; background: var(--charge); color: #06202f;
+    /* Le Carte Magiche non costano più punti magia: al posto del vecchio
+       gettone col prezzo, una fascia che dice che quella carta è finita.
+       Vale un solo utilizzo, e dopo sparisce anche dalla collezione. */
+    .bcard .segno-usata {
+      position: absolute; top: 50%; left: 0; right: 0; z-index: 2;
+      transform: translateY(-50%) rotate(-12deg);
+      text-align: center; letter-spacing: 0.12em;
       font-size: calc(var(--battle-w) * 0.15); font-weight: 900;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 6px rgba(69,182,255,0.8);
+      color: #ffdada; background: rgba(120,20,30,0.78);
+      padding: 2px 0; box-shadow: 0 0 8px rgba(0,0,0,0.5);
     }
-    /* carta che non puoi permetterti: spenta */
-    .bcard.magica.senza-punti { opacity: 0.45; filter: saturate(0.5); }
-    .bcard.magica.senza-punti .costo-magia { background: #6b7d8c; color: #223; box-shadow: none; }
     .bcard.coperta:hover { transform: none; }
 
     /* --- Pannello che si apre accanto alla carta ---
@@ -2544,11 +2543,14 @@ function controllaCartaMagica(carta) {
     }
   }
 
+  // LE CARTE MAGICHE NON COSTANO PUNTI MAGIA.
+  // Li costavano (spec §7bis), non più: il prezzo di una Carta Magica è
+  // la carta stessa, che si spende per sempre dalla collezione. Il campo
+  // viene RIFIUTATO, non ignorato: un campo che il motore non legge, su
+  // una carta, è una promessa che il gioco non mantiene — chi scrive le
+  // carte crederebbe di aver messo un prezzo e non sarebbe vero.
   if (carta.costo !== undefined) {
-    const c = Number(carta.costo);
-    if (!Number.isFinite(c) || c < LIMITI.costoMin || c > LIMITI.costoMax) {
-      errori.push('"costo" deve stare fra ' + LIMITI.costoMin + ' e ' + LIMITI.costoMax + ' punti magia, trovato: ' + carta.costo);
-    }
+    errori.push('"costo" non va più messo sulle Carte Magiche: non costano punti magia, si consumano e basta. I punti magia restano solo per le abilità degli eroi.');
   }
   if (carta.rarita !== undefined && !LIMITI.rarita.includes(Number(carta.rarita))) {
     errori.push('"rarita" deve essere da 1 a 5, trovato: ' + carta.rarita);
@@ -3047,7 +3049,7 @@ const EFFECT_CATALOG = {
   // --- Personaggi ---
   boost_att:           { categoria: 'personaggi', descrizione: 'Aumenta ATT di un personaggio (temporaneo)' },
   boost_difesa:        { categoria: 'personaggi', descrizione: 'Riduce danno subito (temporaneo)' },
-  ricarica_sorpresa:   { categoria: 'personaggi', descrizione: 'Ricarica la Carta Sorpresa' }
+  ricarica_sorpresa:   { categoria: 'personaggi', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' }
 };
 
 const TARGETS = ['avversario', 'se_stesso', 'personaggio_specifico', 'tutti'];
@@ -3099,18 +3101,28 @@ function validateSelection(cards) {
 function makeMagicState(selectedCards) {
   return {
     selection: selectedCards,      // le 3 carte scelte, definizioni complete
-    sorpresaUsed: false,           // 1 sola utilizzabile per partita, indipendentemente da quante ne hai
     trappoleArmate: [],            // { cardId, effect, parametro, trigger, target, turniRimasti }
-    trappoleUsateCount: 0,         // quante ne sono state armate in totale (max 3)
     giocateQuestoTurno: 0,         // UNA SOLA carta magica per turno (regola del committente)
-    // Quali carte sono già state giocate, per id. Serve a toglierle dal
-    // tavolo: una carta usata che resta al suo posto fa credere di
-    // averla ancora. "sorpresaUsed" da solo non basta — dice CHE una
-    // sorpresa è stata usata, non QUALE — e una trappola sparisce da
-    // trappoleArmate quando scatta, quindi tornerebbe a sembrare intatta.
+    // QUALI POSTI SONO SPESI.
+    // Ogni carta portata in partita vale UN SOLO utilizzo: giocata, quel
+    // posto è vuoto per il resto della partita. Prima non c'era: i limiti
+    // erano "una Sorpresa in tutto" e "tre Trappole in tutto", che però
+    // contavano QUANTE carte, non QUALI — e la stessa Trappola si poteva
+    // armare tre volte di fila. Con le carte che si consumano davvero
+    // dalla collezione, quel buco costerebbe copie vere al giocatore.
+    // Si segnano gli INDICI, non gli id: è il posto a essere speso.
+    consumate: [],
+    // Quali carte sono già state giocate, per id. Serve al tavolo per
+    // mostrarle spente: una carta usata che resta al suo posto fa
+    // credere di averla ancora.
     giocate: [],
     effettiAttivi: []              // buff/debuff con durata: { effect, parametro, target, suit, turniRimasti, ownerIndex }
   };
+}
+
+// Quel posto è già stato speso in questa partita?
+function cartaConsumata(magicState, indiceCarta) {
+  return !!magicState && (magicState.consumate || []).includes(indiceCarta);
 }
 
 // Da chiamare all'inizio del turno del proprietario: sblocca la carta
@@ -3226,9 +3238,27 @@ function applyEffect(card, ctx) {
       for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) + param;
       return { ok: true, applied: true, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: (target === 'avversario') ? 'opponent' : 'caster', turniRimasti: durata_turni } };
     }
+    // RECUPERA UNA CARTA GIÀ SPESA.
+    // Prima rimetteva a "non usata" il flag della Sorpresa, quando il
+    // limite era "una Sorpresa per partita". Quel limite non c'è più:
+    // lasciato com'era, questo effetto non avrebbe fatto più niente —
+    // e una carta che non fa niente è esattamente il guasto che il
+    // vocabolario esiste per impedire. Adesso libera il posto speso più
+    // recente, così quella carta torna giocabile in questa partita.
+    // Non tocca la collezione: la copia consumata resta consumata,
+    // quello che si recupera è l'uso dentro la partita in corso.
     case 'ricarica_sorpresa': {
-      if (ctx.magicStateCaster) ctx.magicStateCaster.sorpresaUsed = false;
-      return { ok: true, applied: true };
+      const ms = ctx.magicStateCaster;
+      if (!ms || !(ms.consumate || []).length) {
+        return { ok: true, applied: false, note: 'nessuna Carta Magica da recuperare' };
+      }
+      const recuperata = ms.consumate.pop();
+      const carta = ms.selection && ms.selection[recuperata];
+      if (carta) {
+        const i = ms.giocate.lastIndexOf(carta.id);
+        if (i !== -1) ms.giocate.splice(i, 1);
+      }
+      return { ok: true, applied: true, recuperata };
     }
     // Effetti che modificano il FLUSSO di gioco: qui vengono "armati" come
     // effetto attivo con la sua durata, ma serve un aggancio nel motore di
@@ -3255,12 +3285,16 @@ function applyEffect(card, ctx) {
 }
 
 // ------------------------------------------------------------
-// SORPRESA — usabile quando si vuole, 1 sola per partita anche se
-// selezionate di più (spec §6)
+// SORPRESA — usabile quando si vuole, una volta sola: giocata, quel
+// posto è speso (il conto lo tiene `giocaCartaMagica`, che sa l'indice).
+//
+// NON c'è più il limite "una sola Sorpresa per partita": le carte
+// portate in campo sono tre e ognuna vale un utilizzo, quindi il limite
+// vero è quante ne hai. E non costano più punti magia: quelli restano
+// per le abilità degli eroi.
 // ------------------------------------------------------------
 function activateSorpresa(magicState, card, ctx) {
   if (card.tipo !== 'sorpresa') return { ok: false, reason: 'Non è una Carta Sorpresa.' };
-  if (magicState.sorpresaUsed) return { ok: false, reason: 'Hai già usato la tua Carta Sorpresa in questa partita.' };
   if (magicState.giocateQuestoTurno >= 1) return { ok: false, reason: 'Puoi giocare una sola Carta Magica per turno.' };
   // Una carta può avere più effetti (`effetti: [...]`). Qui si applica il
   // PRIMO; gli altri li applica il motore di partita, che sa anche dove
@@ -3270,7 +3304,6 @@ function activateSorpresa(magicState, card, ctx) {
   if (!primo) return { ok: false, reason: 'La carta non dichiara nessun effetto.' };
   const result = applyEffect(primo, ctx);
   if (!result.ok) return result;
-  magicState.sorpresaUsed = true;
   magicState.giocate = magicState.giocate || [];
   magicState.giocate.push(card.id);
   magicState.giocateQuestoTurno++;
@@ -3281,12 +3314,20 @@ function activateSorpresa(magicState, card, ctx) {
 }
 
 // ------------------------------------------------------------
-// TRAPPOLA — si attiva e resta coperta, fino a 3 per partita, scade
-// dopo N turni se il trigger non si verifica mai (spec §6)
+// TRAPPOLA — si schiera coperta e scade dopo N turni se il trigger non
+// si verifica mai (spec §6).
+//
+// Il vecchio limite "massimo 3 Trappole per partita" non serve più, e
+// soprattutto contava male: contava QUANTE trappole erano state armate,
+// non QUALI — così la stessa carta si poteva armare tre volte. Adesso
+// ogni carta portata in campo vale un solo utilizzo, e il conto lo
+// tiene `giocaCartaMagica` sull'indice del posto.
+//
+// SI CONSUMA QUANDO LA SCHIERI, non quando scatta (regola del
+// committente): se scade senza mai partire, è comunque spesa.
 // ------------------------------------------------------------
 function armTrappola(magicState, card, expiryTurns = TRAP_EXPIRY_TURNS_DEFAULT) {
   if (card.tipo !== 'trappola') return { ok: false, reason: 'Non è una Carta Trappola.' };
-  if (magicState.trappoleUsateCount >= 3) return { ok: false, reason: 'Hai già usato 3 Carte Trappola in questa partita.' };
   if (magicState.giocateQuestoTurno >= 1) return { ok: false, reason: 'Puoi giocare una sola Carta Magica per turno.' };
   magicState.giocateQuestoTurno++;
   magicState.trappoleArmate.push({
@@ -3294,7 +3335,6 @@ function armTrappola(magicState, card, expiryTurns = TRAP_EXPIRY_TURNS_DEFAULT) 
     trigger: card.trigger || 'on_activate', target: card.target,
     turniRimasti: expiryTurns
   });
-  magicState.trappoleUsateCount++;
   magicState.giocate = magicState.giocate || [];
   magicState.giocate.push(card.id);
   return { ok: true };
@@ -3372,7 +3412,7 @@ function tickActiveEffects(magicState, casterCharacters, opponentCharacters) {
 //      armati su chi sta per giocare
 // ============================================================
 
-return {TRAP_EXPIRY_TURNS_DEFAULT, EFFECT_CATALOG, validateCardDefinition, validateSelection, makeMagicState, resetTurnoMagie, applyEffect, activateSorpresa, armTrappola, tickTrapExpiry, checkTrapTrigger, tickActiveEffects};
+return {TRAP_EXPIRY_TURNS_DEFAULT, EFFECT_CATALOG, validateCardDefinition, validateSelection, makeMagicState, cartaConsumata, resetTurnoMagie, applyEffect, activateSorpresa, armTrappola, tickTrapExpiry, checkTrapTrigger, tickActiveEffects};
 })();
 
 // ===== engine/character-abilities.js (incorporato) =====
@@ -3553,7 +3593,7 @@ const __M_partita = (function(){
 
 const { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno } = __M_core_rules;
 const { attachAbility, tickCharacterAbility, checkAbilityTrigger } = __M_character_abilities;
-const { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect } = __M_magic_cards;
+const { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata } = __M_magic_cards;
 const { elencoEffetti, CONDIZIONI } = __M_vocabolario;
 const TURN_SECONDS = 60;      // spec §2: 1 minuto per turno a giocatore
 // Monte tempo dell'intera partita, per giocatore. Era 15 minuti: troppi,
@@ -3597,15 +3637,21 @@ function defaultCharacters() {
 // PUNTI MAGIA
 // Sostituiscono la vecchia barra di carica sui singoli eroi: non si
 // caricano più le carte una per una, c'è UNA riserva sola per giocatore.
-// Cresce di 2 a ogni proprio turno e non supera i 15. Le Carte Magiche e
-// le abilità speciali si pagano da qui.
+// Cresce di 2 a ogni proprio turno e non supera i 15.
+//
+// SI PAGANO SOLO LE ABILITÀ DEGLI EROI.
+// Le Carte Magiche costavano punti magia anche loro (spec §7bis). Non
+// più: il prezzo di una Carta Magica è la carta stessa, che si spende
+// per sempre dalla collezione di chi la gioca. Erano due monete per la
+// stessa cosa, e quella vera è la carta.
 // ------------------------------------------------------------
 const PUNTI_MAGIA_MAX = 15;
 const PUNTI_MAGIA_PER_TURNO = 2;
 const COSTO_MAGIA_DEFAULT = 4;   // provvisorio, uguale per tutte per le prove
 
-function costoDiCarta(carta) {
-  const c = carta && (carta.costo ?? carta.puntiMagia);
+// Quanto costa in punti magia l'abilità speciale di un eroe.
+function costoDiCarta(abilita) {
+  const c = abilita && (abilita.costo ?? abilita.puntiMagia);
   return (c === undefined || c === null) ? COSTO_MAGIA_DEFAULT : Number(c);
 }
 
@@ -4466,7 +4512,7 @@ function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, n
     return { ok: false, reason: 'Questo eroe ha già usato la sua abilità in questo turno.' };
   }
 
-  const costoAbilita = (eroe._ability && (eroe._ability.costo ?? eroe._ability.puntiMagia)) ?? COSTO_MAGIA_DEFAULT;
+  const costoAbilita = costoDiCarta(eroe._ability);
   if ((player.puntiMagia || 0) < costoAbilita) {
     return { ok: false, reason: 'Punti magia insufficienti: servono ' + costoAbilita + ', ne hai ' + (player.puntiMagia || 0) + '.' };
   }
@@ -4532,13 +4578,17 @@ function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.now()) {
   const carta = ms.selection[indiceCarta];
   if (!carta) return { ok: false, reason: 'Carta non trovata.' };
 
-  const costo = costoDiCarta(carta);
-  if ((player.puntiMagia || 0) < costo) {
-    return { ok: false, reason: 'Punti magia insufficienti: servono ' + costo + ', ne hai ' + (player.puntiMagia || 0) + '.' };
+  // UNA CARTA, UN UTILIZZO.
+  // Le Carte Magiche non costano più punti magia (quelli restano alle
+  // abilità degli eroi): il loro prezzo è la carta stessa, che si spende
+  // per sempre. Quindi l'unico limite è il posto — giocato una volta,
+  // quel posto è vuoto fino a fine partita.
+  if (cartaConsumata(ms, indiceCarta)) {
+    return { ok: false, reason: 'Questa Carta Magica l\'hai già usata: ogni carta vale un solo utilizzo.' };
   }
 
-  // la condizione si controlla PRIMA di spendere: se non è vera la carta
-  // resta in mano e i punti non si perdono
+  // la condizione si controlla PRIMA di consumare: se non è vera la
+  // carta resta al suo posto e non si spende niente
   const cond = condizioneSoddisfatta(state, playerIndex, carta.condizione);
   if (!cond.ok) return { ok: false, reason: cond.motivo };
 
@@ -4553,18 +4603,19 @@ function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.now()) {
   if (carta.tipo === 'sorpresa') {
     const r = activateSorpresa(ms, carta, ctx);
     if (!r.ok) return r;
-    player.puntiMagia -= costo;
+    ms.consumate.push(indiceCarta);
     // UNA CARTA PUÒ FARE PIÙ COSE: si scorrono tutti i suoi effetti
     const esiti = applicaEffettiCarta(state, playerIndex, carta, ctx);
     if (checkKO(state, opponentIndex(playerIndex))) r.matchEnded = true;
-    return { ...r, tipo: 'sorpresa', carta, costo, esiti, puntiRimasti: player.puntiMagia };
+    return { ...r, tipo: 'sorpresa', carta, esiti, consumata: indiceCarta };
   }
 
-  // TRAPPOLA: si paga quando la si schiera sul campo, non quando scatta
+  // TRAPPOLA: si spende quando la si schiera sul campo, non quando
+  // scatta. Se scade senza mai partire, è comunque spesa.
   const r = armTrappola(ms, carta);
   if (!r.ok) return r;
-  player.puntiMagia -= costo;
-  return { ...r, tipo: 'trappola', carta, costo, puntiRimasti: player.puntiMagia };
+  ms.consumate.push(indiceCarta);
+  return { ...r, tipo: 'trappola', carta, consumata: indiceCarta };
 }
 
 // ------------------------------------------------------------
@@ -4934,7 +4985,7 @@ const {botGiocaTurno} = __M_bot;
 const DATI_CARTE = {
   i18n: {"personaggio_001": {"nome": "Fiamma Ardente", "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo."}, "personaggio_002": {"nome": "Regina di Brace", "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta."}, "personaggio_003": {"nome": "Custode di Cristallo", "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile."}, "personaggio_004": {"nome": "Sovrano d'Ambra", "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa."}, "personaggio_005": {"nome": "Guardiano del Bosco", "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente."}, "personaggio_006": {"nome": "Spirito della Foresta Antica", "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso."}, "personaggio_007": {"nome": "Lama d'Ombra", "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista."}, "personaggio_008": {"nome": "Assassino delle Nebbie", "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte."}, "sorpresa_001": {"nome": "Fulmine Improvviso", "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita."}, "sorpresa_002": {"nome": "Furia di Battaglia", "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività."}, "trappola_001": {"nome": "Insidia nell'Ombra", "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare."}, "trappola_002": {"nome": "Specchio di Ritorsione", "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto."}, "sorpresa_003": {"nome": "Triplice Benedizione", "descrizione": "Un solo gesto e tre doni: colpisce l'avversario, risana un tuo eroe e ti concede una carta in più alla prossima pescata."}, "trappola_003": {"nome": "Sigillo del Disperato", "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."}},
   personaggi: {"personaggio_001": {"id": "personaggio_001", "seme": "♥", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_002": {"id": "personaggio_002", "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_003": {"id": "personaggio_003", "seme": "♦", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_004": {"id": "personaggio_004", "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_005": {"id": "personaggio_005", "seme": "♣", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_006": {"id": "personaggio_006", "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "difesa": 18, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_007": {"id": "personaggio_007", "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "difesa": 8, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_008": {"id": "personaggio_008", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}},
-  magiche: {"sorpresa_001": {"id": "sorpresa_001", "tipo": "sorpresa", "rarita": 3, "effect": "danno_diretto", "parametro": "30", "trigger": "on_activate", "target": "avversario", "durata_turni": 0, "costo": 4}, "sorpresa_002": {"id": "sorpresa_002", "tipo": "sorpresa", "rarita": 4, "effect": "boost_att", "parametro": "20", "trigger": "on_activate", "target": "se_stesso", "durata_turni": 2, "costo": 4}, "sorpresa_003": {"id": "sorpresa_003", "tipo": "sorpresa", "rarita": 4, "costo": 5, "trigger": "on_activate", "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.", "effetti": [{"effect": "danno_diretto", "parametro": "25", "target": "avversario", "durata_turni": 0}, {"effect": "cura_diretta", "parametro": "15", "target": "se_stesso", "durata_turni": 0}, {"effect": "pesca_extra", "parametro": "1", "target": "se_stesso", "durata_turni": 1}]}, "trappola_001": {"id": "trappola_001", "tipo": "trappola", "rarita": 2, "effect": "scarto_forzato", "parametro": "1", "trigger": "avversario_pesca", "target": "avversario", "durata_turni": 0, "costo": 4}, "trappola_002": {"id": "trappola_002", "tipo": "trappola", "rarita": 5, "effect": "riflette_danno", "parametro": "50", "trigger": "subisco_danno", "target": "se_stesso", "durata_turni": 0, "costo": 4}, "trappola_003": {"id": "trappola_003", "tipo": "trappola", "rarita": 5, "costo": 5, "trigger": "avversario_usa_abilita", "target": "avversario", "effect": "skip_fase_attacco", "parametro": "", "durata_turni": 1, "_nota": "ESEMPIO DI CARTA CON CONDIZIONE: si schiera solo quando sei in difficoltà. Scatta quando l'avversario usa l'abilità di un eroe.", "condizione": {"tipo": "pv_totali_sotto", "parametro": 50, "chi": "io"}}}
+  magiche: {"sorpresa_001": {"id": "sorpresa_001", "tipo": "sorpresa", "rarita": 3, "effect": "danno_diretto", "parametro": "30", "trigger": "on_activate", "target": "avversario", "durata_turni": 0}, "sorpresa_002": {"id": "sorpresa_002", "tipo": "sorpresa", "rarita": 4, "effect": "boost_att", "parametro": "20", "trigger": "on_activate", "target": "se_stesso", "durata_turni": 2}, "sorpresa_003": {"id": "sorpresa_003", "tipo": "sorpresa", "rarita": 4, "trigger": "on_activate", "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.", "effetti": [{"effect": "danno_diretto", "parametro": "25", "target": "avversario", "durata_turni": 0}, {"effect": "cura_diretta", "parametro": "15", "target": "se_stesso", "durata_turni": 0}, {"effect": "pesca_extra", "parametro": "1", "target": "se_stesso", "durata_turni": 1}]}, "trappola_001": {"id": "trappola_001", "tipo": "trappola", "rarita": 2, "effect": "scarto_forzato", "parametro": "1", "trigger": "avversario_pesca", "target": "avversario", "durata_turni": 0}, "trappola_002": {"id": "trappola_002", "tipo": "trappola", "rarita": 5, "effect": "riflette_danno", "parametro": "50", "trigger": "subisco_danno", "target": "se_stesso", "durata_turni": 0}, "trappola_003": {"id": "trappola_003", "tipo": "trappola", "rarita": 5, "trigger": "avversario_usa_abilita", "target": "avversario", "effect": "skip_fase_attacco", "parametro": "", "durata_turni": 1, "_nota": "ESEMPIO DI CARTA CON CONDIZIONE: si schiera solo quando sei in difficoltà. Scatta quando l'avversario usa l'abilità di un eroe.", "condizione": {"tipo": "pv_totali_sotto", "parametro": 50, "chi": "io"}}}
 };
 
 // ============================================================
@@ -5289,21 +5340,23 @@ function disegnaStriscia(contenitore, indiceGiocatore, mie) {
     }
     const t = testo(carta.id);
     const armata = ms.trappoleArmate.some((x) => x.cardId === carta.id);
-    const usata = carta.tipo === 'sorpresa' && ms.sorpresaUsed;
-    const stato = usata ? ' — già usata' : (armata ? ' — armata, in attesa che scatti' : '');
-    const costo = carta.costo ?? 4;
-    const senzaPunti = g.puntiMagia < costo;
+    // OGNI CARTA VALE UN SOLO UTILIZZO: spenta quando il suo posto è
+    // speso. Prima si guardava "sorpresaUsed", che diceva CHE una
+    // sorpresa era stata giocata ma non QUALE — e le Trappole non si
+    // spegnevano affatto.
+    const usata = (ms.consumate || []).includes(i);
+    const stato = usata ? ' — già usata, non torna' : (armata ? ' — armata, in attesa che scatti' : '');
     html += '<div class="bcard magica ' + carta.tipo + (usata ? ' usata' : '') + (armata ? ' armata' : '') +
-            (senzaPunti ? ' senza-punti' : '') +
             '" data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione + stato) + '"' +
-            ' data-carica="Costa ' + costo + ' punti magia (ne hai ' + g.puntiMagia + ')"' +
+            ' data-carica="' + (usata ? 'Già usata: ogni Carta Magica vale un solo utilizzo.'
+                                      : 'Non costa punti magia. Vale un solo utilizzo: giocata, sparisce anche dalla tua collezione.') + '"' +
             ' data-tipo="' + carta.tipo + '"' +
             ' data-stelle="' + stelle(carta.rarita || 1) + '"' +
             ' onclick="ui.magica(' + i + ')">' +
             '<div class="sigillo">' + (carta.tipo === 'sorpresa' ? '✦' : '⚡') + '</div>' +
             '<div class="etichetta">' + (carta.tipo === 'sorpresa' ? 'SORPRESA' : 'TRAPPOLA') + '</div>' +
             '<div class="nome-magia">' + t.nome + '</div>' +
-            '<div class="costo-magia">' + costo + '</div>' +
+            (usata ? '<div class="segno-usata">USATA</div>' : '') +
           '</div>';
   });
   contenitore.innerHTML = html;
@@ -5893,9 +5946,11 @@ function giocatoreDaVista(g, mio, prefisso) {
     puntiMagia: g.puntiMagia,
     magic: g.magia ? {
       selection: g.magia.selezione || [],
-      sorpresaUsed: g.magia.sorpresaUsata,
+      // quali posti sono spesi. Del mio lato arriva l'elenco; di quello
+      // avversario arriva solo il numero, e la selezione è coperta.
+      consumate: g.magia.consumate || [],
+      consumateQuante: g.magia.consumateQuante || 0,
       trappoleArmate: g.magia.trappoleArmate || Array.from({ length: g.magia.trappoleArmateQuante || 0 }, () => ({ coperta: true })),
-      trappoleUsateCount: g.magia.trappoleUsate,
       giocateQuestoTurno: g.magia.giocateQuestoTurno,
       giocate: g.magia.giocate || [],
       effettiAttivi: g.magia.effettiAttivi || [],
@@ -6747,7 +6802,7 @@ const ui = {
     const ms = magie[0], carta = ms.selection[i];
     if (!carta) return;
     if (ms.giocateQuestoTurno >= 1) { avviso('Puoi giocare una sola Carta Magica per turno.'); return; }
-    if (carta.tipo === 'sorpresa' && ms.sorpresaUsed) { avviso('Hai già usato la tua Carta Sorpresa.'); return; }
+    if ((ms.consumate || []).includes(i)) { avviso('Questa carta l\'hai già usata: ogni Carta Magica vale un solo utilizzo.'); return; }
     const t = testo(carta.id);
 
     const pvPrima = {};

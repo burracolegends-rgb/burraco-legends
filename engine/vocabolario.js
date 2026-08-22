@@ -236,11 +236,14 @@ export function controllaCartaMagica(carta) {
     }
   }
 
+  // LE CARTE MAGICHE NON COSTANO PUNTI MAGIA.
+  // Li costavano (spec §7bis), non più: il prezzo di una Carta Magica è
+  // la carta stessa, che si spende per sempre dalla collezione. Il campo
+  // viene RIFIUTATO, non ignorato: un campo che il motore non legge, su
+  // una carta, è una promessa che il gioco non mantiene — chi scrive le
+  // carte crederebbe di aver messo un prezzo e non sarebbe vero.
   if (carta.costo !== undefined) {
-    const c = Number(carta.costo);
-    if (!Number.isFinite(c) || c < LIMITI.costoMin || c > LIMITI.costoMax) {
-      errori.push('"costo" deve stare fra ' + LIMITI.costoMin + ' e ' + LIMITI.costoMax + ' punti magia, trovato: ' + carta.costo);
-    }
+    errori.push('"costo" non va più messo sulle Carte Magiche: non costano punti magia, si consumano e basta. I punti magia restano solo per le abilità degli eroi.');
   }
   if (carta.rarita !== undefined && !LIMITI.rarita.includes(Number(carta.rarita))) {
     errori.push('"rarita" deve essere da 1 a 5, trovato: ' + carta.rarita);

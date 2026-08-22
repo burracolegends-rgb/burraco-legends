@@ -6,6 +6,5 @@
   "parametro": "30",
   "trigger": "on_activate",
   "target": "avversario",
-  "durata_turni": 0,
-  "costo": 4
+  "durata_turni": 0
 }
