@@ -1281,6 +1281,12 @@
        giochi, mazzo/scarti) resta esattamente com'era.
        ========================================================= */
     :root {
+      /* Le misure di base sono pensate per un monitor. Su un telefono in
+         orizzontale l'altezza dello schermo e' la metà o meno (350-430px
+         contro 700-1000px) — e' l'ALTEZZA a mancare, non la larghezza,
+         quindi la regola guarda min-height, non lo schermo stretto.
+         Tutto il resto (font, barre, scudo) e' calc() su --battle-w e
+         --battle-h: cambiando solo questi due, il resto segue da solo. */
       /* Le carte dei personaggi e delle magie sono il posto dove si
          guarda per capire come va la partita: erano troppo piccole per
          leggerle senza avvicinarsi. Portate al 120%. Le misure stanno
@@ -1290,6 +1296,33 @@
       --battle-h: 107px;             /* 74 -> 89 -> 107 */
       --hp: #e05266; --charge: #45b6ff; --oro: #e8c46a; --blu: #5cc0ff;
       --pergamena: #f0e2c0;
+    }
+    /* Un telefono in orizzontale è basso, non stretto: 350-430px di
+       altezza contro i 700-1000px di un monitor. Qui si guarda solo
+       l'altezza — su un monitor stretto ma alto (finestra ridimensionata)
+       non deve succedere niente, il problema è un altro. */
+    @media (max-height: 480px) {
+      :root { --battle-w: 46px; --battle-h: 67px; }
+
+      /* IL CRONOMETRO STRABORDAVA DALLO SCHERMO.
+         .tabellone (il suo contenitore) sa restringersi — min-width:0,
+         flex-shrink — ma .turni-box, dentro, non lo ha mai imparato:
+         min-width:132px per riga lo teneva rigido a 177px anche quando
+         il contenitore intorno crollava a 55px. Su un monitor c'è
+         sempre spazio a sufficienza e non si vedeva; su un telefono in
+         orizzontale, dove ogni pezzo della fascia superiore si contende
+         un'altezza bassa e una manciata di larghezza, quei 177px
+         uscivano letteralmente fuori dal bordo destro dello schermo —
+         la causa dello scorrimento orizzontale.
+         Qui si lascia che si stringa davvero, e si comprime il
+         contenuto perché stia comunque leggibile in meno spazio. */
+      .tabellone, .turni-box { min-width: 0; }
+      .riga-turno {
+        min-width: 0; padding: 2px 5px; gap: 4px; border-radius: 5px;
+      }
+      .riga-turno .chi { font-size: 8px; }
+      .riga-turno .orologio { font-size: 11px; }
+      .riga-turno .spia-pozzetto { font-size: 7px; padding: 0 3px; }
     }
 
     /* --- Striscia delle 7 carte Battle (4 personaggi + 3 magiche) --- */
@@ -1843,6 +1876,34 @@
       background: var(--verde, #6ecb8b);
     }
 
+    /* IL CRONOMETRO STRABORDAVA DALLO SCHERMO SU TELEFONO IN ORIZZONTALE.
+       .tabellone (il suo contenitore) sa restringersi — min-width:0,
+       flex-shrink — ma .turni-box, dentro, non lo aveva mai imparato:
+       min-width:132px per riga lo teneva rigido a 177px anche quando il
+       contenitore intorno crollava a 55px. Su un monitor c'è sempre
+       spazio a sufficienza e non si vedeva; qui quei 177px uscivano
+       letteralmente fuori dal bordo destro dello schermo — la causa
+       dello scorrimento orizzontale.
+       QUESTA REGOLA VA SCRITTA QUI, DOPO quella sopra: a parità di
+       specificità vince chi è scritto dopo nel foglio, e mettendola
+       altrove (per esempio vicino a --battle-w) perdeva sempre. */
+    @media (max-height: 480px) {
+      .tabellone, .turni-box { min-width: 0; }
+      .riga-turno {
+        min-width: 0; padding: 2px 5px; gap: 4px; border-radius: 5px;
+      }
+      /* Un figlio flex ha di suo un min-width implicito pari alla
+         larghezza del proprio contenuto — per un testo non va a capo,
+         quindi coincide con l'intero testo disteso. Restringere il
+         genitore non basta: senza azzerarlo qui, esplicitamente, sopra
+         ognuno dei tre pezzi, uno di loro prima o poi torna a
+         straboccare. È lo stesso identico difetto di `.turni-box`
+         qui sopra, un piano più in profondità. */
+      .riga-turno .chi { font-size: 8px; min-width: 0; }
+      .riga-turno .orologio { font-size: 11px; min-width: 0; }
+      .riga-turno .spia-pozzetto { font-size: 7px; padding: 0 3px; min-width: 0; }
+    }
+
     /* contatore carte accanto alla mano */
     .conta-carte.mia { flex: 0 0 auto; margin-left: 8px; }
 
@@ -2300,6 +2361,17 @@
     <div class="txt" id="sorpresaTxt"></div>
     <div class="esito" id="sorpresaEsito"></div>
   </div>
+</div>
+<!-- Il tavolo è pensato in orizzontale: in verticale la mano non ci sta
+     e il gioco diventa impraticabile. La regola CSS che accende questo
+     riquadro (#ruotaAvviso, in @media hover:none + orientation:portrait)
+     viene da Burraco Pulito ed era già corretta — mancava solo questo
+     elemento da mostrare: senza, la regola non aveva niente da accendere
+     e non succedeva mai nulla, su nessun telefono. -->
+<div id="ruotaAvviso">
+  <div class="icona">📱</div>
+  <div class="titolo">Gira il telefono</div>
+  <div class="sotto">Il tavolo si gioca in orizzontale: ruota lo schermo per continuare a vedere la partita.</div>
 </div>
 <div id="sorteggio">
   <div class="titolo">Chi comincia?</div>

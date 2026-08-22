@@ -78,6 +78,25 @@ const dom = new JSDOM(html, {
 const w = dom.window, d = w.document;
 await attendi(500);
 
+// ---------- 0bis. IL BLOCCO "GIRA IL TELEFONO" ESISTE DAVVERO ----------
+// Burraco Pulito aveva gia' la regola CSS giusta (#ruotaAvviso, accesa
+// da "@media (hover: none) and (orientation: portrait)"), copiata
+// verbatim insieme al resto del foglio di stile. Ma l'elemento che
+// quella regola doveva accendere non era mai stato scritto nella
+// pagina: la regola c'era, non aveva niente da mostrare, e su
+// nessun telefono succedeva mai nulla.
+// jsdom non implementa matchMedia ne' un vero layout (niente
+// getBoundingClientRect, niente window.matchMedia): non puo' provare
+// che la regola scatti davvero in verticale, o che sparisca in
+// orizzontale, o che il tavolo non scorra piu' di lato su un telefono
+// stretto. Quello e' stato verificato a mano in un browser vero
+// (Chromium, con l'emulazione touch attiva) prima di questo commit.
+// Quello che jsdom PUO' provare, onestamente, e' che l'elemento esista
+// per davvero nella pagina — che e' esattamente il pezzo che mancava.
+check('il blocco "gira il telefono" esiste nella pagina', !!d.getElementById('ruotaAvviso'));
+check('con un titolo e un testo dentro',
+  !!d.querySelector('#ruotaAvviso .titolo') && !!d.querySelector('#ruotaAvviso .sotto'));
+
 // ---------- 1. si apre senza morire ----------
 check('la pagina si apre senza errori', guasti.length === 0, (guasti[0] || '').split('\n')[0]);
 check('la partita viene creata', !!(w.__tavolo && w.__tavolo()));
