@@ -1,0 +1,13 @@
+{
+  "id": "trappola_003",
+  "tipo": "trappola",
+  "rarita": 5,
+  "costo": 5,
+  "trigger": "avversario_usa_abilita",
+  "target": "avversario",
+  "effect": "skip_fase_attacco",
+  "parametro": "",
+  "durata_turni": 1,
+  "_nota": "ESEMPIO DI CARTA CON CONDIZIONE: si schiera solo quando sei in difficoltà. Scatta quando l'avversario usa l'abilità di un eroe.",
+  "condizione": { "tipo": "pv_totali_sotto", "parametro": 50, "chi": "io" }
+}

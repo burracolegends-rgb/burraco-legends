@@ -1,0 +1,11 @@
+{
+  "id": "sorpresa_002",
+  "tipo": "sorpresa",
+  "rarita": 4,
+  "effect": "boost_att",
+  "parametro": "20",
+  "trigger": "on_activate",
+  "target": "se_stesso",
+  "durata_turni": 2,
+  "costo": 4
+}

@@ -1,0 +1,53 @@
+# ============================================================
+# BURRACO LEGENDS SU RENDER
+#
+# Questo file dice a Render come tenere in piedi il server. Non va
+# lanciato: si carica il progetto su GitHub, su Render si sceglie
+# "Blueprint", e Render legge da qui.
+# Le istruzioni passo per passo stanno in METTERE-ONLINE.md.
+#
+# PERCHE' RENDER E NON FLY
+# Fly ha chiuso il piano gratuito ai nuovi account: prova di pochi
+# giorni, poi carta obbligatoria. Render invece ha un piano gratuito
+# vero, senza carta. In cambio ha due limiti, ed e' meglio saperli:
+#
+#   1. dopo 15 minuti senza visite il server si addormenta, e la prima
+#      richiesta dopo il sonno ci mette circa un minuto a svegliarlo;
+#   2. il disco non sopravvive: il file dei giocatori vive finche' il
+#      server e' acceso, e riparte vuoto quando si riaccende.
+#
+# Il punto 2 e' il vero prezzo del gratis, e si paga in sharkini e
+# album azzerati. Il giorno che diventa un problema si sposta il
+# magazzino su un database: archivio.js espone quattro funzioni apposta
+# per quello, e cambia una riga di server.js.
+# ============================================================
+
+services:
+  - type: web
+    name: burraco-legends
+    runtime: docker
+    plan: free
+    region: frankfurt            # il piu' vicino all'Italia fra quelli disponibili
+    dockerfilePath: ./Dockerfile
+
+    # Render sa se il server e' vivo chiedendoglielo. Se questa pagina
+    # smette di rispondere, il server viene riavviato invece di restare
+    # in piedi rotto.
+    healthCheckPath: /api/salute
+
+    envVars:
+      # Il magazzino dei giocatori. Su Render sta dentro il contenitore
+      # (il piano gratuito non ha dischi), quindi si azzera a ogni
+      # riaccensione: e' scritto qui perche' si veda, non nascosto.
+      - key: MAGAZZINO
+        value: /app/dati/giocatori.json
+
+      # Serve a scrivere l'indirizzo giusto dentro le mail di recupero
+      # password. Va messo A MANO nel pannello di Render dopo il primo
+      # rilascio, quando l'indirizzo definitivo si conosce:
+      #     https://burraco-legends.onrender.com
+      - key: INDIRIZZO_SITO
+        sync: false
+
+    # La porta la passa Render nella variabile PORT, e il server la
+    # legge gia'. Non c'e' niente da configurare.

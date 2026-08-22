@@ -1,0 +1,11 @@
+{
+  "id": "sorpresa_001",
+  "tipo": "sorpresa",
+  "rarita": 3,
+  "effect": "danno_diretto",
+  "parametro": "30",
+  "trigger": "on_activate",
+  "target": "avversario",
+  "durata_turni": 0,
+  "costo": 4
+}

@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Burraco Legends — Selezione</title>
+<style>
+  :root {
+    --bg: #14101c;
+    --bg-panel: #1e1830;
+    --bg-card: #241d38;
+    --bg-card-hover: #2d2447;
+    --border: #3a2f57;
+    --text: #ece7f7;
+    --text-dim: #a397c2;
+    --gold: #d9ad4f;      /* Sorpresa: "bordo/luce gialla fuoco" (spec §6) */
+    --blue: #3fa9f5;      /* Trappola: "bordo/luce blu elettrico" (spec §6) */
+    --red: #d9536a;       /* Cuori / Quadri */
+    --pale: #e8e6f0;      /* Fiori / Picche */
+    --ok: #58c48a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: radial-gradient(circle at top, #201835, var(--bg));
+    color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh;
+  }
+  header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.5px; }
+  h1 span { color: var(--gold); }
+  .subtitle { color: var(--text-dim); margin-top: 4px; font-size: 0.9rem; }
+  .lang-switch { display: flex; gap: 6px; }
+  .lang-switch button {
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim);
+    padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+  }
+  .lang-switch button.active { color: var(--bg); background: var(--gold); border-color: var(--gold); font-weight: 600; }
+
+  section { margin-bottom: 32px; }
+  section h2 { font-size: 1.1rem; margin-bottom: 4px; }
+  section .hint { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 14px; }
+
+  .suits-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .suits-row { grid-template-columns: repeat(2, 1fr); } }
+
+  .suit-col { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .suit-col-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; }
+  .suit-symbol { font-size: 1.3rem; }
+  .suit-symbol.red { color: var(--red); }
+  .suit-symbol.pale { color: var(--pale); }
+
+  .slot {
+    border: 2px dashed var(--border); border-radius: 8px; padding: 14px; text-align: center;
+    cursor: pointer; color: var(--text-dim); transition: 0.15s;
+  }
+  .slot:hover { border-color: var(--gold); color: var(--text); }
+  .slot.filled { border-style: solid; border-color: var(--ok); background: var(--bg-card); color: var(--text); text-align: left; }
+  .slot .name { font-weight: 700; margin-bottom: 2px; }
+  .slot .stats { font-size: 0.8rem; color: var(--text-dim); }
+  .slot .rarity { color: var(--gold); font-size: 0.85rem; margin-top: 2px; }
+
+  .picker { margin-top: 10px; display: none; flex-direction: column; gap: 6px; }
+  .picker.open { display: flex; }
+  .picker-item {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; cursor: pointer; font-size: 0.85rem; display: flex; justify-content: space-between;
+  }
+  .picker-item:hover { background: var(--bg-card-hover); border-color: var(--gold); }
+  .picker-item .stats { color: var(--text-dim); }
+
+  .magic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .magic-card {
+    background: var(--bg-card); border: 2px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer;
+    transition: 0.15s;
+  }
+  .magic-card:hover { background: var(--bg-card-hover); }
+  .magic-card.tipo-sorpresa { box-shadow: inset 0 0 0 1px transparent; }
+  .magic-card.tipo-sorpresa.selected { border-color: var(--gold); box-shadow: 0 0 10px rgba(217,173,79,0.5); }
+  .magic-card.tipo-trappola.selected { border-color: var(--blue); box-shadow: 0 0 10px rgba(63,169,245,0.5); }
+  .magic-card .tag {
+    display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 2px 6px; border-radius: 4px; margin-bottom: 6px;
+  }
+  .tag.sorpresa { background: rgba(217,173,79,0.18); color: var(--gold); }
+  .tag.trappola { background: rgba(63,169,245,0.18); color: var(--blue); }
+  .magic-card .name { font-weight: 700; margin-bottom: 4px; }
+  .magic-card .desc { font-size: 0.8rem; color: var(--text-dim); }
+  .magic-card .rarity { color: var(--gold); font-size: 0.8rem; margin-top: 6px; }
+  .magic-card .effect-code { font-size: 0.7rem; color: var(--text-dim); margin-top: 6px; font-family: monospace; }
+
+  .section-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 0.85rem; color: var(--text-dim); }
+  .section-controls select {
+    background: var(--bg-card); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; font-size: 0.85rem;
+  }
+
+  footer {
+    position: sticky; bottom: 0; background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+  }
+  .progress { font-size: 0.9rem; color: var(--text-dim); }
+  .progress b { color: var(--text); }
+  .progress .done { color: var(--ok); }
+  #entraBtn {
+    background: var(--gold); color: #1b1220; border: none; padding: 10px 20px; border-radius: 8px;
+    font-weight: 700; cursor: pointer; font-size: 0.95rem;
+  }
+  #entraBtn:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; }
+
+  #summaryPanel {
+    display: none; margin-top: 16px; background: var(--bg-panel); border: 1px solid var(--ok);
+    border-radius: 10px; padding: 16px;
+  }
+  #summaryPanel.open { display: block; }
+  #summaryPanel h3 { margin-top: 0; color: var(--ok); }
+  #summaryPanel pre { background: var(--bg); padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; }
+  .torna { display: inline-block; margin-bottom: 8px; font-size: 0.85rem;
+           color: var(--muted, #9a8fb5); text-decoration: none; }
+  .torna:hover { color: var(--ok, #d4af37); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <!-- Da qui si entrava e non si usciva più: nessun modo di tornare
+         alla home se non col tasto indietro del browser, che su telefono
+         metà delle volte non c'è. -->
+    <a class="torna" href="home.html">← Torna alla home</a>
+    <h1>Burraco <span>Legends</span></h1>
+    <div class="subtitle" data-i18n-key="sottotitolo">Scegli 4 Personaggi (uno per seme) e 3 Carte Magiche: sono quelli con cui scenderai in campo.</div>
+  </div>
+  <div class="lang-switch" id="langSwitch"></div>
+</header>
+
+<section>
+  <h2 data-i18n-key="titoloPersonaggi">Personaggi</h2>
+  <div class="hint" data-i18n-key="hintPersonaggi">Uno obbligatorio per ciascun seme.</div>
+  <div class="section-controls">
+    <label data-i18n-key="ordinaPer">Ordina per:</label>
+    <select id="sortPersonaggiSelect">
+      <option value="punteggio" data-i18n-key="ordinaPunteggio">Punteggio (rarità)</option>
+      <option value="nome" data-i18n-key="ordinaNome">Nome</option>
+    </select>
+  </div>
+  <div class="suits-row" id="suitsRow"></div>
+</section>
+
+<section>
+  <h2 data-i18n-key="titoloMagiche">Carte Magiche</h2>
+  <div class="hint" data-i18n-key="hintMagiche">Scegline esattamente 3, mix libero fra Sorpresa e Trappola.</div>
+  <div class="section-controls">
+    <label data-i18n-key="ordinaPer">Ordina per:</label>
+    <select id="sortMagicheSelect">
+      <option value="punteggio" data-i18n-key="ordinaPunteggio">Punteggio (rarità)</option>
+      <option value="nome" data-i18n-key="ordinaNome">Nome</option>
+    </select>
+  </div>
+  <div class="magic-grid" id="magicGrid"></div>
+</section>
+
+<div id="summaryPanel">
+  <h3 data-i18n-key="riepilogoTitolo">Squadra pronta</h3>
+  <div id="summaryText"></div>
+  <pre id="summaryJson"></pre>
+</div>
+
+<footer>
+  <div class="progress" id="progressText"></div>
+  <button id="entraBtn" disabled data-i18n-key="entraBtn">Conferma il mazzo</button>
+</footer>
+
+<script>
+// ============================================================
+// Dati carta incorporati per questo prototipo (funziona anche aprendo il
+// file col doppio clic, senza server). In produzione questi arriveranno
+// da fetch() di /cards/data/*.json + /cards/i18n/{lang}.json — vedi
+// cards/data e cards/i18n nella cartella del progetto: questo è uno
+// snapshot di quei file, non una fonte alternativa.
+// ============================================================
+const PERSONAGGI = [
+  { id: 'personaggio_001', seme: '♥', rarita: 2, vita: 100, att: 90 },
+  { id: 'personaggio_002', seme: '♥', rarita: 4, vita: 140, att: 120 },
+  { id: 'personaggio_003', seme: '♦', rarita: 2, vita: 100, att: 90 },
+  { id: 'personaggio_004', seme: '♦', rarita: 4, vita: 140, att: 120 },
+  { id: 'personaggio_005', seme: '♣', rarita: 2, vita: 100, att: 90 },
+  { id: 'personaggio_006', seme: '♣', rarita: 5, vita: 160, att: 135 },
+  { id: 'personaggio_007', seme: '♠', rarita: 3, vita: 120, att: 105 },
+  { id: 'personaggio_008', seme: '♠', rarita: 4, vita: 140, att: 120 }
+];
+const MAGICHE = [
+  { id: 'sorpresa_001', tipo: 'sorpresa', rarita: 3, effect: 'danno_diretto', parametro: '30' },
+  { id: 'sorpresa_002', tipo: 'sorpresa', rarita: 4, effect: 'boost_att', parametro: '20' },
+  { id: 'trappola_001', tipo: 'trappola', rarita: 2, effect: 'scarto_forzato', parametro: '1' },
+  { id: 'trappola_002', tipo: 'trappola', rarita: 5, effect: 'riflette_danno', parametro: '50' }
+];
+
+const I18N = {
+  it: {
+    ui: {
+      sottotitolo: 'Scegli 4 Personaggi (uno per seme) e 3 Carte Magiche: sono quelli con cui scenderai in campo.',
+      titoloPersonaggi: 'Personaggi', hintPersonaggi: 'Uno obbligatorio per ciascun seme.',
+      titoloMagiche: 'Carte Magiche', hintMagiche: 'Scegline esattamente 3, mix libero fra Sorpresa e Trappola.',
+      scegli: 'Scegli...', vita: 'VITA', att: 'ATT',
+      ordinaPer: 'Ordina per:', ordinaPunteggio: 'Punteggio (rarità)', ordinaNome: 'Nome',
+      entraBtn: 'Conferma il mazzo', riepilogoTitolo: 'Squadra pronta',
+      progresso: (p, m) => `Personaggi: ${p}/4 · Carte Magiche: ${m}/3`
+    },
+    cards: {
+      "personaggio_001": { "nome": "Fiamma Ardente", "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo." },
+      "personaggio_002": { "nome": "Regina di Brace", "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta." },
+      "personaggio_003": { "nome": "Custode di Cristallo", "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile." },
+      "personaggio_004": { "nome": "Sovrano d'Ambra", "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa." },
+      "personaggio_005": { "nome": "Guardiano del Bosco", "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente." },
+      "personaggio_006": { "nome": "Spirito della Foresta Antica", "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso." },
+      "personaggio_007": { "nome": "Lama d'Ombra", "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista." },
+      "personaggio_008": { "nome": "Assassino delle Nebbie", "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte." },
+      "sorpresa_001": { "nome": "Fulmine Improvviso", "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita." },
+      "sorpresa_002": { "nome": "Furia di Battaglia", "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività." },
+      "trappola_001": { "nome": "Insidia nell'Ombra", "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare." },
+      "trappola_002": { "nome": "Specchio di Ritorsione", "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto." }
+    }
+  },
+  en: {
+    ui: {
+      sottotitolo: 'Select 4 Characters (one per suit) and 3 Magic Cards before entering the match list.',
+      titoloPersonaggi: 'Characters', hintPersonaggi: 'One required for each suit.',
+      titoloMagiche: 'Magic Cards', hintMagiche: 'Pick exactly 3, any mix of Surprise and Trap.',
+      scegli: 'Choose...', vita: 'HP', att: 'ATK',
+      ordinaPer: 'Sort by:', ordinaPunteggio: 'Score (rarity)', ordinaNome: 'Name',
+      entraBtn: 'Confirm this deck', riepilogoTitolo: 'Team ready',
+      progresso: (p, m) => `Characters: ${p}/4 · Magic Cards: ${m}/3`
+    },
+    cards: {
+      "personaggio_001": { "nome": "Burning Flame", "descrizione": "A Hearts warrior with a fiery temper, always ready to strike first." },
+      "personaggio_002": { "nome": "Queen of Embers", "descrizione": "Rules the Hearts suit with a fire that never goes out, not even in defeat." },
+      "personaggio_003": { "nome": "Crystal Warden", "descrizione": "Guards the treasures of Diamonds behind a transparent, unbreakable armor." },
+      "personaggio_004": { "nome": "Amber Sovereign", "descrizione": "Their throne is carved from amber: every move is calculated and precious." },
+      "personaggio_005": { "nome": "Forest Guardian", "descrizione": "A silent protector of Clubs, rooted and patient." },
+      "personaggio_006": { "nome": "Spirit of the Ancient Forest", "descrizione": "The rarest form of the Clubs suit: said to be as old as the deck itself." },
+      "personaggio_007": { "nome": "Shadow Blade", "descrizione": "Moves through Spades without a sound, striking before being seen." },
+      "personaggio_008": { "nome": "Mist Assassin", "descrizione": "The deadliest of the Spades characters: no one sees them coming twice." },
+      "sorpresa_001": { "nome": "Sudden Lightning", "descrizione": "A direct damage strike, playable at any point in the match." },
+      "sorpresa_002": { "nome": "Battle Fury", "descrizione": "Temporarily boosts your character's ATK: two turns of pure aggression." },
+      "trappola_001": { "nome": "Shadow Snare", "descrizione": "Stays hidden until the opponent draws: then forces them to discard." },
+      "trappola_002": { "nome": "Mirror of Retribution", "descrizione": "If you take damage while active, half of it is returned to the attacker." }
+    }
+  },
+  es: {
+    ui: {
+      sottotitolo: 'Selecciona 4 Personajes (uno por palo) y 3 Cartas Mágicas antes de entrar en la lista de partidas.',
+      titoloPersonaggi: 'Personajes', hintPersonaggi: 'Uno obligatorio por cada palo.',
+      titoloMagiche: 'Cartas Mágicas', hintMagiche: 'Elige exactamente 3, mezcla libre de Sorpresa y Trampa.',
+      scegli: 'Elegir...', vita: 'VIDA', att: 'ATQ',
+      ordinaPer: 'Ordenar por:', ordinaPunteggio: 'Puntuación (rareza)', ordinaNome: 'Nombre',
+      entraBtn: 'Confirmar la baraja', riepilogoTitolo: 'Equipo listo',
+      progresso: (p, m) => `Personajes: ${p}/4 · Cartas Mágicas: ${m}/3`
+    },
+    cards: {
+      "personaggio_001": { "nome": "Llama Ardiente", "descrizione": "Una guerrera de Corazones de temperamento fogoso, siempre lista para golpear primero." },
+      "personaggio_002": { "nome": "Reina de Brasas", "descrizione": "Gobierna el palo de Corazones con un fuego que nunca se apaga, ni siquiera en la derrota." },
+      "personaggio_003": { "nome": "Guardiana de Cristal", "descrizione": "Protege los tesoros de Diamantes tras una armadura transparente e inquebrantable." },
+      "personaggio_004": { "nome": "Soberano de Ámbar", "descrizione": "Su trono está tallado en ámbar: cada movimiento es calculado y valioso." },
+      "personaggio_005": { "nome": "Guardián del Bosque", "descrizione": "Un protector silencioso de Tréboles, arraigado y paciente." },
+      "personaggio_006": { "nome": "Espíritu del Bosque Antiguo", "descrizione": "La forma más rara del palo de Tréboles: se dice que es tan viejo como la baraja misma." },
+      "personaggio_007": { "nome": "Hoja de Sombra", "descrizione": "Se mueve entre las Picas sin hacer ruido, golpeando antes de ser vista." },
+      "personaggio_008": { "nome": "Asesino de la Niebla", "descrizione": "El más letal de los personajes de Picas: nadie lo ve llegar dos veces." },
+      "sorpresa_001": { "nome": "Rayo Repentino", "descrizione": "Un golpe de daño directo, jugable en cualquier momento de la partida." },
+      "sorpresa_002": { "nome": "Furia de Batalla", "descrizione": "Aumenta temporalmente el ATQ de tu personaje: dos turnos de pura agresividad." },
+      "trappola_001": { "nome": "Trampa en la Sombra", "descrizione": "Permanece oculta hasta que el rival roba: entonces lo obliga a descartar." },
+      "trappola_002": { "nome": "Espejo de Represalia", "descrizione": "Si recibes daño mientras está activa, la mitad vuelve a quien lo infligió." }
+    }
+  },
+  pt: {
+    ui: {
+      sottotitolo: 'Selecione 4 Personagens (um por naipe) e 3 Cartas Mágicas antes de entrar na lista de partidas.',
+      titoloPersonaggi: 'Personagens', hintPersonaggi: 'Um obrigatório para cada naipe.',
+      titoloMagiche: 'Cartas Mágicas', hintMagiche: 'Escolha exatamente 3, mistura livre de Surpresa e Armadilha.',
+      scegli: 'Escolher...', vita: 'VIDA', att: 'ATQ',
+      ordinaPer: 'Ordenar por:', ordinaPunteggio: 'Pontuação (raridade)', ordinaNome: 'Nome',
+      entraBtn: 'Confirmar o baralho', riepilogoTitolo: 'Equipe pronta',
+      progresso: (p, m) => `Personagens: ${p}/4 · Cartas Mágicas: ${m}/3`
+    },
+    cards: {
+      "personaggio_001": { "nome": "Chama Ardente", "descrizione": "Uma guerreira de Copas de temperamento fogoso, sempre pronta para golpear primeiro." },
+      "personaggio_002": { "nome": "Rainha das Brasas", "descrizione": "Governa o naipe de Copas com um fogo que nunca se apaga, nem mesmo na derrota." },
+      "personaggio_003": { "nome": "Guardiã de Cristal", "descrizione": "Protege os tesouros de Ouros atrás de uma armadura transparente e inquebrável." },
+      "personaggio_004": { "nome": "Soberano de Âmbar", "descrizione": "Seu trono é esculpido em âmbar: cada movimento é calculado e precioso." },
+      "personaggio_005": { "nome": "Guardião da Floresta", "descrizione": "Um protetor silencioso de Paus, enraizado e paciente." },
+      "personaggio_006": { "nome": "Espírito da Floresta Antiga", "descrizione": "A forma mais rara do naipe de Paus: dizem que é tão antigo quanto o próprio baralho." },
+      "personaggio_007": { "nome": "Lâmina das Sombras", "descrizione": "Move-se entre as Espadas sem fazer ruído, golpeando antes de ser vista." },
+      "personaggio_008": { "nome": "Assassino da Neblina", "descrizione": "O mais letal dos personagens de Espadas: ninguém o vê chegar duas vezes." },
+      "sorpresa_001": { "nome": "Raio Repentino", "descrizione": "Um golpe de dano direto, jogável a qualquer momento da partida." },
+      "sorpresa_002": { "nome": "Fúria de Batalha", "descrizione": "Aumenta temporariamente o ATQ do seu personagem: dois turnos de pura agressividade." },
+      "trappola_001": { "nome": "Armadilha na Sombra", "descrizione": "Fica oculta até o adversário comprar: então o obriga a descartar." },
+      "trappola_002": { "nome": "Espelho de Retaliação", "descrizione": "Se você sofrer dano enquanto ativa, metade retorna a quem o causou." }
+    }
+  }
+};
+const SUPPORTED_LANGS = ['it', 'en', 'es', 'pt'];
+
+// spec §12bis: rileva la lingua di sistema al primo avvio, fallback su
+// inglese se non è fra le 4 supportate. Qui, senza un "profilo salvato",
+// la si ricalcola a ogni apertura — in app andrebbe letta/scritta dalle
+// impostazioni utente.
+function detectLocale() {
+  const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
+  return SUPPORTED_LANGS.includes(nav) ? nav : 'en';
+}
+
+let currentLang = detectLocale();
+const state = {
+  personaggi: { '♥': null, '♦': null, '♣': null, '♠': null },
+  magiche: [],
+  openPicker: null,
+  // Con pochi personaggi/carte per gruppo l'ordine non si nota, ma il roster
+  // crescerà (spec §10: 24-32 personaggi, poi carte nuove ogni mese) — quindi
+  // fin da ora le liste si ordinano per punteggio (rarità) decrescente di
+  // default, con la possibilità di ordinare per nome. "Punteggio" qui è la
+  // rarità 1-5 stelle di ogni carta: è l'unico valore di classificazione che
+  // la spec definisce (vedi anche il "valore" del pity system, §10) — se in
+  // futuro serve un punteggio diverso da rarità/valore, va aggiornato qui.
+  sort: { personaggi: 'punteggio', magiche: 'punteggio' }
+};
+
+function t(key) { return I18N[currentLang].ui[key]; }
+function cardText(id) { return I18N[currentLang].cards[id] || { nome: id, descrizione: '' }; }
+function redSuit(s) { return s === '♥' || s === '♦'; }
+
+function sortCards(list, mode) {
+  const arr = list.slice();
+  arr.sort((a, b) => {
+    if (mode === 'nome') return cardText(a.id).nome.localeCompare(cardText(b.id).nome, currentLang);
+    return (b.rarita - a.rarita) || cardText(a.id).nome.localeCompare(cardText(b.id).nome, currentLang);
+  });
+  return arr;
+}
+
+function renderLangSwitch() {
+  const el = document.getElementById('langSwitch');
+  el.innerHTML = '';
+  for (const lang of SUPPORTED_LANGS) {
+    const btn = document.createElement('button');
+    btn.textContent = lang.toUpperCase();
+    if (lang === currentLang) btn.classList.add('active');
+    btn.onclick = () => { currentLang = lang; renderAll(); };
+    el.appendChild(btn);
+  }
+}
+
+function renderSuits() {
+  const row = document.getElementById('suitsRow');
+  row.innerHTML = '';
+  for (const seme of ['♥', '♦', '♣', '♠']) {
+    const col = document.createElement('div');
+    col.className = 'suit-col';
+
+    const header = document.createElement('div');
+    header.className = 'suit-col-header';
+    header.innerHTML = `<span class="suit-symbol ${redSuit(seme) ? 'red' : 'pale'}">${seme}</span>`;
+    col.appendChild(header);
+
+    const selected = state.personaggi[seme];
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (selected ? ' filled' : '');
+    if (selected) {
+      const txt = cardText(selected.id);
+      slot.innerHTML = `<div class="name">${txt.nome}</div>
+        <div class="stats">${t('vita')} ${selected.vita} · ${t('att')} ${selected.att}</div>
+        <div class="rarity">${'★'.repeat(selected.rarita)}${'☆'.repeat(5 - selected.rarita)}</div>`;
+    } else {
+      slot.textContent = t('scegli');
+    }
+    slot.onclick = () => { state.openPicker = state.openPicker === seme ? null : seme; renderSuits(); };
+    col.appendChild(slot);
+
+    const picker = document.createElement('div');
+    picker.className = 'picker' + (state.openPicker === seme ? ' open' : '');
+    const disponibili = sortCards(PERSONAGGI.filter((c) => c.seme === seme), state.sort.personaggi);
+    for (const p of disponibili) {
+      const txt = cardText(p.id);
+      const item = document.createElement('div');
+      item.className = 'picker-item';
+      item.innerHTML = `<span>${txt.nome} ${'★'.repeat(p.rarita)}</span><span class="stats">${t('vita')} ${p.vita} · ${t('att')} ${p.att}</span>`;
+      item.onclick = (ev) => {
+        ev.stopPropagation();
+        state.personaggi[seme] = p;
+        state.openPicker = null;
+        renderAll();
+      };
+      picker.appendChild(item);
+    }
+    col.appendChild(picker);
+    row.appendChild(col);
+  }
+}
+
+function renderMagic() {
+  const grid = document.getElementById('magicGrid');
+  grid.innerHTML = '';
+  const ordinate = sortCards(MAGICHE, state.sort.magiche);
+  for (const m of ordinate) {
+    const txt = cardText(m.id);
+    const isSelected = state.magiche.includes(m.id);
+    const card = document.createElement('div');
+    card.className = `magic-card tipo-${m.tipo}` + (isSelected ? ' selected' : '');
+    card.innerHTML = `<span class="tag ${m.tipo}">${m.tipo}</span>
+      <div class="name">${txt.nome}</div>
+      <div class="desc">${txt.descrizione}</div>
+      <div class="rarity">${'★'.repeat(m.rarita)}${'☆'.repeat(5 - m.rarita)}</div>
+      <div class="effect-code">${m.effect} (${m.parametro})</div>`;
+    card.onclick = () => {
+      if (isSelected) {
+        state.magiche = state.magiche.filter((id) => id !== m.id);
+      } else if (state.magiche.length < 3) {
+        state.magiche.push(m.id);
+      }
+      renderAll();
+    };
+    grid.appendChild(card);
+  }
+}
+
+function renderStaticText() {
+  document.querySelectorAll('[data-i18n-key]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-key');
+    if (typeof I18N[currentLang].ui[key] === 'string') el.textContent = I18N[currentLang].ui[key];
+  });
+}
+
+function renderFooter() {
+  const nPers = Object.values(state.personaggi).filter(Boolean).length;
+  const nMagic = state.magiche.length;
+  document.getElementById('progressText').innerHTML = t('progresso')(nPers, nMagic)
+    .replace(`${nPers}/4`, `<b class="${nPers === 4 ? 'done' : ''}">${nPers}/4</b>`)
+    .replace(`${nMagic}/3`, `<b class="${nMagic === 3 ? 'done' : ''}">${nMagic}/3</b>`);
+  document.getElementById('entraBtn').disabled = !(nPers === 4 && nMagic === 3);
+}
+
+function renderAll() {
+  renderLangSwitch();
+  renderStaticText();
+  renderSuits();
+  renderMagic();
+  renderFooter();
+}
+
+document.getElementById('sortPersonaggiSelect').addEventListener('change', (e) => {
+  state.sort.personaggi = e.target.value;
+  renderSuits();
+});
+document.getElementById('sortMagicheSelect').addEventListener('change', (e) => {
+  state.sort.magiche = e.target.value;
+  renderMagic();
+});
+
+// ------------------------------------------------------------
+// IL MAZZO SCELTO VA AL TAVOLO
+//
+// Fino a ieri questo bottone apriva un riquadro che diceva "qui la
+// selezione VERREBBE inviata": si sceglievano quattro eroi e tre carte
+// magiche, si premeva, e non succedeva niente. Il tavolo intanto
+// giocava sempre con due squadre fisse scritte nel codice.
+//
+// Ora la scelta si mette da parte nel browser e il tavolo la legge
+// all'avvio. Chi non ha mai scelto niente continua a trovare la squadra
+// di prima: il gioco non deve costringere a passare di qui.
+// ------------------------------------------------------------
+const DOVE_SI_SALVA_IL_MAZZO = 'bb_mazzo';
+
+document.getElementById('entraBtn').addEventListener('click', () => {
+  const nPers = Object.values(state.personaggi).filter(Boolean).length;
+  if (nPers !== 4 || state.magiche.length !== 3) return;
+  const selezione = {
+    personaggi: Object.fromEntries(Object.entries(state.personaggi).map(([s, c]) => [s, c.id])),
+    carteMagiche: state.magiche
+  };
+  try {
+    localStorage.setItem(DOVE_SI_SALVA_IL_MAZZO, JSON.stringify(selezione));
+  } catch (e) {
+    // browser che non lascia salvare niente: meglio dirlo che partire
+    // con una squadra diversa da quella scelta senza spiegare perche'
+    alert(currentLang === 'it'
+      ? 'Non riesco a ricordare la scelta su questo browser: la partita userà la squadra predefinita.'
+      : 'I cannot remember your choice in this browser: the match will use the default team.');
+  }
+  // DOVE SI TORNA DOPO AVER CONFERMATO.
+  // Prima si finiva dritti al tavolo contro il computer, e chi era
+  // arrivato qui per prepararsi a una partita con un amico si ritrovava
+  // di colpo a giocare da solo. Confermare un mazzo non e' cominciare
+  // una partita: si torna da dove si e' arrivati, e la partita la si
+  // sceglie dopo.
+  const daDoveVengo = document.referrer || '';
+  const dentroCasa = ['sala.html', 'home.html', 'negozio.html', 'album.html']
+    .find((pagina) => daDoveVengo.includes(pagina));
+  window.location.href = dentroCasa || 'home.html';
+});
+
+// Se un mazzo era gia' stato scelto, si ritrova selezionato: rifarlo da
+// capo ogni volta sarebbe una punizione per chi torna.
+(function riprendiIlMazzoDiPrima() {
+  let salvato = null;
+  try { salvato = JSON.parse(localStorage.getItem(DOVE_SI_SALVA_IL_MAZZO) || 'null'); } catch (e) {}
+  if (!salvato || !salvato.personaggi) return;
+  for (const [seme, id] of Object.entries(salvato.personaggi)) {
+    const carta = PERSONAGGI.find((c) => c.id === id);
+    if (carta && state.personaggi[seme] !== undefined) state.personaggi[seme] = carta;
+  }
+  if (Array.isArray(salvato.carteMagiche)) {
+    state.magiche = salvato.carteMagiche.filter((id) => MAGICHE.some((c) => c.id === id)).slice(0, 3);
+  }
+})();
+
+renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "id": "trappola_002",
+  "tipo": "trappola",
+  "rarita": 5,
+  "effect": "riflette_danno",
+  "parametro": "50",
+  "trigger": "subisco_danno",
+  "target": "se_stesso",
+  "durata_turni": 0,
+  "costo": 4
+}

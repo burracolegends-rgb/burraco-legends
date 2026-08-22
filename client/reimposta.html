@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends — Nuova password</title>
+<style>
+  :root {
+    --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;
+    --pergamena: #f2e6cc; --tenue: #b7a686; --notte: #0b0810;
+    --verde: #58c48a; --rosso: #f0736b;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+    background:
+      radial-gradient(ellipse at 50% -10%, #2f2148 0%, transparent 58%),
+      radial-gradient(ellipse at 50% 110%, #3a2410 0%, transparent 55%),
+      var(--notte);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; min-height: 100vh; padding: 24px 18px;
+  }
+  .insegna h1 {
+    margin: 0; text-align: center; font-family: Georgia, serif;
+    font-size: clamp(1.4rem, 4.5vw, 2rem); letter-spacing: 3px; font-weight: 700;
+    background: linear-gradient(180deg, #fff6d8, var(--oro) 45%, var(--oro-scuro) 72%, #ffe9ae);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .riquadro {
+    width: min(400px, 100%); border-radius: 18px; padding: 22px;
+    border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(52,38,22,0.94), rgba(20,14,8,0.96));
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.2), 0 12px 34px rgba(0,0,0,0.66);
+    display: flex; flex-direction: column; gap: 13px;
+  }
+  label { font-size: 0.74rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--tenue); margin-bottom: -7px; }
+  input {
+    width: 100%; padding: 13px 15px; border-radius: 11px; font-family: inherit;
+    border: 1px solid var(--oro-scuro); background: rgba(0,0,0,0.42); color: var(--pergamena);
+    font-size: 1rem; outline: none;
+  }
+  input:focus { border-color: var(--oro); box-shadow: 0 0 0 3px rgba(232,196,106,0.16); }
+  .campo-password { position: relative; }
+  .campo-password input { padding-right: 52px; }
+  .occhio {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; border: none; background: transparent; cursor: pointer;
+    color: var(--tenue); display: grid; place-items: center; padding: 0;
+  }
+  .occhio svg { width: 20px; height: 20px; }
+  .forza { height: 4px; border-radius: 99px; background: rgba(0,0,0,0.5); overflow: hidden; margin-top: -6px; }
+  .forza i { display: block; height: 100%; width: 0; border-radius: 99px; transition: width 0.3s, background 0.3s; }
+  .aiuto { font-size: 0.72rem; color: var(--tenue); line-height: 1.45; margin-top: -6px; }
+  button.azione {
+    width: 100%; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 1rem; font-weight: 800; letter-spacing: 0.5px;
+    background: linear-gradient(180deg, #fff0c2, var(--oro) 55%, #b98d2c); color: #2a1c08;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  }
+  button.azione:disabled { opacity: 0.45; cursor: default; }
+  .avviso {
+    font-size: 0.83rem; padding: 11px 13px; border-radius: 11px; line-height: 1.55;
+    border: 1px solid rgba(240,115,107,0.5); background: rgba(90,30,26,0.36); color: #ffc9c4;
+  }
+  .avviso.buono { border-color: rgba(88,196,138,0.5); background: rgba(30,66,48,0.4); color: #b6ffd4; }
+  .avviso a { color: inherit; font-weight: 700; }
+  .nascosto { display: none !important; }
+  .a-chi { font-size: 0.8rem; color: var(--tenue); text-align: center; }
+  .a-chi b { color: var(--oro-chiaro); }
+</style>
+</head>
+<body>
+
+<div class="insegna"><h1>NUOVA PASSWORD</h1></div>
+
+<div class="riquadro" id="riquadro">
+  <div class="a-chi" id="a-chi">Controllo il collegamento…</div>
+
+  <form id="modulo" class="nascosto">
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <label for="password">Nuova password</label>
+      <div class="campo-password">
+        <input id="password" type="password" autocomplete="new-password" placeholder="Almeno 8 caratteri" required>
+        <button type="button" class="occhio" title="Mostra la password"></button>
+      </div>
+      <div class="forza"><i id="forza"></i></div>
+      <div class="aiuto" id="aiuto">Almeno 8 caratteri. Più è lunga, meglio è.</div>
+
+      <label for="ripeti">Ripetila</label>
+      <input id="ripeti" type="password" autocomplete="new-password" placeholder="La stessa, per sicurezza" required>
+
+      <button type="submit" class="azione" id="salva">Salva la nuova password</button>
+    </div>
+  </form>
+</div>
+
+<div id="avviso" class="avviso nascosto"></div>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+// Il gettone sta dopo il cancelletto, non nell'indirizzo vero e
+// proprio: quella parte il browser non la manda a nessun server, quindi
+// non finisce nei registri di accesso né nella cronologia condivisa.
+const GETTONE = new URLSearchParams(location.hash.slice(1)).get('gettone');
+
+function dice(html, buono) {
+  const a = $('avviso');
+  a.innerHTML = html;
+  a.className = 'avviso' + (buono ? ' buono' : '');
+}
+
+async function posta(via, corpo) {
+  const r = await fetch(via, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo)
+  });
+  return r.json();
+}
+
+const OCCHIO_APERTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+  '<path d="M1.6 12S5.3 5 12 5s10.4 7 10.4 7-3.7 7-10.4 7S1.6 12 1.6 12z"/><circle cx="12" cy="12" r="3.2"/></svg>';
+const OCCHIO_CHIUSO = OCCHIO_APERTO.replace('</svg>', '<path d="M3 3l18 18"/></svg>');
+const occhio = document.querySelector('.occhio');
+occhio.innerHTML = OCCHIO_CHIUSO;
+occhio.addEventListener('click', () => {
+  const c = $('password'), nascosta = c.type === 'password';
+  c.type = nascosta ? 'text' : 'password';
+  occhio.innerHTML = nascosta ? OCCHIO_APERTO : OCCHIO_CHIUSO;
+  c.focus();
+});
+
+function quantoRegge(p) {
+  if (!p) return { punti: 0, colore: '#555', parola: '' };
+  let punti = Math.min(60, p.length * 5);
+  if (/[a-z]/.test(p) && /[A-Z]/.test(p)) punti += 10;
+  if (/[0-9]/.test(p)) punti += 10;
+  if (/[^a-zA-Z0-9]/.test(p)) punti += 15;
+  if (/^(.)\1+$/.test(p)) punti = 10;
+  punti = Math.min(100, punti);
+  if (punti < 40) return { punti, colore: '#f0736b', parola: 'Troppo corta o troppo semplice.' };
+  if (punti < 70) return { punti, colore: '#e8c46a', parola: 'Va bene. Allungandola diventa molto più solida.' };
+  return { punti, colore: '#58c48a', parola: 'Solida.' };
+}
+$('password').addEventListener('input', (e) => {
+  const q = quantoRegge(e.target.value);
+  $('forza').style.width = q.punti + '%';
+  $('forza').style.background = q.colore;
+  $('aiuto').textContent = q.parola || 'Almeno 8 caratteri. Più è lunga, meglio è.';
+});
+
+$('modulo').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if ($('password').value !== $('ripeti').value) {
+    dice('Le due password non coincidono. Riscrivile.');
+    $('ripeti').focus();
+    return;
+  }
+  $('salva').disabled = true;
+  $('salva').textContent = 'Salvo…';
+  try {
+    const r = await posta('/api/reimposta', { gettoneRecupero: GETTONE, password: $('password').value });
+    if (!r.ok) { dice(r.motivo || 'Non sono riuscito a cambiare la password.'); return; }
+    // il collegamento è servito: lo tolgo dall'indirizzo, così non
+    // resta nella cronologia di questo browser
+    history.replaceState(null, '', location.pathname);
+    try { localStorage.setItem('bb_gettone', r.gettone); } catch (err) {}
+    $('riquadro').classList.add('nascosto');
+    dice('Password cambiata. Sei dentro.<br><br><a href="home.html">Vai al gioco →</a>', true);
+  } catch (err) {
+    dice('Il server non risponde. È acceso?');
+  } finally {
+    $('salva').disabled = false;
+    $('salva').textContent = 'Salva la nuova password';
+  }
+});
+
+// ------------------------------------------------------------
+// Prima di far scrivere una password nuova, controllo che il
+// collegamento sia ancora buono. Farla scrivere e poi dire "era
+// scaduto" è il modo migliore per far arrabbiare qualcuno.
+// ------------------------------------------------------------
+(async function avvia() {
+  if (location.protocol === 'file:') {
+    $('a-chi').textContent = '';
+    dice('Questa pagina va aperta dal server, non con un doppio clic.');
+    return;
+  }
+  if (!GETTONE) {
+    $('a-chi').textContent = '';
+    dice('Questo indirizzo non ha nessun collegamento di recupero.<br><br>' +
+         '<a href="accedi.html">Torna all\'accesso →</a>');
+    return;
+  }
+  let r;
+  try { r = await posta('/api/recupero-valido', { gettoneRecupero: GETTONE }); }
+  catch (e) { dice('Il server non risponde. È acceso?'); return; }
+
+  if (!r.ok) {
+    $('a-chi').textContent = '';
+    dice('Questo collegamento non è più valido: o è scaduto (vale un\'ora) ' +
+         'o è già stato usato.<br><br><a href="accedi.html">Chiedine un altro →</a>');
+    return;
+  }
+  $('a-chi').innerHTML = 'Stai cambiando la password di <b>' + r.email + '</b>';
+  $('modulo').classList.remove('nascosto');
+  $('password').focus();
+})();
+
+window.__prova = { gettone: () => GETTONE };
+})();
+</script>
+</body>
+</html>

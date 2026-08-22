@@ -1,0 +1,21 @@
+node_modules
+package-lock.json
+verifica-*.mjs
+
+# I dati dei giocatori: stanno sul server di chi lo fa girare, non
+# nel progetto. Se finissero qui dentro, ogni copia del progetto si
+# porterebbe dietro sharkini e collezioni di qualcun altro.
+dati/
+*.rotto-*
+
+# Le illustrazioni sono file pesanti: stanno fuori dal progetto.
+illustrazioni/grezze/*
+illustrazioni/pulite/*
+!illustrazioni/LEGGIMI.txt
+
+__pycache__/
+*.pyc
+
+# Eseguibile di terze parti (tunnel Cloudflare), scaricato a parte: pesante
+# e non è codice del progetto.
+cloudflared.exe

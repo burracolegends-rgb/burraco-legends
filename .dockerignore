@@ -1,0 +1,13 @@
+# Nell'immagine va solo quello che serve al server: le pagine, il
+# motore, le carte. Tutto il resto è peso inutile.
+node_modules
+.git
+.gitignore
+spec
+strumenti
+*.bat
+*.md
+!COME-GIOCARE.md
+**/*.test.js
+verifica-*.mjs
+dati

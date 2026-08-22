@@ -1,0 +1,58 @@
+{
+  "personaggio_001": {
+    "nome": "Chama Ardente",
+    "descrizione": "Uma guerreira de Copas de temperamento fogoso, sempre pronta para golpear primeiro."
+  },
+  "personaggio_002": {
+    "nome": "Rainha das Brasas",
+    "descrizione": "Governa o naipe de Copas com um fogo que nunca se apaga, nem mesmo na derrota."
+  },
+  "personaggio_003": {
+    "nome": "Guardiã de Cristal",
+    "descrizione": "Protege os tesouros de Ouros atrás de uma armadura transparente e inquebrável."
+  },
+  "personaggio_004": {
+    "nome": "Soberano de Âmbar",
+    "descrizione": "Seu trono é esculpido em âmbar: cada movimento é calculado e precioso."
+  },
+  "personaggio_005": {
+    "nome": "Guardião da Floresta",
+    "descrizione": "Um protetor silencioso de Paus, enraizado e paciente."
+  },
+  "personaggio_006": {
+    "nome": "Espírito da Floresta Antiga",
+    "descrizione": "A forma mais rara do naipe de Paus: dizem que é tão antigo quanto o próprio baralho."
+  },
+  "personaggio_007": {
+    "nome": "Lâmina das Sombras",
+    "descrizione": "Move-se entre as Espadas sem fazer ruído, golpeando antes de ser vista."
+  },
+  "personaggio_008": {
+    "nome": "Assassino da Neblina",
+    "descrizione": "O mais letal dos personagens de Espadas: ninguém o vê chegar duas vezes."
+  },
+  "sorpresa_001": {
+    "nome": "Raio Repentino",
+    "descrizione": "Um golpe de dano direto, jogável a qualquer momento da partida."
+  },
+  "sorpresa_002": {
+    "nome": "Fúria de Batalha",
+    "descrizione": "Aumenta temporariamente o ATT do seu personagem: dois turnos de pura agressividade."
+  },
+  "trappola_001": {
+    "nome": "Armadilha na Sombra",
+    "descrizione": "Fica oculta até o adversário comprar: então o obriga a descartar."
+  },
+  "trappola_002": {
+    "nome": "Espelho de Retaliação",
+    "descrizione": "Se você sofrer dano enquanto ativa, metade retorna a quem o causou."
+  },
+  "sorpresa_003": {
+    "nome": "Bênção Tripla",
+    "descrizione": "Um só gesto e três dons: golpeia o adversário, cura um dos seus heróis e concede uma carta a mais na próxima compra."
+  },
+  "trappola_003": {
+    "nome": "Selo do Desesperado",
+    "descrizione": "Só pode ser posicionada quando os seus heróis estão abaixo da metade. Se o adversário ousar usar uma habilidade, bloqueia a baixada dele por um turno."
+  }
+}

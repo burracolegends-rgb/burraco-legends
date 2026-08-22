@@ -1,0 +1,15 @@
+{
+  "id": "personaggio_005",
+  "seme": "♣",
+  "rarita": 2,
+  "vita": 100,
+  "att": 90,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "effect": "danno_da_attacco",
+    "parametro": "30",
+    "target": "personaggio_specifico",
+    "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.",
+    "costo": 4
+  }
+}

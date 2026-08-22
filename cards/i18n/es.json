@@ -1,0 +1,58 @@
+{
+  "personaggio_001": {
+    "nome": "Llama Ardiente",
+    "descrizione": "Una guerrera de Corazones de temperamento fogoso, siempre lista para golpear primero."
+  },
+  "personaggio_002": {
+    "nome": "Reina de Brasas",
+    "descrizione": "Gobierna el palo de Corazones con un fuego que nunca se apaga, ni siquiera en la derrota."
+  },
+  "personaggio_003": {
+    "nome": "Guardiana de Cristal",
+    "descrizione": "Protege los tesoros de Diamantes tras una armadura transparente e inquebrantable."
+  },
+  "personaggio_004": {
+    "nome": "Soberano de Ámbar",
+    "descrizione": "Su trono está tallado en ámbar: cada movimiento es calculado y valioso."
+  },
+  "personaggio_005": {
+    "nome": "Guardián del Bosque",
+    "descrizione": "Un protector silencioso de Tréboles, arraigado y paciente."
+  },
+  "personaggio_006": {
+    "nome": "Espíritu del Bosque Antiguo",
+    "descrizione": "La forma más rara del palo de Tréboles: se dice que es tan viejo como la baraja misma."
+  },
+  "personaggio_007": {
+    "nome": "Hoja de Sombra",
+    "descrizione": "Se mueve entre las Picas sin hacer ruido, golpeando antes de ser vista."
+  },
+  "personaggio_008": {
+    "nome": "Asesino de la Niebla",
+    "descrizione": "El más letal de los personajes de Picas: nadie lo ve llegar dos veces."
+  },
+  "sorpresa_001": {
+    "nome": "Rayo Repentino",
+    "descrizione": "Un golpe de daño directo, jugable en cualquier momento de la partida."
+  },
+  "sorpresa_002": {
+    "nome": "Furia de Batalla",
+    "descrizione": "Aumenta temporalmente el ATT de tu personaje: dos turnos de pura agresividad."
+  },
+  "trappola_001": {
+    "nome": "Trampa en la Sombra",
+    "descrizione": "Permanece oculta hasta que el rival roba: entonces lo obliga a descartar."
+  },
+  "trappola_002": {
+    "nome": "Espejo de Represalia",
+    "descrizione": "Si recibes daño mientras está activa, la mitad vuelve a quien lo infligió."
+  },
+  "sorpresa_003": {
+    "nome": "Triple Bendición",
+    "descrizione": "Un solo gesto y tres dones: golpea al rival, sana a uno de tus héroes y te concede una carta más en el próximo robo."
+  },
+  "trappola_003": {
+    "nome": "Sello del Desesperado",
+    "descrizione": "Solo se puede desplegar cuando tus héroes están por debajo de la mitad. Si el rival osa usar una habilidad, le bloquea la bajada durante un turno."
+  }
+}

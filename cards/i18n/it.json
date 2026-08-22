@@ -1,0 +1,58 @@
+{
+  "personaggio_001": {
+    "nome": "Fiamma Ardente",
+    "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo."
+  },
+  "personaggio_002": {
+    "nome": "Regina di Brace",
+    "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta."
+  },
+  "personaggio_003": {
+    "nome": "Custode di Cristallo",
+    "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile."
+  },
+  "personaggio_004": {
+    "nome": "Sovrano d'Ambra",
+    "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa."
+  },
+  "personaggio_005": {
+    "nome": "Guardiano del Bosco",
+    "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente."
+  },
+  "personaggio_006": {
+    "nome": "Spirito della Foresta Antica",
+    "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso."
+  },
+  "personaggio_007": {
+    "nome": "Lama d'Ombra",
+    "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista."
+  },
+  "personaggio_008": {
+    "nome": "Assassino delle Nebbie",
+    "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte."
+  },
+  "sorpresa_001": {
+    "nome": "Fulmine Improvviso",
+    "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita."
+  },
+  "sorpresa_002": {
+    "nome": "Furia di Battaglia",
+    "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività."
+  },
+  "trappola_001": {
+    "nome": "Insidia nell'Ombra",
+    "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare."
+  },
+  "trappola_002": {
+    "nome": "Specchio di Ritorsione",
+    "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto."
+  },
+  "sorpresa_003": {
+    "nome": "Triplice Benedizione",
+    "descrizione": "Un solo gesto e tre doni: colpisce l'avversario, risana un tuo eroe e ti concede una carta in più alla prossima pescata."
+  },
+  "trappola_003": {
+    "nome": "Sigillo del Disperato",
+    "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."
+  }
+}

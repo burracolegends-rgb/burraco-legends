@@ -1,0 +1,20 @@
+{
+  "name": "burraco-legends",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Burraco Legends — progetto separato al 100% da Burraco Pulito, nessun backend condiviso.",
+  "scripts": {
+    "costruisci": "node strumenti/lancia-python.mjs strumenti/costruisci.py",
+    "allineate": "node strumenti/lancia-python.mjs --saltabile strumenti/allineate.py",
+    "test:engine": "node engine/carte-lint.test.js && node engine/sharkini.test.js && node engine/pacchetti.test.js && node engine/core-rules.test.js && node engine/partita.test.js && node engine/vista.test.js && node engine/azioni.test.js && node engine/magic-cards.test.js && node engine/magie-in-partita.test.js && node engine/character-abilities.test.js && node engine/bot.test.js",
+    "test:server": "node server/stanze.test.js && node server/giocatori.test.js && node server/identita.test.js && node server/accesso-email.test.js && node server/server.test.js && node server/spegnimento.test.js",
+    "test": "npm run allineate && npm run controlla-bat && npm run test:engine && npm run test:server && npm run test:client",
+    "server": "node server/server.js",
+    "controlla-bat": "node strumenti/lancia-python.mjs --saltabile strumenti/controlla-bat.py",
+    "test:client": "node client/tavolo-online.test.js && node client/tavolo-vivo.test.js && node client/mazzo.test.js && node client/studio.test.js && node client/due-giocatori.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

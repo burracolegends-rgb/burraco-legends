@@ -1,0 +1,11 @@
+{
+  "id": "trappola_001",
+  "tipo": "trappola",
+  "rarita": 2,
+  "effect": "scarto_forzato",
+  "parametro": "1",
+  "trigger": "avversario_pesca",
+  "target": "avversario",
+  "durata_turni": 0,
+  "costo": 4
+}

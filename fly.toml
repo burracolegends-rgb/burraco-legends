@@ -1,0 +1,46 @@
+# Configurazione per Fly.io.
+#   fly launch --no-deploy     (la prima volta, per creare l'app)
+#   fly deploy                 (ogni volta che cambia qualcosa)
+
+app = "burraco-legends"
+primary_region = "cdg"        # Parigi: il più vicino all'Italia fra quelli comodi
+
+[build]
+
+[env]
+  PORT = "8080"
+  # Il magazzino dei giocatori NON sta dentro l'applicazione: sta sul
+  # disco montato qui sotto. Se stesse dentro, ogni aggiornamento
+  # ricostruirebbe il contenitore da zero e cancellerebbe account,
+  # sharkini e album di tutti — e lo scopriresti al primo rilascio,
+  # col tuo amico che ti chiede dove sono finite le sue carte.
+  MAGAZZINO = "/dati/giocatori.json"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # LE PARTITE VIVONO NELLA MEMORIA DEL SERVER.
+  # Se la macchina si spegne quando non la usa nessuno, al risveglio le
+  # partite in corso non ci sono più. Meglio tenerne sempre una accesa:
+  # costa pochissimo e nessuno si ritrova il tavolo sparito.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/salute"
+
+# IL DISCO CHE SOPRAVVIVE AGLI AGGIORNAMENTI
+# Da creare una volta sola, prima del primo rilascio:
+#     fly volumes create dati --size 1 --region cdg
+[mounts]
+  source = "dati"
+  destination = "/dati"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"            # il server tiene solo le partite in corso

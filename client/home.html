@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends</title>
+<style>
+  /* ============================================================
+     BURRACO LEGENDS — schermata iniziale
+     Tutto disegnato in CSS e SVG: nessuna immagine da scaricare,
+     nessuna dipendenza esterna. Si apre col doppio clic e resta
+     nitida a qualunque dimensione, perché non ci sono bitmap.
+     ============================================================ */
+  :root {
+    --oro:        #e8c46a;
+    --oro-chiaro: #fff0c2;
+    --oro-scuro:  #9a6f21;
+    --pergamena:  #f2e6cc;
+    --testo-tenue:#c2ac86;
+    --legno:      #4a3520;
+    --legno-alto: #6b4c2c;
+    --notte:      #0e0a14;
+    --verde:      #58c48a;
+    --blu:        #5cc0ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--pergamena);
+    background: var(--notte);
+    display: flex; flex-direction: column;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+
+  /* ---------- FONDALE: sala del castello all'alba ---------- */
+  .fondale { position: fixed; inset: 0; z-index: -3; overflow: hidden; }
+  .fondale svg { width: 100%; height: 100%; display: block; }
+
+  /* raggi di luce che entrano dalle arcate */
+  .raggi-luce {
+    position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background:
+      linear-gradient(101deg, transparent 20%, rgba(255,214,140,0.09) 25%, transparent 31%),
+      linear-gradient(97deg,  transparent 42%, rgba(255,214,140,0.07) 47%, transparent 53%),
+      linear-gradient(94deg,  transparent 64%, rgba(255,214,140,0.06) 69%, transparent 75%);
+    animation: respiroLuce 11s ease-in-out infinite;
+  }
+  @keyframes respiroLuce { 0%,100% { opacity: 0.75; } 50% { opacity: 1; } }
+
+  /* brace che sale piano */
+  .braci { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .brace {
+    position: absolute; width: 3px; height: 3px; border-radius: 50%;
+    background: #ffcf7a; box-shadow: 0 0 7px 2px rgba(255,180,90,0.75);
+    opacity: 0; animation: salita linear infinite;
+  }
+  @keyframes salita {
+    0%   { opacity: 0; transform: translateY(0) scale(0.6); }
+    10%  { opacity: 0.9; }
+    85%  { opacity: 0.55; }
+    100% { opacity: 0; transform: translateY(-78vh) translateX(26px) scale(0.3); }
+  }
+
+  /* ---------- BARRA IN ALTO ---------- */
+  .barra-alta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .riquadro {
+    background: linear-gradient(168deg, rgba(74,53,32,0.92), rgba(28,19,12,0.94));
+    border: 1px solid var(--oro-scuro); border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.22), 0 4px 14px rgba(0,0,0,0.55);
+  }
+
+  .profilo { display: flex; align-items: center; gap: 11px; padding: 6px 16px 6px 6px; }
+  .cornice-avatar {
+    position: relative; width: 46px; height: 46px; border-radius: 10px;
+    background: linear-gradient(150deg, #6b4c2c, #2a1c10);
+    border: 2px solid var(--oro); overflow: hidden;
+    box-shadow: 0 0 12px rgba(232,196,106,0.35), inset 0 0 12px rgba(0,0,0,0.6);
+  }
+  .cornice-avatar svg { width: 100%; height: 100%; }
+  .profilo .nick { font-weight: 700; font-size: 0.92rem; letter-spacing: 0.2px; }
+  .profilo .liv { font-size: 0.68rem; color: var(--oro); letter-spacing: 0.6px; text-transform: uppercase; }
+  .xp { width: 104px; height: 6px; border-radius: 4px; background: rgba(0,0,0,0.6); overflow: hidden; margin-top: 4px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
+  .xp i { display: block; height: 100%; width: 62%; border-radius: 4px;
+          background: linear-gradient(90deg, var(--oro-scuro), var(--oro), var(--oro-chiaro));
+          box-shadow: 0 0 8px rgba(232,196,106,0.8); }
+
+  .valute { display: flex; gap: 8px; align-items: center; }
+  .valuta { display: flex; align-items: center; gap: 7px; padding: 7px 12px; font-weight: 700; font-size: 0.88rem; }
+  .valuta svg { width: 19px; height: 19px; flex: 0 0 auto; }
+  .valuta .num { font-variant-numeric: tabular-nums; }
+  .valuta.sharkini .num { color: var(--oro-chiaro); }
+  .valuta .piu {
+    width: 19px; height: 19px; border-radius: 50%; border: none; cursor: pointer;
+    background: linear-gradient(180deg, #7ee0a4, var(--verde)); color: #06301c;
+    font-weight: 900; font-size: 13px; line-height: 1; display: grid; place-items: center;
+    box-shadow: 0 0 9px rgba(88,196,138,0.7);
+  }
+  .valuta { text-decoration: none; color: inherit; }
+  .valuta .num.cambiata { animation: saldoSale 0.8s ease-out; }
+  @keyframes saldoSale {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.3); color: #b6ffd4; text-shadow: 0 0 12px rgba(88,196,138,0.9); }
+    100% { transform: scale(1); }
+  }
+
+  /* ---------- IL PREMIO DEL GIORNO ----------
+     Sette caselle, una per giorno. Quella di oggi è accesa, le passate
+     hanno il segno di spunta, le future stanno spente. Chi salta un
+     giorno se lo vede dire, invece di scoprirlo dal numero più basso. */
+  .premio {
+    flex: 0 0 auto; width: 100%; max-width: 780px; margin: 0 auto;
+    padding: 11px 14px 13px; display: flex; flex-direction: column; gap: 9px;
+  }
+  .premio .riga-titolo { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .premio h2 {
+    margin: 0; font-family: Georgia, serif; font-size: 0.92rem;
+    letter-spacing: 2.2px; text-transform: uppercase; color: var(--oro);
+  }
+  .premio .stato { font-size: 0.74rem; color: var(--tenue); flex: 1; }
+  .premio .stato.allarme { color: #ffb47a; }
+  .premio .stato.rotta { color: #f0736b; }
+  .premio .stato b { color: var(--pergamena); }
+
+  .scala .fila-giorni { display: flex; gap: 6px; }
+  .giorno {
+    flex: 1 1 0; min-width: 0; border-radius: 9px; padding: 7px 2px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border: 1px solid rgba(232,196,106,0.22); background: rgba(0,0,0,0.3);
+    transition: transform 0.18s, box-shadow 0.18s;
+  }
+  .giorno .n { font-size: 0.58rem; letter-spacing: 0.8px; text-transform: uppercase; color: var(--tenue); }
+  .giorno .q { font-size: 0.85rem; font-weight: 800; color: var(--tenue); font-variant-numeric: tabular-nums; }
+  .giorno.preso { border-color: rgba(88,196,138,0.5); background: rgba(30,66,48,0.55); }
+  .giorno.preso .q { color: #8fe6b4; }
+  .giorno.preso .n::after { content: ' ✓'; color: var(--verde); }
+  .giorno.oggi {
+    border-color: var(--oro); background: linear-gradient(180deg, rgba(96,70,34,0.9), rgba(48,34,16,0.9));
+    box-shadow: 0 0 16px rgba(232,196,106,0.4); transform: translateY(-2px);
+  }
+  .giorno.oggi .n { color: var(--oro-chiaro); }
+  .giorno.oggi .q { color: var(--oro-chiaro); font-size: 1rem; }
+  .giorno.oltre { border-style: dashed; }
+
+  .premio .ritira {
+    align-self: center; margin-top: 2px; padding: 9px 26px; border-radius: 11px; border: none;
+    font-family: inherit; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.6px; cursor: pointer;
+    background: linear-gradient(180deg, #ffe9ae, var(--oro)); color: #2a1c08;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5), 0 0 20px rgba(232,196,106,0.35);
+    animation: chiamaIlPremio 2s ease-in-out infinite;
+  }
+  @keyframes chiamaIlPremio {
+    0%,100% { box-shadow: 0 4px 14px rgba(0,0,0,0.5), 0 0 14px rgba(232,196,106,0.3); }
+    50%     { box-shadow: 0 4px 14px rgba(0,0,0,0.5), 0 0 26px rgba(232,196,106,0.65); }
+  }
+  .premio .ritira:disabled {
+    background: rgba(255,255,255,0.07); color: var(--tenue); cursor: default;
+    box-shadow: none; animation: none;
+  }
+
+  /* ---------- IL POPUP DI BENVENUTO ----------
+     Appena entri, il premio te lo devi vedere arrivare: se resta un
+     bottone in mezzo alla pagina, dopo tre giorni non lo guardi più.
+     Qui invece il gioco si ferma un attimo e ti festeggia. */
+  .festa {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    align-items: center; justify-content: center; padding: 20px;
+    background: rgba(6,4,10,0.82); backdrop-filter: blur(5px);
+    animation: velaEntra 0.32s ease-out;
+  }
+  .festa.viva { display: flex; }
+  .festa.esce { animation: velaEsce 0.34s ease-in forwards; }
+  @keyframes velaEntra { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes velaEsce  { to { opacity: 0; } }
+
+  .festa .raggi-festa {
+    position: absolute; width: 190vmax; height: 190vmax; pointer-events: none;
+    left: 50%; top: 50%; margin: -95vmax 0 0 -95vmax;
+    background: repeating-conic-gradient(from 0deg, rgba(255,224,150,0.13) 0deg 5deg, transparent 5deg 15deg);
+    animation: giraRaggi 34s linear infinite;
+  }
+  @keyframes giraRaggi { to { transform: rotate(360deg); } }
+
+  .scrigno {
+    position: relative; width: min(430px, 100%); border-radius: 20px; padding: 26px 22px 22px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+    border: 1px solid var(--oro); background: linear-gradient(172deg, #3a2a15 0%, #221708 55%, #150e05 100%);
+    box-shadow: 0 22px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,236,190,0.28), 0 0 60px rgba(232,196,106,0.25);
+    animation: scrignoArriva 0.62s cubic-bezier(.2,1.25,.4,1) both;
+  }
+  @keyframes scrignoArriva {
+    0%   { transform: scale(0.55) translateY(40px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .festa.esce .scrigno { animation: scrignoVia 0.34s ease-in forwards; }
+  @keyframes scrignoVia { to { transform: scale(0.86) translateY(-24px); opacity: 0; } }
+
+  .scrigno .occhiello {
+    font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; color: var(--tenue);
+  }
+  .scrigno h2 {
+    margin: 0; font-family: Georgia, serif; font-size: 1.5rem; letter-spacing: 1.4px;
+    background: linear-gradient(180deg, #fff6d8, var(--oro) 50%, #b98d2c);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .scrigno .bottino { display: flex; align-items: center; gap: 12px; margin: 4px 0 2px; }
+  .scrigno .bottino svg { width: 58px; height: 58px; animation: monetaGira 3.4s ease-in-out infinite; }
+  @keyframes monetaGira {
+    0%,100% { transform: rotateY(0deg); } 50% { transform: rotateY(180deg); }
+  }
+  .scrigno .cifra-premio {
+    font-size: 3.1rem; font-weight: 900; line-height: 1; color: var(--oro-chiaro);
+    font-variant-numeric: tabular-nums; text-shadow: 0 0 26px rgba(232,196,106,0.75);
+    animation: cifraCresce 0.75s cubic-bezier(.2,1.4,.4,1) 0.2s both;
+  }
+  @keyframes cifraCresce {
+    0%   { transform: scale(0.2); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .scrigno .didascalia { font-size: 0.86rem; color: var(--tenue); line-height: 1.55; }
+  .scrigno .didascalia b { color: var(--pergamena); }
+  .scrigno .scala { width: 100%; margin-top: 4px; }
+  .scrigno .raccogli {
+    width: 100%; margin-top: 8px; padding: 13px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 1rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff0c2, var(--oro) 55%, #b98d2c); color: #2a1c08;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.55), 0 0 26px rgba(232,196,106,0.45);
+    transition: transform 0.14s;
+  }
+  .scrigno .raccogli:hover { transform: translateY(-2px); }
+  .scrigno .raccogli:active { transform: translateY(1px); }
+  .scrigno.rimprovero { border-color: rgba(240,115,107,0.7); }
+  .scrigno.rimprovero h2 {
+    background: linear-gradient(180deg, #ffd9d5, #f0736b 55%, #a8433c);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* pioggia di monete dietro lo scrigno */
+  .coriandolo {
+    position: fixed; z-index: 59; pointer-events: none; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff3cc, #e8c46a 55%, #8a6118);
+    box-shadow: 0 0 8px rgba(232,196,106,0.8);
+    animation: cadeMoneta linear forwards;
+  }
+  @keyframes cadeMoneta {
+    0%   { transform: translateY(-12vh) rotate(0deg); opacity: 0; }
+    12%  { opacity: 1; }
+    100% { transform: translateY(112vh) rotate(720deg); opacity: 0; }
+  }
+
+  .etichetta-moneta {
+    font-size: 0.6rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--tenue); font-weight: 600;
+  }
+  .scrigno .cifra-premio .moneta-nome {
+    display: block; font-size: 0.78rem; font-style: normal; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase; color: var(--oro);
+    text-shadow: none; margin-top: 4px;
+  }
+  /* le caselle della scala: la parola una volta sola, non otto */
+  .scala-nota {
+    text-align: center; font-size: 0.62rem; letter-spacing: 1.6px;
+    text-transform: uppercase; color: var(--tenue); margin-top: 5px;
+  }
+
+  /* ---------- LA PARTITA LASCIATA A METÀ ----------
+     Se sei caduto mentre giocavi, la prima cosa che devi vedere
+     tornando è come rientrare — prima del premio, prima del negozio,
+     prima di tutto. */
+  .ripresa {
+    flex: 0 0 auto; width: 100%; max-width: 780px; margin: 0 auto;
+    display: none; align-items: center; gap: 13px; padding: 13px 16px;
+    border-radius: 14px; text-decoration: none; color: inherit;
+    border: 1px solid var(--verde, #58c48a); background: rgba(30,66,48,0.55);
+    box-shadow: 0 0 22px rgba(88,196,138,0.25);
+    animation: chiamaLaPartita 2.2s ease-in-out infinite;
+  }
+  .ripresa.viva { display: flex; }
+  @keyframes chiamaLaPartita {
+    0%,100% { box-shadow: 0 0 16px rgba(88,196,138,0.18); }
+    50%     { box-shadow: 0 0 30px rgba(88,196,138,0.42); }
+  }
+  .ripresa .pallino {
+    width: 11px; height: 11px; border-radius: 50%; background: #8fe6b4; flex: 0 0 auto;
+    box-shadow: 0 0 10px #8fe6b4; animation: batte 1.4s ease-in-out infinite;
+  }
+  @keyframes batte { 0%,100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+  .ripresa .testo { flex: 1; font-size: 0.9rem; line-height: 1.45; }
+  .ripresa .testo b { color: #d9ffe9; }
+  .ripresa .testo small { display: block; font-size: 0.74rem; color: #9dc9b0; margin-top: 2px; }
+  .ripresa .freccia { color: #b6ffd4; font-size: 1.3rem; }
+
+  /* le monete che volano dal premio al borsellino */
+  .volo {
+    position: fixed; z-index: 40; pointer-events: none; width: 22px; height: 22px;
+    border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3cc, #e8c46a 55%, #8a6118);
+    box-shadow: 0 0 10px rgba(232,196,106,0.9);
+  }
+
+  .ingranaggio { width: 42px; height: 42px; display: grid; place-items: center; cursor: pointer; }
+  .ingranaggio svg { width: 21px; height: 21px; color: var(--oro); }
+
+  /* ---------- TITOLO ---------- */
+  .insegna { text-align: center; padding: 2px 0 0; flex: 0 0 auto; }
+  .insegna h1 {
+    margin: 0; font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.9rem, 5.2vw, 3rem); font-weight: 700;
+    letter-spacing: clamp(2px, 0.9vw, 7px); line-height: 1;
+    background: linear-gradient(180deg, #fff6d8 0%, var(--oro) 42%, var(--oro-scuro) 72%, #ffe9ae 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.75)) drop-shadow(0 0 22px rgba(232,196,106,0.45));
+  }
+  .fregio { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 7px; }
+  .fregio .filo { height: 1px; width: clamp(40px, 16vw, 150px);
+                  background: linear-gradient(90deg, transparent, var(--oro), transparent); }
+  .fregio svg { width: 15px; height: 15px; color: var(--oro); }
+  .insegna .motto { margin-top: 6px; font-size: 0.76rem; color: var(--testo-tenue); letter-spacing: 1.4px; }
+
+  /* ---------- MODALITÀ ---------- */
+  .modalita { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: clamp(9px, 1.7vh, 15px); max-width: 660px; width: 100%; margin: 0 auto; min-height: 0; }
+
+  .modo {
+    position: relative; display: flex; align-items: stretch; gap: 0;
+    text-decoration: none; color: inherit; cursor: pointer;
+    border-radius: 13px; overflow: hidden; isolation: isolate;
+    border: 1px solid var(--oro-scuro);
+    background: linear-gradient(100deg, rgba(58,41,24,0.95) 0%, rgba(32,22,13,0.95) 55%, rgba(22,15,9,0.95) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.2), 0 5px 18px rgba(0,0,0,0.6);
+    transition: transform 0.16s cubic-bezier(.2,.9,.3,1), box-shadow 0.16s, border-color 0.16s;
+  }
+  /* bagliore che scorre da sinistra a destra al passaggio */
+  .modo::after {
+    content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: linear-gradient(105deg, transparent 38%, rgba(255,238,190,0.16) 50%, transparent 62%);
+    transform: translateX(-130%); transition: transform 0.55s ease;
+  }
+  .modo:hover { transform: translateY(-3px); border-color: var(--oro);
+                box-shadow: inset 0 1px 0 rgba(255,240,200,0.3), 0 10px 26px rgba(0,0,0,0.7), 0 0 26px rgba(232,196,106,0.28); }
+  .modo:hover::after { transform: translateX(130%); }
+  .modo:active { transform: translateY(0); }
+
+  /* riquadro illustrato a sinistra */
+  .modo .scena { position: relative; width: clamp(84px, 22vw, 124px); flex: 0 0 auto; overflow: hidden; }
+  .modo .scena svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .modo .scena::after { content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 55%, rgba(24,16,10,0.96) 100%); }
+
+  .modo .testo { flex: 1; padding: clamp(11px, 1.9vh, 17px) 16px; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; }
+  .modo .titolo {
+    font-family: Georgia, serif; font-size: clamp(1.05rem, 2.7vw, 1.4rem); font-weight: 700;
+    letter-spacing: 1.6px; color: var(--oro-chiaro); text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+  }
+  .modo .sotto { font-size: 0.76rem; color: var(--testo-tenue); letter-spacing: 0.3px; }
+  .modo .freccia { display: grid; place-items: center; padding-right: 16px; color: var(--oro); flex: 0 0 auto; }
+  .modo .freccia svg { width: 17px; height: 17px; transition: transform 0.16s; }
+  .modo:hover .freccia svg { transform: translateX(4px); }
+
+  .modo.chiuso { filter: grayscale(0.72) brightness(0.62); cursor: not-allowed; }
+  .modo.chiuso:hover { transform: none; box-shadow: inset 0 1px 0 rgba(255,224,160,0.2), 0 5px 18px rgba(0,0,0,0.6); border-color: var(--oro-scuro); }
+  .modo.chiuso:hover::after { transform: translateX(-130%); }
+  .sigillo-presto {
+    position: absolute; top: 9px; right: 9px; z-index: 3;
+    font-size: 0.56rem; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 20px; color: #1a1208;
+    background: linear-gradient(180deg, var(--oro-chiaro), var(--oro));
+    box-shadow: 0 2px 7px rgba(0,0,0,0.6);
+  }
+
+  /* ---------- NAVIGAZIONE IN BASSO ---------- */
+  .navigazione {
+    display: flex; justify-content: center; gap: 4px; padding: 7px;
+    max-width: 660px; width: 100%; margin: 0 auto; flex: 0 0 auto;
+  }
+  .voce {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: transparent; border: none; cursor: pointer; padding: 8px 4px;
+    border-radius: 10px; color: var(--testo-tenue);
+    font-size: 0.63rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+    text-decoration: none; transition: color 0.15s, background 0.15s, transform 0.15s;
+  }
+  .voce svg { width: 23px; height: 23px; }
+  .voce:hover:not(:disabled) { color: var(--oro-chiaro); background: rgba(232,196,106,0.09); transform: translateY(-2px); }
+  .voce:disabled { opacity: 0.4; cursor: not-allowed; }
+  .voce.attiva { color: var(--oro); }
+  .voce.attiva::before {
+    content: ''; position: absolute; margin-top: -8px; width: 22px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--oro), transparent);
+  }
+
+  @media (max-height: 560px) {
+    .insegna .motto, .fregio { display: none; }
+    .modo .sotto { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ FONDALE: sala con arcate sul paesaggio ============ -->
+<div class="fondale">
+  <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stop-color="#2a1a3d"/>
+        <stop offset="38%"  stop-color="#5c3450"/>
+        <stop offset="66%"  stop-color="#b06a4a"/>
+        <stop offset="86%"  stop-color="#e9a25c"/>
+        <stop offset="100%" stop-color="#f6cf8a"/>
+      </linearGradient>
+      <linearGradient id="montiLontani" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#6d4a63"/><stop offset="100%" stop-color="#4a2f47"/>
+      </linearGradient>
+      <linearGradient id="montiVicini" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3b2740"/><stop offset="100%" stop-color="#241830"/>
+      </linearGradient>
+      <linearGradient id="pietra" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%"   stop-color="#1a1119"/>
+        <stop offset="45%"  stop-color="#2b1d26"/>
+        <stop offset="100%" stop-color="#150e14"/>
+      </linearGradient>
+      <radialGradient id="sole" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0%"  stop-color="#fff3c4" stop-opacity="0.95"/>
+        <stop offset="45%" stop-color="#ffca7a" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#ffb463" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="veloBasso" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0e0a14" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#0e0a14" stop-opacity="0.96"/>
+      </linearGradient>
+    </defs>
+
+    <rect width="1200" height="800" fill="url(#cielo)"/>
+    <circle cx="600" cy="470" r="230" fill="url(#sole)"/>
+
+    <!-- catene montuose -->
+    <path d="M0 470 L120 392 L215 452 L330 348 L455 462 L560 405 L680 470 L790 372 L900 452 L1020 388 L1120 460 L1200 415 L1200 800 L0 800 Z" fill="url(#montiLontani)" opacity="0.62"/>
+    <path d="M0 545 L145 470 L268 528 L390 445 L520 535 L640 480 L770 545 L890 465 L1010 528 L1130 478 L1200 520 L1200 800 L0 800 Z" fill="url(#montiVicini)" opacity="0.82"/>
+
+    <!-- pavimento -->
+    <rect y="600" width="1200" height="200" fill="#150d16"/>
+    <path d="M0 600 L1200 600 L1200 640 L0 640 Z" fill="#241626" opacity="0.7"/>
+
+    <!-- colonne e arcate in primo piano -->
+    <g fill="url(#pietra)">
+      <path d="M0 0 H235 V800 H0 Z"/>
+      <path d="M965 0 H1200 V800 H1200 H965 Z"/>
+      <path d="M235 0 H965 V96 Q600 -34 235 96 Z"/>
+      <!-- capitelli -->
+      <rect x="196" y="150" width="78" height="24" rx="5"/>
+      <rect x="926" y="150" width="78" height="24" rx="5"/>
+      <rect x="186" y="612" width="98" height="26" rx="5"/>
+      <rect x="916" y="612" width="98" height="26" rx="5"/>
+    </g>
+    <!-- filo di luce sul bordo delle colonne -->
+    <path d="M235 96 V800" stroke="rgba(255,206,138,0.28)" stroke-width="1.5" fill="none"/>
+    <path d="M965 96 V800" stroke="rgba(255,206,138,0.28)" stroke-width="1.5" fill="none"/>
+    <path d="M235 96 Q600 -34 965 96" stroke="rgba(255,206,138,0.3)" stroke-width="1.5" fill="none"/>
+
+    <rect y="470" width="1200" height="330" fill="url(#veloBasso)"/>
+  </svg>
+</div>
+<div class="raggi-luce"></div>
+<div class="braci" id="braci"></div>
+
+<!-- ============ BARRA IN ALTO ============ -->
+<div class="barra-alta">
+  <div class="profilo riquadro">
+    <div class="cornice-avatar">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="elmo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#d9c48f"/><stop offset="100%" stop-color="#8a7143"/>
+        </linearGradient></defs>
+        <circle cx="24" cy="26" r="19" fill="#3a2a1c"/>
+        <path d="M24 8c-8 0-13 5.5-13 13v7h5v-7c0-4.6 3.4-8 8-8s8 3.4 8 8v7h5v-7c0-7.5-5-13-13-13z" fill="url(#elmo)"/>
+        <path d="M15 28h18v9a9 9 0 0 1-18 0z" fill="url(#elmo)" opacity="0.9"/>
+        <rect x="22.5" y="8" width="3" height="30" fill="#5d4a2a" opacity="0.75"/>
+        <path d="M17 31h5v5h-5z M26 31h5v5h-5z" fill="#231a10"/>
+      </svg>
+    </div>
+    <div>
+      <div class="nick">Pietro</div>
+      <div class="liv">Livello 15</div>
+      <div class="xp"><i></i></div>
+    </div>
+  </div>
+
+  <div class="valute">
+    <a class="valuta sharkini riquadro" id="borsellino" href="negozio.html" title="I tuoi sharkini">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="pinna" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#fff0c2"/><stop offset="55%" stop-color="#e8c46a"/><stop offset="100%" stop-color="#9a6f21"/>
+        </linearGradient></defs>
+        <circle cx="12" cy="12" r="10.5" fill="url(#pinna)" stroke="#7a5616" stroke-width="1"/>
+        <circle cx="12" cy="12" r="8" fill="none" stroke="#8d6520" stroke-width="0.7" opacity="0.7"/>
+        <path d="M12 5.6c2.6 2.2 4.4 5 5 8.8-1.6-1-3.2-1.5-5-1.5s-3.4 .5-5 1.5c.6-3.8 2.4-6.6 5-8.8z" fill="#5f4210"/>
+        <path d="M6.4 16.4c1.8 1.2 3.6 1.8 5.6 1.8s3.8-.6 5.6-1.8c-.5 1.3-1.2 2-2.2 2-1 0-1.6-.5-3.4-.5s-2.4.5-3.4.5c-1 0-1.7-.7-2.2-2z" fill="#5f4210" opacity="0.85"/>
+      </svg>
+      <span class="num" id="saldo">0</span>
+      <span class="etichetta-moneta">sharkini</span>
+      <span class="piu" title="Ricarica sharkini">+</span>
+    </a>
+    <div class="ingranaggio riquadro" title="Impostazioni">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M12 2.6v2.6M12 18.8v2.6M21.4 12h-2.6M5.2 12H2.6M18.6 5.4l-1.9 1.9M7.3 16.7l-1.9 1.9M18.6 18.6l-1.9-1.9M7.3 7.3 5.4 5.4"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TITOLO ============ -->
+<div class="insegna">
+  <h1>BURRACO LEGENDS</h1>
+  <div class="fregio">
+    <span class="filo"></span>
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.2L21 9.6l-4.8 4.3L17.6 21 12 17.6 6.4 21l1.4-7.1L3 9.6l6.6-1.4z"/></svg>
+    <span class="filo"></span>
+  </div>
+  <div class="motto">LE REGOLE DEL BURRACO · LA FORZA DEGLI EROI</div>
+</div>
+
+<!-- ============ LA PARTITA LASCIATA A METÀ ============ -->
+<a class="ripresa" id="ripresa" href="tavolo.html">
+  <span class="pallino"></span>
+  <span class="testo">
+    <b>Hai una partita in corso</b>
+    <small id="ripresa-dettaglio">Tocca per tornare al tavolo</small>
+  </span>
+  <span class="freccia">›</span>
+</a>
+
+<!-- ============ IL BENVENUTO ============ -->
+<div class="festa" id="festa">
+  <div class="raggi-festa"></div>
+  <div class="scrigno" id="scrigno">
+    <span class="occhiello" id="festa-occhiello"></span>
+    <h2 id="festa-titolo"></h2>
+    <div class="bottino">
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="monetaFesta" x1="0" y1="0" x2="0.5" y2="1">
+          <stop offset="0%" stop-color="#fff3cc"/><stop offset="45%" stop-color="#e8c46a"/><stop offset="100%" stop-color="#8a6118"/>
+        </linearGradient></defs>
+        <circle cx="20" cy="20" r="18" fill="url(#monetaFesta)" stroke="#6b4a10" stroke-width="1.6"/>
+        <circle cx="20" cy="20" r="14" fill="none" stroke="rgba(107,74,16,0.5)" stroke-width="1.1"/>
+        <path d="M20 9 C25 15 28 21 29 26 C25 24 22 23.5 20 23.5 C18 23.5 15 24 11 26 C12 21 15 15 20 9 Z" fill="#6b4a10" opacity="0.82"/>
+        <path d="M10 29 q2.6 -2 5.2 0 t5.2 0 t5.2 0 t4.4 0" fill="none" stroke="#6b4a10" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+      </svg>
+      <span class="cifra-premio" id="festa-cifra"></span>
+    </div>
+    <div class="didascalia" id="festa-didascalia"></div>
+    <div class="scala" id="festa-scala"></div>
+    <button class="raccogli" id="festa-raccogli">Raccogli</button>
+  </div>
+</div>
+
+<!-- ============ PREMIO DEL GIORNO ============ -->
+<div class="premio riquadro" id="premio">
+  <div class="riga-titolo">
+    <h2>Premio del giorno</h2>
+    <span class="stato" id="stato-serie"></span>
+  </div>
+  <div class="scala" id="scala"></div>
+  <button class="ritira" id="ritira">Ritira</button>
+</div>
+
+<!-- ============ MODALITÀ ============ -->
+<div class="modalita">
+
+  <a class="modo" href="tavolo.html">
+    <div class="scena">
+      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sfTavolo" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#1f5c3f"/><stop offset="100%" stop-color="#0d2c1f"/>
+          </linearGradient>
+          <linearGradient id="lama" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stop-color="#8e9bb0"/><stop offset="55%" stop-color="#eef3ff"/><stop offset="100%" stop-color="#7d8899"/>
+          </linearGradient>
+        </defs>
+        <rect width="120" height="100" fill="url(#sfTavolo)"/>
+        <ellipse cx="60" cy="52" rx="46" ry="34" fill="rgba(150,255,205,0.10)"/>
+        <!-- spade incrociate -->
+        <g stroke-linecap="round">
+          <path d="M30 78 L84 24" stroke="url(#lama)" stroke-width="6"/>
+          <path d="M90 78 L36 24" stroke="url(#lama)" stroke-width="6"/>
+          <path d="M24 84 L34 74 M96 84 L86 74" stroke="#c9a24a" stroke-width="7"/>
+          <path d="M74 20 L92 18 L90 36" stroke="#c9a24a" stroke-width="5" fill="none"/>
+          <path d="M46 20 L28 18 L30 36" stroke="#c9a24a" stroke-width="5" fill="none"/>
+        </g>
+        <!-- carte -->
+        <g transform="translate(60 66)">
+          <rect x="-26" y="-16" width="22" height="31" rx="3" fill="#f6f1e4" transform="rotate(-16)"/>
+          <rect x="-11" y="-18" width="22" height="31" rx="3" fill="#fffbf0"/>
+          <rect x="4"  y="-16" width="22" height="31" rx="3" fill="#f6f1e4" transform="rotate(15)"/>
+          <text x="0" y="1" font-size="12" text-anchor="middle" fill="#c0392b" font-family="Georgia, serif">♥</text>
+        </g>
+      </svg>
+    </div>
+    <div class="testo">
+      <span class="titolo">IL TAVOLO</span>
+      <span class="sotto">Sfida uno contro uno · partita rapida</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+  <a class="modo" href="negozio.html">
+    <div class="scena">
+      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sfNegozio" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#4a2b6b"/><stop offset="100%" stop-color="#1c1030"/>
+          </linearGradient>
+          <linearGradient id="bustaHome" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7a55d8"/><stop offset="100%" stop-color="#2e1a6b"/>
+          </linearGradient>
+          <linearGradient id="oroHome" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fff2c8"/><stop offset="55%" stop-color="#e8c46a"/><stop offset="100%" stop-color="#8a6118"/>
+          </linearGradient>
+        </defs>
+        <rect width="120" height="100" fill="url(#sfNegozio)"/>
+        <circle cx="60" cy="48" r="34" fill="rgba(255,214,140,0.14)"/>
+        <!-- tre buste sovrapposte -->
+        <g>
+          <rect x="20" y="26" width="38" height="54" rx="5" fill="url(#bustaHome)" stroke="url(#oroHome)" stroke-width="2" transform="rotate(-11 39 53)"/>
+          <rect x="62" y="26" width="38" height="54" rx="5" fill="url(#bustaHome)" stroke="url(#oroHome)" stroke-width="2" transform="rotate(11 81 53)"/>
+          <rect x="41" y="20" width="38" height="60" rx="5" fill="url(#bustaHome)" stroke="url(#oroHome)" stroke-width="2.4"/>
+          <path d="M41 34 l6 -3 l7 3 l7 -3 l7 3 l5 -2" fill="none" stroke="rgba(255,240,200,0.6)" stroke-width="1.6" stroke-dasharray="3 2"/>
+          <g transform="translate(60 56)" font-family="Georgia, serif" text-anchor="middle">
+            <text y="-4" font-size="10" fill="#ff8fa3">&#9829;</text>
+            <text y="14" font-size="10" fill="#ff8fa3">&#9830;</text>
+            <text x="-11" y="5" font-size="10" fill="#e8e6f0">&#9827;</text>
+            <text x="11" y="5" font-size="10" fill="#e8e6f0">&#9824;</text>
+          </g>
+        </g>
+        <!-- scintille -->
+        <g fill="#ffe9ae">
+          <circle cx="26" cy="16" r="2"/><circle cx="96" cy="20" r="1.6"/>
+          <circle cx="16" cy="70" r="1.4"/><circle cx="104" cy="66" r="2"/>
+        </g>
+      </svg>
+    </div>
+    <div class="testo">
+      <span class="titolo">ACQUISTA PACCHETTI</span>
+      <span class="sotto">Da 1 a 50 carte per volta</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+  <a class="modo" href="sala.html">
+    <div class="scena">
+      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sfAmico" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#2b3f6b"/><stop offset="100%" stop-color="#141c33"/>
+          </linearGradient>
+          <linearGradient id="oroAmico" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fff2c8"/><stop offset="55%" stop-color="#e8c46a"/><stop offset="100%" stop-color="#8a6118"/>
+          </linearGradient>
+        </defs>
+        <rect width="120" height="100" fill="url(#sfAmico)"/>
+        <circle cx="60" cy="50" r="40" fill="rgba(180,210,255,0.1)"/>
+        <!-- due figure una di fronte all'altra, e in mezzo il tavolo -->
+        <g fill="url(#oroAmico)">
+          <circle cx="30" cy="34" r="9"/>
+          <path d="M16 60c0-8 6-14 14-14s14 6 14 14z"/>
+          <circle cx="90" cy="34" r="9"/>
+          <path d="M76 60c0-8 6-14 14-14s14 6 14 14z"/>
+        </g>
+        <ellipse cx="60" cy="76" rx="34" ry="10" fill="#1f5c3f" stroke="url(#oroAmico)" stroke-width="2"/>
+        <g fill="#f2e6cc" stroke="#8a6118" stroke-width="0.8">
+          <rect x="48" y="68" width="11" height="15" rx="1.6" transform="rotate(-11 53 75)"/>
+          <rect x="61" y="68" width="11" height="15" rx="1.6" transform="rotate(11 66 75)"/>
+        </g>
+      </svg>
+    </div>
+    <div class="testo">
+      <span class="titolo">GIOCA CON UN AMICO</span>
+      <span class="sotto">Un codice da passargli &middot; partita vera</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+  <a class="modo chiuso" href="#" onclick="return false;">
+    <span class="sigillo-presto">Presto</span>
+    <div class="scena">
+      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sfMissioni" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3c2a55"/><stop offset="100%" stop-color="#191029"/>
+          </linearGradient>
+          <linearGradient id="carta" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f6e6c2"/><stop offset="100%" stop-color="#cdb488"/>
+          </linearGradient>
+        </defs>
+        <rect width="120" height="100" fill="url(#sfMissioni)"/>
+        <circle cx="60" cy="48" r="32" fill="rgba(190,150,255,0.14)"/>
+        <g>
+          <path d="M34 24h52v54H34z" fill="#f2e2be"/>
+          <path d="M34 24c-5 0-8 3-8 7s3 7 8 7zM86 64c5 0 8 3 8 7s-3 7-8 7z" fill="#d9c496"/>
+          <g stroke="#7c6134" stroke-width="2" stroke-linecap="round">
+            <path d="M44 38h32M44 47h32M44 56h22"/>
+          </g>
+          <circle cx="72" cy="62" r="9" fill="#2d1f45" stroke="#b98cff" stroke-width="2"/>
+          <circle cx="72" cy="62" r="3.4" fill="#dcc0ff"/>
+        </g>
+      </svg>
+    </div>
+    <div class="testo">
+      <span class="titolo">LE MISSIONI</span>
+      <span class="sotto">Sfide contro l'intelligenza artificiale</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+</div>
+
+<!-- ============ NAVIGAZIONE ============ -->
+<div class="navigazione riquadro">
+  <a class="voce" href="selezione.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+      <rect x="3.2" y="5" width="10" height="14" rx="1.6" transform="rotate(-9 8 12)"/>
+      <rect x="10.8" y="5" width="10" height="14" rx="1.6" transform="rotate(9 16 12)"/>
+      <path d="M16 10.4v3.2M14.4 12h3.2"/>
+    </svg>
+    Deck ed Eroi
+  </a>
+  <button class="voce attiva">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+      <path d="M3.6 10.6 12 3.4l8.4 7.2"/><path d="M5.6 12.2V20h12.8v-7.8"/><path d="M10 20v-5h4v5"/>
+    </svg>
+    Home
+  </button>
+  <a class="voce" href="negozio.html" title="Acquista pacchetti">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+      <rect x="3" y="9" width="18" height="12" rx="1.8"/><path d="M2.4 9h19.2v3.4H2.4z"/><path d="M12 9v12"/>
+      <path d="M12 9S9.6 4.2 7 5.2 8.8 9 12 9zM12 9s2.4-4.8 5-3.8S15.2 9 12 9z"/>
+    </svg>
+    Negozio
+  </a>
+  <a class="voce" href="accedi.html" title="Il tuo account">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+      <circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+    </svg>
+    Account
+  </a>
+  <a class="voce" href="album.html" title="Il tuo album">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+      <path d="M4 4.6A1.6 1.6 0 0 1 5.6 3H19v18H5.6A1.6 1.6 0 0 1 4 19.4z"/>
+      <path d="M8 3v18"/><path d="M11.6 8.4h4M11.6 12h4M11.6 15.6h2.4"/>
+    </svg>
+    Album
+  </a>
+  <button class="voce" disabled title="Non ancora disponibile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+      <path d="M12 21s-7.4-4.4-7.4-10.2A4.4 4.4 0 0 1 12 8.4a4.4 4.4 0 0 1 7.4 2.4C19.4 16.6 12 21 12 21z"/>
+      <path d="M12 8.4V3.2M9 5.2h6"/>
+    </svg>
+    Alleanze
+  </button>
+</div>
+
+<script>
+// Braci che salgono dal basso: ognuna con tempi e percorso diversi, così
+// non si vede la ripetizione. Disegnate qui invece che nel foglio di
+// stile perché servono valori casuali.
+(function () {
+  const box = document.getElementById('braci');
+  let html = '';
+  for (let i = 0; i < 22; i++) {
+    const x = Math.random() * 100;
+    const durata = 9 + Math.random() * 11;
+    const ritardo = Math.random() * 16;
+    const dim = 2 + Math.random() * 2.6;
+    html += '<div class="brace" style="left:' + x.toFixed(1) + '%; bottom:-10px;' +
+            'width:' + dim.toFixed(1) + 'px; height:' + dim.toFixed(1) + 'px;' +
+            'animation-duration:' + durata.toFixed(1) + 's; animation-delay:-' + ritardo.toFixed(1) + 's"></div>';
+  }
+  box.innerHTML = html;
+})();
+</script>
+
+<script>
+// ============================================================
+// IL PREMIO DEL GIORNO
+// Le regole stanno tutte in engine/sharkini.js, incorporato qui sotto:
+// questa parte disegna e basta. Se un domani il conteggio si sposta sul
+// server, cambia da dove arrivano i dati, non come si vedono.
+// ============================================================
+(function () {
+"use strict";
+
+/* ==== MOTORE INCORPORATO — generato da strumenti/aggiorna-motore-home.py, non modificare a mano ==== */
+
+const __SHA = (function(){
+// ============================================================
+// BURRACO LEGENDS — GLI SHARKINI
+//
+// Nel gioco c'è UNA SOLA moneta: lo sharkino. Le carte si comprano
+// solo con gli sharkini, mai direttamente con i soldi. I soldi veri
+// servono unicamente a ricaricare sharkini. Due passaggi, non uno:
+//
+//     euro  →  sharkini  →  pacchetti di carte
+//
+// Il motivo non è estetico. Gli sharkini si guadagnano anche entrando
+// ogni giorno: se le carte avessero un prezzo in euro accanto a quello
+// in sharkini, il premio giornaliero diventerebbe un listino, e il
+// giocatore che non spende si sentirebbe ricordare ogni volta quanto
+// vale il tempo che ha regalato al gioco. Con una moneta sola, chi
+// gioca e chi paga arrivano allo stesso posto per strade diverse.
+//
+// IL PREMIO DI OGNI GIORNO
+// Primo giorno 100, poi 100 in più ogni giorno fino a 700 al settimo.
+// Da lì in poi resta 700, all'infinito, FINCHÉ non si salta un giorno:
+// chi salta ricomincia da 100. Non si perdono gli sharkini già presi,
+// si perde la scala.
+//
+// IL CAMBIO
+// Un mese intero di accessi consecutivi = un pacchetto da 5 carte.
+// È il paletto deciso col committente e da lì scendono tutti i prezzi.
+// Verificato dal test, non a occhio.
+//
+// NUMERI ANCORA PROVVISORI, da tarare col playtest:
+//   - la scala del premio giornaliero
+//   - il cambio euro → sharkini
+//   - i prezzi dei pacchetti
+// ============================================================
+
+// ------------------------------------------------------------
+// 1. IL PREMIO GIORNALIERO
+// ------------------------------------------------------------
+const PREMI_SETTIMANA = [100, 200, 300, 400, 500, 600, 700];
+const PREMIO_MASSIMO = PREMI_SETTIMANA[PREMI_SETTIMANA.length - 1];
+
+// Quanto vale il giorno numero N della serie (N parte da 1).
+function premioDelGiorno(giorno) {
+  if (giorno < 1) return 0;
+  return giorno <= PREMI_SETTIMANA.length ? PREMI_SETTIMANA[giorno - 1] : PREMIO_MASSIMO;
+}
+
+// Quanto raccoglie in tutto chi entra N giorni di fila senza saltarne uno.
+function guadagnoInGiorni(giorni) {
+  let somma = 0;
+  for (let g = 1; g <= giorni; g++) somma += premioDelGiorno(g);
+  return somma;
+}
+
+// ------------------------------------------------------------
+// LE DATE
+// Confronto i giorni di calendario, non i millisecondi: chi entra alle
+// 23:50 e poi alle 00:10 ha fatto due giorni, chi entra alle 09:00 e
+// alle 21:00 ne ha fatto uno solo. Uso la data locale del giocatore,
+// che è quella che lui vede sul telefono.
+// ------------------------------------------------------------
+function giornoDiCalendario(quando) {
+  const d = new Date(quando);
+  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000;
+}
+
+const SERIE_NUOVA = { giorno: 0, ultimoRitiro: null, saldo: 0 };
+
+// Che cosa mostrare al giocatore in questo momento, senza cambiare nulla.
+function statoSerie(serie, adesso) {
+  const oggi = giornoDiCalendario(adesso);
+  const ultimo = serie.ultimoRitiro;
+
+  if (ultimo === null) {
+    return { puoRitirare: true, giorno: 1, premio: premioDelGiorno(1),
+             serieRotta: false, giaRitiratoOggi: false };
+  }
+  const distanza = oggi - ultimo;
+
+  if (distanza <= 0) {                       // già passato di qui oggi
+    return { puoRitirare: false, giorno: serie.giorno, premio: premioDelGiorno(serie.giorno),
+             serieRotta: false, giaRitiratoOggi: true };
+  }
+  if (distanza === 1) {                      // la serie regge
+    const g = serie.giorno + 1;
+    return { puoRitirare: true, giorno: g, premio: premioDelGiorno(g),
+             serieRotta: false, giaRitiratoOggi: false };
+  }
+  return { puoRitirare: true, giorno: 1, premio: premioDelGiorno(1),   // saltato: si ricomincia
+           serieRotta: true, giaRitiratoOggi: false };
+}
+
+// Ritira il premio. Restituisce sempre una serie nuova, non tocca quella
+// ricevuta: così chi chiama non si ritrova lo stato cambiato sotto i piedi.
+function ritiraPremio(serie, adesso) {
+  const stato = statoSerie(serie, adesso);
+  if (!stato.puoRitirare) return { serie, guadagno: 0, stato };
+  const aggiornata = {
+    giorno: stato.giorno,
+    ultimoRitiro: giornoDiCalendario(adesso),
+    saldo: serie.saldo + stato.premio
+  };
+  return { serie: aggiornata, guadagno: stato.premio, stato };
+}
+
+// Quanto manca prima che la serie si rompa, per poterlo dire al
+// giocatore prima e non dopo:
+//    1  = tutto a posto, il premio di domani è ancora tuo
+//    0  = ultimo giorno utile, se non entri oggi la perdi
+//   -1  = già persa
+// null = non c'è ancora nessuna serie da perdere
+function giorniPrimaDiPerdereLaSerie(serie, adesso) {
+  if (serie.ultimoRitiro === null) return null;
+  const passati = giornoDiCalendario(adesso) - serie.ultimoRitiro;
+  return passati >= 2 ? -1 : 1 - passati;
+}
+
+// ------------------------------------------------------------
+// 2. IL CAMBIO CON GLI EURO
+// Ricariche: più grande è la ricarica, più sharkini per euro. Il bonus
+// cresce sempre, mai un gradino che rende peggiore la ricarica più cara.
+// ------------------------------------------------------------
+const SHARKINI_PER_EURO = 6000;
+
+const RICARICHE = [
+  { id: 'manciata', euro: 1.00,  bonus: 0    },
+  { id: 'sacchetto', euro: 2.00, bonus: 0.05 },
+  { id: 'borsa',    euro: 5.00,  bonus: 0.10 },
+  { id: 'cassa',    euro: 10.00, bonus: 0.15, etichetta: 'popolare' },
+  { id: 'baule',    euro: 20.00, bonus: 0.20 },
+  { id: 'montagna', euro: 50.00, bonus: 0.25, etichetta: 'conviene' }
+].map((r) => ({
+  ...r,
+  base: Math.round(r.euro * SHARKINI_PER_EURO),
+  extra: Math.round(r.euro * SHARKINI_PER_EURO * r.bonus),
+  sharkini: Math.round(r.euro * SHARKINI_PER_EURO * (1 + r.bonus))
+}));
+
+function sharkiniPerEuro(ricarica) { return ricarica.sharkini / ricarica.euro; }
+
+// ------------------------------------------------------------
+// 3. QUANTO COSTANO I PACCHETTI
+// Il paletto: 30 giorni di accessi di fila devono bastare per il
+// pacchetto da 5 carte. Tutti gli altri prezzi seguono la stessa curva
+// di sconto di prima, così il taglio grande conviene sempre.
+// ------------------------------------------------------------
+const GIORNI_PER_UN_PACCO = 30;
+
+function saldoPuoPagare(saldo, costo) { return saldo >= costo; }
+
+function spendi(saldo, costo) {
+  if (!saldoPuoPagare(saldo, costo)) return { saldo, riuscito: false };
+  return { saldo: saldo - costo, riuscito: true };
+}
+
+// Quanti giorni di accessi servono per arrivare a una certa cifra,
+// partendo da zero e senza saltare mai un giorno.
+function giorniPerRaccogliere(costo) {
+  let somma = 0, g = 0;
+  while (somma < costo) { g++; somma += premioDelGiorno(g); }
+  return g;
+}
+
+function formattaSharkini(n) {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Il numero da solo non dice niente: "ti mancano 6.000" di che cosa?
+// Ovunque ci sia spazio, la cifra va accompagnata dal nome della moneta.
+function conNome(n) {
+  const q = Math.round(n);
+  return formattaSharkini(q) + (q === 1 ? ' sharkino' : ' sharkini');
+}
+
+return {PREMI_SETTIMANA, PREMIO_MASSIMO, premioDelGiorno, guadagnoInGiorni, giornoDiCalendario, SERIE_NUOVA, statoSerie, ritiraPremio, giorniPrimaDiPerdereLaSerie, SHARKINI_PER_EURO, RICARICHE, sharkiniPerEuro, GIORNI_PER_UN_PACCO, saldoPuoPagare, spendi, giorniPerRaccogliere, formattaSharkini, conNome};
+})();
+const {PREMI_SETTIMANA, PREMIO_MASSIMO, premioDelGiorno, guadagnoInGiorni, giornoDiCalendario, SERIE_NUOVA, statoSerie, ritiraPremio, giorniPrimaDiPerdereLaSerie, SHARKINI_PER_EURO, RICARICHE, sharkiniPerEuro, GIORNI_PER_UN_PACCO, saldoPuoPagare, spendi, giorniPerRaccogliere, formattaSharkini, conNome} = __SHA;
+
+const __PAC = (function(){
+// ============================================================
+// BURRACO LEGENDS — PACCHETTI DI CARTE
+//
+// Che cosa esce da un pacchetto, e con che probabilità. Sta qui e non
+// nella pagina perché è una REGOLA DI GIOCO, non una decorazione: deve
+// essere provabile, controllabile e — un domani — eseguibile sul server,
+// dove il giocatore non può metterci le mani.
+//
+// PITY SYSTEM (spec §10)
+// Ogni tot pacchetti si ha la garanzia di una carta ★5 e due ★4. Senza
+// una garanzia, la sfortuna può accanirsi per decine di pacchetti e il
+// giocatore smette. Il contatore va conservato fra una sessione e
+// l'altra: qui viene passato dentro e restituito aggiornato.
+//
+// NUMERI ANCORA PROVVISORI, da tarare col playtest:
+//   - soglia del pity
+//   - probabilità per rarità
+//   - costo in sharkini
+// ============================================================
+
+const CARTE_PER_PACCHETTO = 5;   // il taglio "normale"
+
+// ------------------------------------------------------------
+// I TAGLI IN VENDITA
+//
+// I pacchetti si pagano SOLO in sharkini. Qui dentro non compare
+// nessun euro, e non è una svista: gli euro comprano sharkini, gli
+// sharkini comprano carte (vedi engine/sharkini.js).
+//
+// Il paletto da cui scende tutto: 30 giorni di accessi consecutivi
+// devono bastare per il pacchetto da 5 carte → 18.000 sharkini.
+// Gli altri tagli tengono la stessa curva: il costo per carta scende
+// sempre salendo di taglio, il pacchetto grande non deve MAI convenire
+// meno di quello piccolo. Controllato da un test apposta.
+// ------------------------------------------------------------
+const OFFERTE = [
+  { id: 'busta',    carte: 1,  costo:   6000, etichetta: null },
+  { id: 'trio',     carte: 3,  costo:  12000, etichetta: null },
+  { id: 'pacco',    carte: 5,  costo:  18000, etichetta: null },
+  { id: 'scrigno',  carte: 10, costo:  30000, etichetta: 'popolare' },
+  { id: 'forziere', carte: 25, costo:  60000, etichetta: null },
+  { id: 'tesoro',   carte: 50, costo: 108000, etichetta: 'conviene' }
+];
+
+function costoPerCarta(offerta) { return offerta.costo / offerta.carte; }
+
+// Quanto si risparmia rispetto al costo della singola carta.
+function scontoPercentuale(offerta) {
+  const base = OFFERTE[0].costo;                  // 1 carta = prezzo pieno
+  return Math.round((1 - costoPerCarta(offerta) / base) * 100);
+}
+
+function offertaPerCarte(quante) {
+  return OFFERTE.find((o) => o.carte === quante) || null;
+}
+
+// ------------------------------------------------------------
+// GARANZIA (pity)
+// Il contatore conta CARTE, non pacchetti: solo così è giusto anche coi
+// tagli diversi. Chi compra 50 carte in una volta deve ricevere le stesse
+// garanzie di chi ne compra 50 una alla volta — altrimenti il taglio
+// grande punirebbe o premierebbe senza motivo.
+// ------------------------------------------------------------
+const SOGLIA_PITY = 60;   // carte fra una garanzia e l'altra
+
+// Probabilità per rarità, in percentuale. La somma deve fare 100: c'è un
+// controllo che lo verifica, perché una tabella sbagliata qui si nota
+// solo dopo migliaia di estrazioni.
+const PROBABILITA = { 1: 50, 2: 28, 3: 14, 4: 6.5, 5: 1.5 };
+
+// Quante monete vale un doppione: le carte non si scambiano fra utenti
+// (spec §10), quindi un doppione deve valere comunque qualcosa.
+const RIMBORSO_DOPPIONE = { 1: 5, 2: 12, 3: 30, 4: 80, 5: 250 };
+
+function verificaProbabilita() {
+  const somma = Object.values(PROBABILITA).reduce((a, b) => a + b, 0);
+  return Math.abs(somma - 100) < 1e-9;
+}
+
+function estraiRarita(rng) {
+  let r = rng() * 100;
+  for (const rarita of [1, 2, 3, 4, 5]) {
+    r -= PROBABILITA[rarita];
+    if (r <= 0) return rarita;
+  }
+  return 1;
+}
+
+function pescaDiRarita(catalogo, rarita, rng) {
+  const candidate = catalogo.filter((c) => Number(c.rarita) === rarita);
+  // se per quella rarità non esistono ancora carte, si scende di livello
+  if (!candidate.length) {
+    for (let r = rarita - 1; r >= 1; r--) {
+      const alt = catalogo.filter((c) => Number(c.rarita) === r);
+      if (alt.length) return alt[Math.floor(rng() * alt.length)];
+    }
+    return catalogo[Math.floor(rng() * catalogo.length)];
+  }
+  return candidate[Math.floor(rng() * candidate.length)];
+}
+
+/**
+ * Apre un pacchetto.
+ *
+ * @param catalogo   tutte le carte esistenti [{ id, rarita, tipo|seme }]
+ * @param posseduto  { idCarta: quante ne ho } — serve a dire cosa è nuovo
+ * @param contatore  quante carte aperte dall'ultima garanzia
+ * @param rng        sorgente casuale (i test ne passano una prevedibile)
+ * @param quante     quante carte contiene questo pacchetto
+ *
+ * @returns { carte, contatore, pityScattato, garanzie }
+ *   carte: [{ carta, rarita, nuova, copiePossedute, rimborso }]
+ *          ordinate dalla meno alla più rara: l'ultima è la migliore, ed
+ *          è quella che il pacchetto mostra per ultima.
+ */
+function apriPacchetto(catalogo, posseduto = {}, contatore = 0, rng = Math.random, quante = CARTE_PER_PACCHETTO) {
+  if (!catalogo || !catalogo.length) throw new Error('Il catalogo delle carte è vuoto.');
+  if (!(quante > 0)) throw new Error('Un pacchetto deve contenere almeno una carta.');
+
+  // Quante garanzie maturano dentro questo pacchetto. Con i tagli grandi
+  // possono essere più di una: 50 carte con soglia 60 possono contenerne
+  // una, e chi ne compra 120 di fila ne trova due.
+  const primaDi = Math.floor(contatore / SOGLIA_PITY);
+  const dopoDi = Math.floor((contatore + quante) / SOGLIA_PITY);
+  const garanzie = Math.max(0, dopoDi - primaDi);
+  const pityScattato = garanzie > 0;
+
+  // rarità delle carte: prima le garantite, poi il resto a sorte
+  const rarita = [];
+  for (let g = 0; g < garanzie; g++) rarita.push(5, 4, 4);
+  rarita.splice(quante);                                   // se il taglio è piccolo, si tiene il meglio
+  while (rarita.length < quante) rarita.push(estraiRarita(rng));
+
+  // le copie possedute vanno contate mano a mano: due copie della stessa
+  // carta nello stesso pacchetto non sono entrambe "nuova"
+  const conteggio = { ...posseduto };
+  const carte = rarita.map((r) => {
+    const carta = pescaDiRarita(catalogo, r, rng);
+    const giaAvute = conteggio[carta.id] || 0;
+    conteggio[carta.id] = giaAvute + 1;
+    return {
+      carta,
+      rarita: Number(carta.rarita) || 1,
+      nuova: giaAvute === 0,
+      copiePossedute: giaAvute + 1,
+      rimborso: giaAvute === 0 ? 0 : (RIMBORSO_DOPPIONE[Number(carta.rarita)] || 0)
+    };
+  });
+
+  // dalla meno rara alla più rara: il pacchetto sale di tono fino all'ultima
+  carte.sort((a, b) => a.rarita - b.rarita);
+
+  const contatoreDopo = (contatore + quante) % SOGLIA_PITY;
+  return {
+    carte,
+    contatore: contatoreDopo,
+    pityScattato,
+    garanzie,
+    mancanoAllaGaranzia: SOGLIA_PITY - contatoreDopo
+  };
+}
+
+// Quante monete si incassano dai doppioni di un pacchetto.
+function rimborsoTotale(risultato) {
+  return risultato.carte.reduce((t, c) => t + c.rimborso, 0);
+}
+
+return {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, apriPacchetto, rimborsoTotale};
+})();
+const {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, apriPacchetto, rimborsoTotale} = __PAC;
+
+
+// ============================================================
+// IL PONTE
+//
+// Sharkini, album e pacchetti adesso stanno sul server. Il browser
+// chiede e mostra: non decide più niente, e soprattutto non può più
+// mentire — prima bastava aprire gli strumenti di sviluppo per darsi
+// un milione di sharkini e tutte le carte rare.
+//
+// MA LE PAGINE DEVONO APRIRSI ANCHE COL DOPPIO CLIC.
+// Serve per provarle in fretta, senza avviare niente. Allora ci sono
+// due ponti con le stesse identiche funzioni: uno parla col server,
+// l'altro si arrangia col browser. Chi li usa non sa quale dei due ha
+// davanti — e questo tiene il resto del codice pulito da "se c'è il
+// server allora... altrimenti...".
+//
+// La regola per scegliere è semplice e non mente: se la pagina è
+// arrivata da un server, si parla col server. Se è stata aperta da un
+// file, non c'è nessun server con cui parlare.
+// ============================================================
+const CI_SONO_ARRIVATO_DAL_SERVER = location.protocol === 'http:' || location.protocol === 'https:';
+
+function creaPonteServer() {
+  const CHIAVE_GETTONE = 'bb_gettone';
+  let gettone = null;
+  try { gettone = localStorage.getItem(CHIAVE_GETTONE); } catch (e) {}
+
+  async function chiedi(via, corpo) {
+    const risposta = await fetch(via, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...corpo, gettone })
+    });
+    return risposta.json();
+  }
+
+  return {
+    dove: 'server',
+    async io(nome) {
+      const r = await chiedi('/api/io', { nome });
+      if (r.gettone) {
+        gettone = r.gettone;
+        // Il gettone è l'unica cosa che il browser deve custodire: è
+        // la chiave di casa. Perderlo vuol dire ripartire da zero,
+        // finché non ci saranno gli account veri.
+        try { localStorage.setItem(CHIAVE_GETTONE, gettone); } catch (e) {}
+      }
+      return r;
+    },
+    ritiraPremio: () => chiedi('/api/premio', {}),
+    compra: (carte) => chiedi('/api/compra', { carte }),
+    ricarica: (offerta) => chiedi('/api/ricarica', { offerta })
+  };
+}
+
+// ------------------------------------------------------------
+// IL PONTE DI RIPIEGO
+// Quando la pagina è aperta col doppio clic non c'è nessun server: si
+// fa tutto qui, come prima. È chiaramente falsificabile, e va bene —
+// serve solo a guardare le pagine, non a giocare sul serio. Perché
+// resti chiaro, ogni risposta porta `diProva: true` e le pagine lo
+// dicono a chi guarda.
+// ------------------------------------------------------------
+function creaPonteBrowser() {
+  const leggi = (c, d) => { try { const v = localStorage.getItem(c); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+  const scrivi = (c, v) => { try { localStorage.setItem(c, JSON.stringify(v)); } catch (e) {} };
+
+  function statoAttuale() {
+    const serie = Object.assign({}, SERIE_NUOVA, leggi('bb_sharkini', {}));
+    const collezione = leggi('bb_collezione', {});
+    const contatorePity = leggi('bb_pity', 0);
+    const s = statoSerie(serie, Date.now());
+    return {
+      ok: true, diProva: true, serie, collezione, contatorePity,
+      saldo: serie.saldo,
+      carteDiverse: Object.keys(collezione).length,
+      carteInTutto: Object.values(collezione).reduce((a, b) => a + b, 0),
+      alleCarteAllaGaranzia: Math.max(0, SOGLIA_PITY - contatorePity),
+      premio: {
+        puoRitirare: s.puoRitirare, giorno: s.giorno, quanto: s.premio,
+        serieRotta: s.serieRotta, giaRitiratoOggi: s.giaRitiratoOggi
+      }
+    };
+  }
+
+  return {
+    dove: 'browser',
+    async io() { return statoAttuale(); },
+    async ritiraPremio() {
+      const st = statoAttuale();
+      const esito = ritiraPremio(st.serie, Date.now());
+      if (esito.guadagno === 0) return { ok: false, diProva: true, motivo: 'Già ritirato oggi.', ...statoAttuale() };
+      scrivi('bb_sharkini', esito.serie);
+      return { ok: true, diProva: true, guadagno: esito.guadagno,
+               serieRotta: esito.stato.serieRotta, ...statoAttuale() };
+    },
+    async compra(carte) {
+      const st = statoAttuale();
+      const offerta = offertaPerCarte(Number(carte));
+      if (!offerta) return { ok: false, diProva: true, motivo: 'Quel pacchetto non esiste.' };
+      if (st.serie.saldo < offerta.costo) {
+        return { ok: false, diProva: true, motivo: 'Sharkini insufficienti.',
+                 manca: offerta.costo - st.serie.saldo, costo: offerta.costo, saldo: st.serie.saldo };
+      }
+      const r = apriPacchetto(CATALOGO, st.collezione, st.contatorePity, Math.random, offerta.carte);
+      const collezione = { ...st.collezione };
+      for (const c of r.carte) collezione[c.carta.id] = (collezione[c.carta.id] || 0) + 1;
+      scrivi('bb_sharkini', { ...st.serie, saldo: st.serie.saldo - offerta.costo });
+      scrivi('bb_collezione', collezione);
+      scrivi('bb_pity', r.contatore);
+      return { ok: true, diProva: true, costo: offerta.costo, carte: r.carte,
+               pityScattato: r.pityScattato, ...statoAttuale() };
+    },
+    async ricarica(idOfferta) {
+      const st = statoAttuale();
+      const r = RICARICHE.find((x) => x.id === idOfferta);
+      if (!r) return { ok: false, diProva: true, motivo: 'Quella ricarica non esiste.' };
+      scrivi('bb_sharkini', { ...st.serie, saldo: st.serie.saldo + r.sharkini });
+      return { ok: true, diProva: true, accreditati: r.sharkini, ...statoAttuale() };
+    }
+  };
+}
+
+const SCORTA = CI_SONO_ARRIVATO_DAL_SERVER ? creaPonteServer() : creaPonteBrowser();
+
+// Un avviso onesto, in fondo alla pagina, quando i conti sono finti.
+function avvisaSeDiProva() {
+  if (SCORTA.dove !== 'browser') return;
+  if (document.getElementById('avviso-di-prova')) return;
+  const d = document.createElement('div');
+  d.id = 'avviso-di-prova';
+  d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:60;padding:7px 12px;' +
+    'font:600 0.7rem/1.4 system-ui,sans-serif;letter-spacing:0.4px;text-align:center;' +
+    'background:rgba(90,60,20,0.94);color:#ffe9ae;border-top:1px solid #9a6f21';
+  d.textContent = 'Pagina aperta senza server: sharkini e carte sono solo di prova, ' +
+                  'restano in questo browser e non valgono niente.';
+  document.body.appendChild(d);
+}
+
+/* ==== FINE MOTORE INCORPORATO ==== */
+
+const $ = (id) => document.getElementById(id);
+
+// Il saldo e la serie di accessi li dice il SERVER. Prima stavano nel
+// browser: chiunque poteva ritirare il premio quante volte voleva e
+// darsi gli sharkini che voleva. Qui si tiene solo l'ultima risposta
+// ricevuta, per poterla mostrare.
+let mio = { saldo: 0, premio: { puoRitirare: false, giorno: 1, quanto: 100,
+                                serieRotta: false, giaRitiratoOggi: false } };
+
+function mostraSaldo(animato) {
+  const n = $('saldo');
+  n.textContent = formattaSharkini(mio.saldo);
+  if (animato) { n.classList.remove('cambiata'); void n.offsetWidth; n.classList.add('cambiata'); }
+}
+
+// ---------- la scala dei sette giorni ----------
+// Serve identica in due posti — nel pannello e dentro il popup — quindi
+// la costruisco una volta sola.
+function scalaHtml(stato) {
+  const giornoMostrato = stato.giorno;
+  let html = '';
+  for (let g = 1; g <= PREMI_SETTIMANA.length; g++) {
+    // "preso" = giorno già superato in questa serie
+    const preso = g < giornoMostrato || (g === giornoMostrato && stato.giaRitiratoOggi);
+    const oggi = g === giornoMostrato && !stato.giaRitiratoOggi;
+    html += '<div class="giorno' + (preso ? ' preso' : '') + (oggi ? ' oggi' : '') + '">' +
+              '<span class="n">g' + g + '</span>' +
+              '<span class="q">' + premioDelGiorno(g) + '</span>' +
+            '</div>';
+  }
+  // l ottava casella: da qui in poi resta 700, per sempre
+  const oltre = giornoMostrato > PREMI_SETTIMANA.length;
+  html += '<div class="giorno oltre' + (oltre && !stato.giaRitiratoOggi ? ' oggi' : (oltre ? ' preso' : '')) + '">' +
+            '<span class="n">poi</span><span class="q">' + PREMIO_MASSIMO + '</span>' +
+          '</div>';
+  // scrivere "sharkini" in ognuna delle otto caselle sarebbe illeggibile:
+  // il nome della moneta si dice una volta, sotto la fila
+  return '<div class="fila-giorni">' + html + '</div>' +
+         '<div class="scala-nota">sharkini al giorno</div>';
+}
+
+function disegna() {
+  const stato = mio.premio;
+  const giornoMostrato = stato.giorno;
+  $('scala').innerHTML = scalaHtml(stato);
+
+  const stt = $('stato-serie'), bottone = $('ritira');
+  stt.className = 'stato';
+
+  if (stato.giaRitiratoOggi) {
+    stt.innerHTML = 'Ritirato. Sei al giorno <b>' + stato.giorno + '</b> di fila — ' +
+      'torna domani per non perdere la serie.';
+    bottone.disabled = true;
+    bottone.textContent = 'Già ritirato oggi';
+  } else if (stato.serieRotta) {
+    stt.className = 'stato rotta';
+    stt.innerHTML = 'Hai saltato un giorno: la serie riparte da <b>' + conNome(100) + '</b>.';
+    bottone.disabled = false;
+    bottone.textContent = 'Ricomincia · +' + conNome(stato.premio);
+  } else {
+    // Attenzione a non gridare al lupo: per chi gioca tutti i giorni,
+    // "oggi devi ritirare" è la condizione NORMALE, non un allarme. Se
+    // avesse davvero saltato un giorno saremmo già nel caso qui sopra.
+    if (giornoMostrato > PREMI_SETTIMANA.length) {
+      stt.innerHTML = 'Giorno <b>' + giornoMostrato + '</b> di fila: sei al massimo, <b>' +
+        conNome(PREMIO_MASSIMO) + '</b> al giorno finché non salti.';
+    } else if (giornoMostrato > 1) {
+      stt.innerHTML = 'Giorno <b>' + giornoMostrato + '</b> di fila. Si arriva a <b>' +
+        conNome(PREMIO_MASSIMO) + '</b> al settimo.';
+    } else {
+      stt.innerHTML = 'Entra ogni giorno e il premio sale, fino a <b>' + conNome(PREMIO_MASSIMO) +
+        '</b> al settimo giorno.';
+    }
+    bottone.disabled = false;
+    bottone.textContent = 'Ritira ' + conNome(stato.premio);
+  }
+}
+
+// ---------- le monete che volano nel borsellino ----------
+function moneteVerso(quante) {
+  const partenza = $('ritira').getBoundingClientRect();
+  const arrivo = $('borsellino').getBoundingClientRect();
+  for (let i = 0; i < quante; i++) {
+    const m = document.createElement('div');
+    m.className = 'volo';
+    const x0 = partenza.left + partenza.width / 2 - 11 + (Math.random() - 0.5) * 40;
+    const y0 = partenza.top + partenza.height / 2 - 11;
+    m.style.left = x0 + 'px';
+    m.style.top = y0 + 'px';
+    document.body.appendChild(m);
+    const dx = arrivo.left + arrivo.width / 2 - 11 - x0;
+    const dy = arrivo.top + arrivo.height / 2 - 11 - y0;
+    m.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: 'translate(' + (dx * 0.4) + 'px,' + (dy * 0.35 - 40) + 'px) scale(1.25)', opacity: 1, offset: 0.45 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(0.35)', opacity: 0 }
+    ], { duration: 620 + Math.random() * 260, delay: i * 55, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' })
+     .onfinish = () => m.remove();
+  }
+}
+
+// ============================================================
+// IL POPUP DI BENVENUTO
+// Entrando, il premio si vede arrivare invece di stare lì da ritirare.
+// Se il premio di oggi è già stato preso non compare: nessuno vuole
+// chiudere una finestra che non gli dà niente.
+// ============================================================
+function pioggiaDiMonete(quante) {
+  for (let i = 0; i < quante; i++) {
+    const m = document.createElement('div');
+    m.className = 'coriandolo';
+    const d = 9 + Math.random() * 13;
+    m.style.cssText = 'left:' + (Math.random() * 100).toFixed(1) + 'vw;top:0;' +
+      'width:' + d.toFixed(0) + 'px;height:' + d.toFixed(0) + 'px;' +
+      'animation-duration:' + (1.7 + Math.random() * 1.7).toFixed(2) + 's;' +
+      'animation-delay:' + (Math.random() * 0.9).toFixed(2) + 's';
+    document.body.appendChild(m);
+    setTimeout(() => m.remove(), 4200);
+  }
+}
+
+function apriLaFesta() {
+  const stato = mio.premio;
+  if (!stato.puoRitirare) return;             // niente da festeggiare
+
+  $('festa-scala').innerHTML = scalaHtml(stato);
+  $('festa-cifra').innerHTML = '+' + stato.premio + '<em class="moneta-nome">sharkini</em>';
+  $('scrigno').classList.toggle('rimprovero', stato.serieRotta);
+
+  if (stato.serieRotta) {
+    $('festa-occhiello').textContent = 'La serie si è interrotta';
+    $('festa-titolo').textContent = 'Si riparte da capo';
+    $('festa-didascalia').innerHTML =
+      'Hai saltato un giorno, quindi la scala ricomincia dal primo gradino. ' +
+      'Torna domani e il premio risale: al settimo giorno di fila sono <b>' + conNome(PREMIO_MASSIMO) + '</b>.';
+  } else if (stato.giorno > PREMI_SETTIMANA.length) {
+    $('festa-occhiello').textContent = 'Giorno ' + stato.giorno + ' di fila';
+    $('festa-titolo').textContent = 'Bentornato!';
+    $('festa-didascalia').innerHTML =
+      'Sei al massimo: <b>' + conNome(PREMIO_MASSIMO) + '</b> ogni giorno, ' +
+      'finché non ne salti uno.';
+  } else if (stato.giorno === PREMI_SETTIMANA.length) {
+    $('festa-occhiello').textContent = 'Settimo giorno';
+    $('festa-titolo').textContent = 'Settimana completa!';
+    $('festa-didascalia').innerHTML =
+      'Hai raggiunto il gradino più alto. Da domani sono <b>' + conNome(PREMIO_MASSIMO) +
+      '</b> al giorno, per sempre — basta non saltare.';
+  } else {
+    $('festa-occhiello').textContent = 'Giorno ' + stato.giorno + ' di fila';
+    $('festa-titolo').textContent = stato.giorno === 1 ? 'Il tuo premio' : 'Bentornato!';
+    $('festa-didascalia').innerHTML =
+      'Domani sono <b>' + conNome(premioDelGiorno(stato.giorno + 1)) + '</b>, e si sale fino a <b>' +
+      PREMIO_MASSIMO + '</b> al settimo giorno.';
+  }
+
+  $('festa').classList.add('viva');
+  pioggiaDiMonete(stato.premio >= PREMIO_MASSIMO ? 34 : 20);
+}
+
+function chiudiLaFesta() {
+  const v = $('festa');
+  v.classList.add('esce');
+  setTimeout(() => { v.classList.remove('viva', 'esce'); }, 340);
+}
+
+$('festa-raccogli').addEventListener('click', async () => {
+  $('festa-raccogli').disabled = true;
+  const r = await SCORTA.ritiraPremio();
+  $('festa-raccogli').disabled = false;
+  if (r && r.ok) {
+    mio = r;
+    pioggiaDiMonete(16);
+    setTimeout(() => mostraSaldo(true), 260);
+  } else if (r) {
+    mio = { ...mio, ...r };
+  }
+  chiudiLaFesta();
+  disegna();
+});
+
+// si chiude anche toccando fuori dallo scrigno, ma senza perdere il
+// premio: quello resta lì, nel pannello sotto
+$('festa').addEventListener('click', (e) => { if (e.target === $('festa')) chiudiLaFesta(); });
+
+$('ritira').addEventListener('click', async () => {
+  $('ritira').disabled = true;
+  const esito = await SCORTA.ritiraPremio();
+  if (!esito || !esito.ok) { if (esito) mio = { ...mio, ...esito }; disegna(); return; }
+  mio = esito;
+  if (typeof $('ritira').animate === 'function') moneteVerso(9);
+  setTimeout(() => mostraSaldo(true), 480);
+  disegna();
+});
+
+// ============================================================
+// LA PARTITA LASCIATA A METÀ
+// Chi cade mentre gioca — rete, batteria, scheda chiusa per sbaglio —
+// tornando deve trovare il modo di rientrare, non cercarselo. Le
+// credenziali del tavolo restano nel browser; qui si chiede al server
+// se quella partita è ancora viva, e solo in quel caso si propone.
+// ============================================================
+async function guardaSeCEUnaPartitaAperta() {
+  if (!CI_SONO_ARRIVATO_DAL_SERVER) return;
+  let messoDaParte;
+  try { messoDaParte = JSON.parse(localStorage.getItem('bb_tavolo') || 'null'); } catch (e) { return; }
+  if (!messoDaParte || !messoDaParte.codice || !messoDaParte.segreto) return;
+
+  let r;
+  try {
+    r = await (await fetch('/api/stato?codice=' + encodeURIComponent(messoDaParte.codice) +
+      '&segreto=' + encodeURIComponent(messoDaParte.segreto) + '&da=-1')).json();
+  } catch (e) { return; }
+
+  // Il tavolo non c'è più, o la partita è finita: le credenziali si
+  // buttano, sennò questo invito ricomparirebbe per sempre.
+  if (!r || !r.ok || !r.vista || r.vista.stato !== 'in_progress') {
+    try { localStorage.removeItem('bb_tavolo'); } catch (e) {}
+    return;
+  }
+
+  const nome = (r.nomi || [])[messoDaParte.giocatore === 0 ? 1 : 0];
+  $('ripresa-dettaglio').textContent =
+    (nome ? 'Contro ' + nome + '. ' : '') +
+    (r.vista.eIlMioTurno ? 'Tocca a te!' : 'Sta giocando l\'avversario.');
+  $('ripresa').classList.add('viva');
+}
+
+(async function avvia() {
+  const r = await SCORTA.io();
+  if (r && r.ok) mio = r;
+  mostraSaldo(false);
+  disegna();
+  apriLaFesta();
+  avvisaSeDiProva();
+  guardaSeCEUnaPartitaAperta();
+})();
+
+window.__prova = {
+  mio: () => mio,
+  dove: () => SCORTA.dove,
+  festa: () => $('festa').classList.contains('viva'),
+  apriLaFesta,
+  reimposta: (m) => { mio = { ...mio, ...m }; mostraSaldo(false); disegna(); }
+};
+})();
+</script>
+</body>
+</html>

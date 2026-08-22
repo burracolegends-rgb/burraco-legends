@@ -1,0 +1,3225 @@
+# Genera client/tavolo.html per Burraco Legends partendo dal tavolo di
+# Burraco Pulito (game.html): il <style> viene copiato VERBATIM, così
+# l'aspetto del tavolo resta identico. Cambia solo il corpo (due nuove
+# zone per le 7 carte Battle) e lo script (collegato al motore Battle).
+import re, io, os
+
+# game.html di Burraco Pulito: da qui si prende SOLO il foglio di stile.
+# Metti il file accanto a questo script, oppure indica il suo percorso.
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'game.html')
+DST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'client', 'tavolo.html').replace(os.sep, '/')
+
+CSS_IMPOSTAZIONI = r'''    /* ---------- IMPOSTAZIONI ---------- */
+    .velo-impostazioni {
+      position: fixed; inset: 0; z-index: 90; display: none;
+      align-items: center; justify-content: center; padding: 18px;
+      background: rgba(6,4,10,0.82); backdrop-filter: blur(4px);
+    }
+    .velo-impostazioni.aperto { display: flex; }
+    .pannello-impostazioni {
+      width: min(460px, 100%); max-height: 88vh; overflow-y: auto;
+      border-radius: 16px; padding: 20px; border: 1px solid #9a6f21;
+      background: linear-gradient(168deg, rgba(52,38,22,0.97), rgba(20,14,8,0.98));
+      box-shadow: 0 18px 50px rgba(0,0,0,0.8);
+      display: flex; flex-direction: column; gap: 16px;
+      font-family: 'Segoe UI', system-ui, sans-serif; color: #f2e6cc;
+    }
+    .pannello-impostazioni h2 {
+      margin: 0; font-family: Georgia, serif; font-size: 1.05rem;
+      letter-spacing: 2.4px; text-transform: uppercase; color: #e8c46a;
+    }
+    .riga-imp { display: flex; flex-direction: column; gap: 9px; }
+    .riga-imp .etichetta {
+      font-size: 0.74rem; letter-spacing: 1.3px; text-transform: uppercase; color: #b7a686;
+    }
+    .spiega-imp { margin: 0; font-size: 0.73rem; color: #8a7e68; line-height: 1.55; }
+
+    .scelte-stile { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+    .scelta-stile {
+      display: flex; align-items: center; gap: 9px; padding: 8px 10px; cursor: pointer;
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.16); background: rgba(0,0,0,0.32);
+      font-size: 0.78rem; font-weight: 600; color: #f2e6cc; text-align: left;
+      font-family: inherit; transition: border-color 0.14s, background 0.14s;
+    }
+    .scelta-stile:hover { border-color: #e8c46a; }
+    .scelta-stile.scelto, .bottone-imp.scelto { border-color: #e8c46a; background: rgba(232,196,106,0.14); color: #f3e6c4; }
+    .bottone-imp.pericolo { border-color: #b0505f; color: #ffb3bf; }
+    .bottone-imp.pericolo:hover { background: rgba(200,60,80,0.22); color: #fff; }
+    .bottone-imp.pericolo.sicuro { background: #b0505f; color: #fff; border-color: #ff8fa0; }
+    /* l'anteprima è una carta vera in miniatura, non un disegnino */
+    .scelta-stile .anteprima {
+      --card-w: 30px; --card-h: 43px; --card-radius: 3px;
+      flex: 0 0 auto; pointer-events: none;
+    }
+
+    .bottone-imp {
+      padding: 12px; border-radius: 11px; border: none; cursor: pointer; font-family: inherit;
+      font-size: 0.92rem; font-weight: 800; letter-spacing: 0.5px;
+      background: linear-gradient(180deg, #fff0c2, #e8c46a 55%, #b98d2c); color: #2a1c08;
+    }
+'''
+
+PANNELLO_IMPOSTAZIONI = r'''
+<!-- ============ IMPOSTAZIONI ============ -->
+<div class="velo-impostazioni" id="veloImpostazioni">
+  <div class="pannello-impostazioni">
+    <h2>Impostazioni</h2>
+
+    <div class="riga-imp">
+      <span class="etichetta">Stile delle carte</span>
+      <div class="scelte-stile" id="scelteStile"></div>
+      <p class="spiega-imp">
+        A ventaglio le carte si coprono e resta visibile solo la striscia di sinistra:
+        gli stili "angolo" mettono lì valore e seme, ed è per questo che sono i predefiniti.
+      </p>
+    </div>
+
+    <div class="riga-imp">
+      <span class="etichetta">Suoni</span>
+      <div class="scelte-stile">
+        <button class="bottone-imp" id="suoniSi">Accesi</button>
+        <button class="bottone-imp" id="suoniNo">Spenti</button>
+      </div>
+      <p class="spiega-imp">
+        Fruscio delle carte, colpi e magie. Non sono file scaricati: il tavolo
+        li costruisce mentre gioca, per questo il tonfo cambia a seconda di
+        quanto danno arriva.
+      </p>
+    </div>
+
+    <div class="riga-imp">
+      <span class="etichetta">Abbandonare</span>
+      <button class="bottone-imp pericolo" id="abbandona">Abbandona la partita</button>
+      <p class="spiega-imp">
+        Chi abbandona perde: l'avversario vince come se avesse mandato KO
+        tutta la squadra. Serve per alzarsi da tavola dicendolo, invece di
+        sparire e lasciare l'altro ad aspettare una mossa che non arriva.
+      </p>
+    </div>
+
+    <div class="riga-imp">
+      <button class="bottone-imp chiudi" id="chiudiImpostazioni">Chiudi</button>
+    </div>
+  </div>
+</div>
+'''
+
+src = io.open(SRC, encoding='utf-8').read()
+css = re.search(r'<style>(.*?)</style>', src, re.S).group(1)
+
+BATTLE_CSS = r'''
+    /* =========================================================
+       BURRACO LEGENDS — aggiunte al tavolo originale.
+       Tutto quello che sta sopra è il CSS di Burraco Pulito, copiato
+       senza modifiche: il tavolo (feltro, mano a ventaglio, colonne dei
+       giochi, mazzo/scarti) resta esattamente com'era.
+       ========================================================= */
+    :root {
+      /* Le carte dei personaggi e delle magie sono il posto dove si
+         guarda per capire come va la partita: erano troppo piccole per
+         leggerle senza avvicinarsi. Portate al 120%. Le misure stanno
+         qui e una sola volta: tutto il resto (semi, nomi, barre) e'
+         calcolato in proporzione, quindi cresce da solo. */
+      --battle-w: 74px;              /* 52 -> 62 -> 74 */
+      --battle-h: 107px;             /* 74 -> 89 -> 107 */
+      --hp: #e05266; --charge: #45b6ff; --oro: #e8c46a; --blu: #5cc0ff;
+      --pergamena: #f0e2c0;
+    }
+
+    /* --- Striscia delle 7 carte Battle (4 personaggi + 3 magiche) --- */
+    .battle-strip { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+    .battle-strip .divisore {
+      width: 2px; height: calc(var(--battle-h) * 0.75); flex: 0 0 auto; margin: 0 3px; border-radius: 2px;
+      background: linear-gradient(180deg, transparent, var(--oro), transparent); opacity: 0.6;
+    }
+
+    /* --- Carta Battle: aspetto fantasy --- */
+    .bcard {
+      width: var(--battle-w); height: var(--battle-h); border-radius: 5px;
+      box-sizing: border-box; position: relative; flex: 0 0 auto;
+      padding: 3px 3px 2px; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center;
+      background:
+        radial-gradient(ellipse at 50% 12%, rgba(255,220,150,0.20), transparent 62%),
+        linear-gradient(168deg, #3b2c58 0%, #2a1f42 48%, #1b1430 100%);
+      border: 1px solid #7a6099;
+      box-shadow: inset 0 0 0 1px rgba(232,196,106,0.28), inset 0 -8px 14px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.5);
+      cursor: default;
+      transition: transform 0.14s ease-out, box-shadow 0.14s;
+    }
+    /* cornice dorata interna, come una miniatura incorniciata */
+    .bcard::before {
+      content: ''; position: absolute; inset: 2px; border-radius: 3px;
+      border: 1px solid rgba(232,196,106,0.34); pointer-events: none;
+    }
+    /* alone del seme sullo sfondo */
+    .bcard::after {
+      content: attr(data-seme); position: absolute; right: -6px; bottom: -10px;
+      font-size: calc(var(--battle-w) * 0.78); line-height: 1;
+      color: rgba(255,255,255,0.06); pointer-events: none;
+    }
+    .bcard:hover { transform: translateY(-3px); box-shadow: inset 0 0 0 1px rgba(232,196,106,0.5), 0 6px 16px rgba(0,0,0,0.65), 0 0 14px rgba(232,196,106,0.35); }
+
+    .bcard .seme {
+      font-size: calc(var(--battle-w) * 0.42); line-height: 1; margin-top: 1px;
+      text-shadow: 0 0 8px currentColor, 0 1px 2px #000; position: relative; z-index: 1;
+    }
+    .bcard .seme.rosso { color: #ff7b8e; }
+    .bcard .seme.nero  { color: #dfe6ff; }
+
+    .bcard .nome {
+      font-size: calc(var(--battle-w) * 0.115); line-height: 1.15; font-weight: 700;
+      color: var(--pergamena); text-align: center; letter-spacing: 0.2px;
+      width: 100%; max-height: calc(var(--battle-w) * 0.30); overflow: hidden;
+      text-shadow: 0 1px 2px #000; position: relative; z-index: 1; margin-top: 1px;
+    }
+    .bcard .stelle { font-size: calc(var(--battle-w) * 0.13); color: var(--oro); line-height: 1; position: relative; z-index: 1; }
+    /* le descrizioni NON stanno più dentro la carta: finirebbero fuori dai bordi.
+       Vanno nel pannello #bcardPop, che si apre accanto alla carta. */
+    .bcard .desc, .bcard .stat { display: none; }
+
+    .bcard .barra {
+      width: 84%; height: 4px; border-radius: 3px; margin-top: 2px; overflow: hidden;
+      background: rgba(0,0,0,0.6); box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+      position: relative; z-index: 1;
+    }
+    .bcard .barra i {
+      display: block; height: 100%; border-radius: 3px;
+      /* tre volte piu' lenta di prima (era 0,35s): a quella velocita' la
+         barra era gia' arrivata prima che l'occhio la trovasse, e non si
+         vedeva QUANTA vita fosse andata via, solo quanta ne restava. */
+      transition: width 1.05s cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    .bcard .barra.vita i   { background: linear-gradient(180deg, #ff8a9b, var(--hp)); box-shadow: 0 0 5px rgba(224,82,102,0.8); }
+    .bcard .barra.carica i { background: linear-gradient(180deg, #9adcff, var(--charge)); box-shadow: 0 0 5px rgba(69,182,255,0.8); }
+    /* barra piena: l'abilità speciale è pronta e si può attivare */
+    .bcard .barra.carica.piena { box-shadow: 0 0 10px var(--charge); animation: caricaPiena 1s ease-in-out infinite; }
+    @keyframes caricaPiena { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+    /* La carta con l'abilità pronta si accende e diventa cliccabile */
+    .bcard.pronta {
+      cursor: pointer; border-color: var(--charge);
+      box-shadow: inset 0 0 0 1px rgba(69,182,255,0.6), 0 0 16px rgba(69,182,255,0.75);
+      animation: eroePronto 1.4s ease-in-out infinite;
+    }
+    @keyframes eroePronto {
+      0%,100% { box-shadow: inset 0 0 0 1px rgba(69,182,255,0.5), 0 0 12px rgba(69,182,255,0.6); }
+      50%     { box-shadow: inset 0 0 0 1px rgba(69,182,255,0.9), 0 0 24px rgba(69,182,255,1); }
+    }
+    .bcard.pronta::after { color: rgba(69,182,255,0.16); }
+    /* etichetta PRONTA sopra la carta */
+    .bcard .pronta-tag {
+      position: absolute; top: -1px; left: 0; right: 0; z-index: 2;
+      font-size: calc(var(--battle-w) * 0.115); font-weight: 800; letter-spacing: 0.5px;
+      text-align: center; color: #0b2233; background: var(--charge);
+      border-radius: 3px 3px 0 0; padding: 1px 0;
+    }
+
+    /* Modalità "scegli il bersaglio": si spegne il resto e si accendono
+       solo i personaggi avversari ancora vivi */
+    body.scelta-bersaglio .bcard:not(.mirabile) { opacity: 0.35; }
+    body.scelta-bersaglio .bcard.mirabile {
+      cursor: crosshair; opacity: 1; border-color: #ff7b8e;
+      box-shadow: inset 0 0 0 1px rgba(255,123,142,0.7), 0 0 18px rgba(255,123,142,0.85);
+      animation: bersaglio 0.9s ease-in-out infinite;
+    }
+    @keyframes bersaglio { 0%,100% { transform: none; } 50% { transform: translateY(-4px); } }
+    #istruzioneBersaglio {
+      position: fixed; left: 50%; top: 8%; transform: translateX(-50%); z-index: 850;
+      display: none; padding: 10px 20px; border-radius: 10px; text-align: center;
+      background: linear-gradient(165deg, rgba(20,50,70,0.97), rgba(10,25,38,0.97));
+      border: 2px solid var(--charge); box-shadow: 0 8px 28px rgba(0,0,0,0.7), 0 0 22px rgba(69,182,255,0.5);
+      font-family: 'Segoe UI', system-ui, sans-serif; color: #dff2ff; font-size: 0.95rem;
+    }
+    #istruzioneBersaglio.mostra { display: block; }
+    #istruzioneBersaglio b { color: var(--charge); }
+    #istruzioneBersaglio .annulla {
+      display: inline-block; margin-left: 12px; font-size: 0.8rem; color: #9fb8c9;
+      border: 1px solid #40607a; border-radius: 6px; padding: 2px 10px; cursor: pointer;
+    }
+    #istruzioneBersaglio .annulla:hover { color: #fff; border-color: var(--charge); }
+    .bcard.ko { opacity: 0.32; filter: grayscale(1); }
+
+    /* Carte magiche: oro "fuoco" per la Sorpresa, blu "elettrico" per la Trappola (spec §6) */
+    .bcard.magica { justify-content: flex-start; cursor: pointer; padding-top: 2px; }
+    .bcard.magica .sigillo {
+      font-size: calc(var(--battle-w) * 0.38); font-weight: 900; line-height: 1;
+      position: relative; z-index: 1; text-shadow: 0 0 10px currentColor, 0 2px 3px #000;
+    }
+    .bcard.magica .etichetta { font-size: calc(var(--battle-w) * 0.10); letter-spacing: 1px; opacity: 0.8; position: relative; z-index: 1; margin-top: 1px; }
+    /* oltre al tipo si legge anche il NOME della carta */
+    .bcard.magica .nome-magia {
+      font-size: calc(var(--battle-w) * 0.115); line-height: 1.15; font-weight: 700;
+      color: var(--pergamena); text-align: center; width: 100%; margin-top: 2px;
+      max-height: calc(var(--battle-w) * 0.42); overflow: hidden;
+      text-shadow: 0 1px 2px #000; position: relative; z-index: 1;
+    }
+    .bcard.magica.sorpresa { border-color: var(--oro); color: var(--oro);
+      background: radial-gradient(ellipse at 50% 30%, rgba(232,196,106,0.28), transparent 65%), linear-gradient(168deg, #4a3620, #2a1d12); }
+    .bcard.magica.trappola { border-color: var(--blu); color: var(--blu);
+      background: radial-gradient(ellipse at 50% 30%, rgba(92,192,255,0.24), transparent 65%), linear-gradient(168deg, #1e3348, #131f2e); }
+    .bcard.magica.usata { opacity: 0.28; cursor: not-allowed; }
+    .bcard.magica.armata { animation: pulsaTrappola 1.6s ease-in-out infinite; }
+    @keyframes pulsaTrappola {
+      0%,100% { box-shadow: inset 0 0 0 1px rgba(92,192,255,0.4), 0 0 6px rgba(92,192,255,0.5); }
+      50%     { box-shadow: inset 0 0 0 1px rgba(92,192,255,0.7), 0 0 16px rgba(92,192,255,0.95); }
+    }
+    .bcard.magica.coperta {
+      color: #6f7fa8; border-color: #4a3d70; cursor: default;
+      background: repeating-linear-gradient(45deg, #2e2547 0 4px, #241d38 4px 8px);
+    }
+    .bcard.magica.coperta .sigillo { text-shadow: none; opacity: 0.75; }
+    /* costo in punti magia, in alto a destra sulla carta */
+    .bcard .costo-magia {
+      position: absolute; top: 1px; right: 1px; z-index: 2;
+      min-width: calc(var(--battle-w) * 0.24); height: calc(var(--battle-w) * 0.24);
+      border-radius: 50%; background: var(--charge); color: #06202f;
+      font-size: calc(var(--battle-w) * 0.15); font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 6px rgba(69,182,255,0.8);
+    }
+    /* carta che non puoi permetterti: spenta */
+    .bcard.magica.senza-punti { opacity: 0.45; filter: saturate(0.5); }
+    .bcard.magica.senza-punti .costo-magia { background: #6b7d8c; color: #223; box-shadow: none; }
+    .bcard.coperta:hover { transform: none; }
+
+    /* --- Pannello che si apre accanto alla carta ---
+       Prima la carta veniva semplicemente ingrandita e il testo usciva dai
+       bordi. Ora nome, statistiche e descrizione vanno qui, in un riquadro
+       di larghezza propria: il testo non può più sbordare. */
+    #bcardPop {
+      position: fixed; z-index: 800; display: none; width: 200px; padding: 10px 12px;
+      border-radius: 8px; pointer-events: none;
+      background: linear-gradient(168deg, #3b2c58, #1b1430);
+      border: 1px solid var(--oro);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(232,196,106,0.25);
+      font-family: 'Segoe UI', system-ui, sans-serif; color: #ece7f7;
+    }
+    #bcardPop.mostra { display: block; animation: popIn 0.13s ease-out; }
+    @keyframes popIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    #bcardPop .pnome { font-weight: 800; font-size: 13px; color: var(--oro); margin-bottom: 2px; }
+    #bcardPop .pstelle { font-size: 11px; color: var(--oro); margin-bottom: 5px; }
+    #bcardPop .pstat { font-size: 11px; color: #d9cdf2; margin-bottom: 5px; }
+    #bcardPop .pcarica { font-size: 11px; color: var(--charge); margin-bottom: 5px; font-weight: 600; }
+    #bcardPop .pdesc { font-size: 11px; color: #b9acd6; line-height: 1.45; }
+    #bcardPop .ptipo { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; }
+
+    /* Le mie 7 carte stanno nella riga di mazzo e scarti, a destra.
+       Il monte scarti ha flex:1 1 auto, quindi si restringe da solo man mano
+       che cresce, senza mai invadere questa zona (che è flex:0 0 auto). */
+    .table-resources-row .battle-strip { margin-left: auto; }
+
+    /* Le carte dell'avversario stanno in alto, fra il tasto impostazioni e la sua mano. */
+    .top-shelf .battle-strip { margin: 0 8px 0 4px; }
+
+    /* =========================================================
+       SFONDO: TAVOLO FATATO
+       Il feltro verde piatto dell'originale diventa una radura incantata.
+       Tutto disegnato con CSS (nessuna immagine da scaricare): alone di
+       luce lunare al centro, bagliori colorati agli angoli, venature e
+       lucciole che fluttuano piano.
+       ========================================================= */
+    /* ============================================================
+       LO SFONDO
+       Era il verde da circolo del burraco: giusto per un'app di burraco,
+       fuori posto per una partita fra eroi. Adesso e' pietra scura con
+       due bracieri agli angoli — uno caldo, uno freddo — e una luce che
+       cade dall'alto sul centro, dove si gioca. Il verde resta, ma solo
+       come riflesso lontano: si riconosce che e' un tavolo da carte
+       senza che sembri un tappeto verde.
+       Tutto disegnato dal foglio di stile: nessuna immagine da scaricare,
+       la pagina continua ad aprirsi col doppio clic anche senza rete.
+       ============================================================ */
+    body {
+      background:
+        /* la luce che cade sul tavolo */
+        radial-gradient(ellipse 62% 48% at 50% 38%, rgba(190,220,255,0.10), transparent 68%),
+        /* braciere caldo a sinistra, luce fredda a destra */
+        radial-gradient(ellipse 46% 42% at 6% 88%, rgba(255,140,60,0.16), transparent 70%),
+        radial-gradient(ellipse 46% 42% at 96% 10%, rgba(110,140,255,0.16), transparent 70%),
+        /* un ricordo di feltro verde, molto in fondo */
+        radial-gradient(ellipse 70% 46% at 50% 56%, rgba(40,120,90,0.22), transparent 72%),
+        /* la pietra */
+        linear-gradient(168deg, #171426 0%, #1d1a2f 34%, #15121f 68%, #0b0912 100%) !important;
+    }
+    /* venature della pietra: due griglie storte e quasi invisibili */
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        repeating-linear-gradient(64deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 42px),
+        repeating-linear-gradient(-26deg, rgba(0,0,0,0.10) 0 1px, transparent 1px 58px);
+    }
+    /* bordi scuriti: l'occhio va al centro e ci resta */
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      box-shadow: inset 0 0 22vh rgba(0,0,0,0.62), inset 0 0 6vh rgba(0,0,0,0.35);
+    }
+    .table-battlefield {
+      position: relative;
+      background:
+        /* il cerchio inciso al centro del campo: due anelli sottilissimi,
+           si notano solo quando si guarda, ed e' giusto cosi' */
+        radial-gradient(circle at 50% 50%, transparent 0 27%, rgba(232,196,106,0.09) 27% 27.4%, transparent 27.4%),
+        radial-gradient(circle at 50% 50%, transparent 0 33%, rgba(232,196,106,0.06) 33% 33.3%, transparent 33.3%),
+        radial-gradient(ellipse 62% 58% at 50% 50%, rgba(190,255,225,0.10), transparent 72%),
+        repeating-linear-gradient(102deg, rgba(255,255,255,0.022) 0 2px, transparent 2px 26px),
+        repeating-linear-gradient(-14deg, rgba(0,0,0,0.05) 0 3px, transparent 3px 34px);
+      box-shadow: inset 0 0 120px rgba(0,0,0,0.42), inset 0 0 40px rgba(126,255,204,0.06);
+    }
+    /* cerchio rituale al centro del tavolo */
+    .table-battlefield::before {
+      content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: min(46vh, 340px); height: min(46vh, 340px); border-radius: 50%;
+      border: 1px solid rgba(190,255,225,0.16);
+      box-shadow: 0 0 40px rgba(126,255,204,0.10), inset 0 0 60px rgba(126,255,204,0.06);
+      pointer-events: none;
+    }
+    .table-battlefield::after {
+      content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: min(30vh, 220px); height: min(30vh, 220px); border-radius: 50%;
+      border: 1px dashed rgba(232,196,106,0.16);
+      animation: ruotaCerchio 90s linear infinite; pointer-events: none;
+    }
+    @keyframes ruotaCerchio { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+    /* lucciole */
+    .lucciole { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+    .lucciola {
+      position: absolute; width: 3px; height: 3px; border-radius: 50%;
+      background: #dfffe9; box-shadow: 0 0 8px 2px rgba(190,255,225,0.75);
+      opacity: 0; animation: fluttua linear infinite;
+    }
+    @keyframes fluttua {
+      0%   { opacity: 0; transform: translate(0, 0) scale(0.7); }
+      12%  { opacity: 0.85; }
+      50%  { transform: translate(22px, -46px) scale(1.15); }
+      88%  { opacity: 0.7; }
+      100% { opacity: 0; transform: translate(-14px, -96px) scale(0.6); }
+    }
+
+    /* le fasce restano leggibili sopra lo sfondo fatato */
+    .top-shelf, .bottom-shelf, .table-resources-row {
+      background: linear-gradient(180deg, rgba(8,36,26,0.92), rgba(6,26,19,0.92)) !important;
+      backdrop-filter: blur(2px);
+      border-color: rgba(232,196,106,0.35) !important;
+    }
+
+    /* =========================================================
+       LA CARTA MAGICA CHE SI APRE A SCHERMO
+       Una sola animazione, usata da tutte e tre le occasioni: quando
+       giochi una Sorpresa, quando posi una Trappola e quando una Trappola
+       scatta (lì la carta si rivela). La carta ha forma di carta e occupa
+       circa un quarto dello schermo: arriva ruotando da lontano, atterra
+       con un colpo, resta ferma il tempo di leggerla e poi si dissolve.
+       ========================================================= */
+    #sorpresaOverlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      z-index: 900; background: radial-gradient(ellipse at center, rgba(30,22,10,0.72), rgba(0,0,0,0.9));
+      perspective: 1200px;
+    }
+    #sorpresaOverlay.mostra { display: flex; animation: velaIn 0.3s ease-out; }
+    @keyframes velaIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* raggi che ruotano dietro la carta */
+    #sorpresaOverlay .raggi {
+      position: absolute; width: 170vmax; height: 170vmax; pointer-events: none;
+      background: repeating-conic-gradient(from 0deg, rgba(232,196,106,0.15) 0deg 5deg, transparent 5deg 15deg);
+      animation: giraRaggi 16s linear infinite; opacity: 0;
+    }
+    #sorpresaOverlay.mostra .raggi { animation: giraRaggi 16s linear infinite, raggiIn 0.6s ease-out 0.25s forwards; }
+    @keyframes giraRaggi { to { transform: rotate(360deg); } }
+    @keyframes raggiIn { to { opacity: 0.5; } }
+    #sorpresaOverlay.trappola .raggi { background: repeating-conic-gradient(from 0deg, rgba(92,192,255,0.15) 0deg 5deg, transparent 5deg 15deg); }
+
+    /* onda d'urto nel momento in cui la carta si pianta */
+    #sorpresaOverlay .botto {
+      position: absolute; width: 20vh; height: 20vh; border-radius: 50%; pointer-events: none;
+      border: 3px solid var(--oro); opacity: 0;
+    }
+    #sorpresaOverlay.mostra .botto { animation: bottoOnda 0.7s ease-out 0.42s forwards; }
+    #sorpresaOverlay.trappola .botto { border-color: var(--blu); }
+    @keyframes bottoOnda {
+      0%   { opacity: 0.95; transform: scale(0.35); }
+      100% { opacity: 0; transform: scale(3.6); }
+    }
+
+    /* LA CARTA: forma di carta (alta più che larga), circa un quarto di schermo */
+    .sorpresa-grande {
+      position: relative; width: calc(58vh * 0.7); height: 58vh;
+      min-width: 240px; max-width: 92vw;
+      padding: 4.5vh 3vh; text-align: center; box-sizing: border-box;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.4vh;
+      border-radius: 2.2vh; border: 0.5vh solid var(--oro);
+      background:
+        radial-gradient(ellipse at 50% 22%, rgba(255,220,150,0.28), transparent 62%),
+        linear-gradient(168deg, #4a3620 0%, #2a1d12 55%, #1b1430 100%);
+      box-shadow: 0 0 12vh rgba(232,196,106,0.8), inset 0 0 5vh rgba(232,196,106,0.25), 0 2vh 6vh rgba(0,0,0,0.7);
+      animation: cartaEntra 3.4s cubic-bezier(.2,.9,.25,1) forwards;
+      transform-style: preserve-3d;
+    }
+    #sorpresaOverlay.trappola .sorpresa-grande {
+      border-color: var(--blu);
+      background:
+        radial-gradient(ellipse at 50% 22%, rgba(92,192,255,0.26), transparent 62%),
+        linear-gradient(168deg, #1e3348 0%, #142434 55%, #101a28 100%);
+      box-shadow: 0 0 12vh rgba(92,192,255,0.8), inset 0 0 5vh rgba(92,192,255,0.25), 0 2vh 6vh rgba(0,0,0,0.7);
+    }
+
+    /* Arriva da lontano ruotando su sé stessa, si pianta con un rimbalzo,
+       resta ferma il tempo di leggerla, poi si allontana svanendo. */
+    @keyframes cartaEntra {
+      0%   { transform: translateZ(-900px) rotateY(-220deg) rotate(-18deg) scale(0.4); opacity: 0; }
+      10%  { opacity: 1; }
+      13%  { transform: translateZ(60px) rotateY(0deg) rotate(2deg) scale(1.14); opacity: 1; }
+      18%  { transform: translateZ(0) rotateY(0deg) rotate(0deg) scale(0.98); }
+      22%  { transform: translateZ(0) scale(1); }
+      88%  { transform: translateZ(0) scale(1); opacity: 1; }
+      100% { transform: translateZ(200px) scale(1.1) translateY(-4vh); opacity: 0; }
+    }
+
+    /* cornice interna, come una carta incorniciata */
+    .sorpresa-grande::before {
+      content: ''; position: absolute; inset: 1.1vh; border-radius: 1.4vh;
+      border: 1px solid rgba(255,255,255,0.28); pointer-events: none;
+    }
+    /* alone del simbolo sullo sfondo */
+    .sorpresa-grande::after {
+      content: attr(data-simbolo); position: absolute; right: -1vh; bottom: -3vh;
+      font-size: 26vh; line-height: 1; color: rgba(255,255,255,0.05); pointer-events: none;
+    }
+
+    .sorpresa-grande .chi { font-size: 1.5vh; letter-spacing: 0.35vh; text-transform: uppercase; color: #ffe9b0; opacity: 0.85; }
+    .sorpresa-grande .sigillone {
+      font-size: 8vh; line-height: 1; color: var(--oro);
+      text-shadow: 0 0 4vh var(--oro), 0 0 1vh #fff;
+      animation: pulsaSigillo 1.5s ease-in-out infinite;
+    }
+    #sorpresaOverlay.trappola .sigillone { color: var(--blu); text-shadow: 0 0 4vh var(--blu), 0 0 1vh #fff; }
+    @keyframes pulsaSigillo { 0%,100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.16) rotate(4deg); } }
+
+    .sorpresa-grande .tit { font-size: 3.2vh; font-weight: 900; color: var(--oro); text-shadow: 0 0.3vh 1.2vh rgba(0,0,0,0.9); line-height: 1.15; }
+    #sorpresaOverlay.trappola .tit { color: #bfe6ff; }
+    .sorpresa-grande .txt { color: #f0e2c0; font-size: 1.9vh; line-height: 1.45; max-width: 92%; }
+    .sorpresa-grande .esito { font-size: 2vh; color: #ff9db0; font-weight: 800; min-height: 2.4vh; line-height: 1.3; }
+    .sorpresa-grande .costo-grande {
+      position: absolute; top: 1.6vh; right: 1.6vh;
+      width: 4.6vh; height: 4.6vh; border-radius: 50%;
+      background: var(--charge); color: #06202f; font-weight: 900; font-size: 2.2vh;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 2vh rgba(69,182,255,0.9);
+    }
+
+    /* scintille che schizzano via quando la carta atterra */
+    #sorpresaOverlay .scintilla {
+      position: absolute; width: 0.8vh; height: 0.8vh; border-radius: 50%;
+      background: var(--oro); box-shadow: 0 0 1.4vh var(--oro); opacity: 0;
+    }
+    #sorpresaOverlay.trappola .scintilla { background: var(--blu); box-shadow: 0 0 1.4vh var(--blu); }
+    #sorpresaOverlay.mostra .scintilla { animation: scintillaVia 0.9s ease-out 0.42s forwards; }
+    @keyframes scintillaVia {
+      0%   { opacity: 1; transform: translate(0,0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.2); }
+    }
+
+    /* --- Resoconto del danno: chi ha subito quanto --- */
+    #resoconto {
+      position: fixed; left: 50%; top: 12%; transform: translateX(-50%);
+      z-index: 700; display: none; pointer-events: none; text-align: center;
+      padding: 12px 22px; border-radius: 12px;
+      background: linear-gradient(165deg, rgba(60,20,28,0.96), rgba(30,10,16,0.96));
+      border: 2px solid #ff7b8e; box-shadow: 0 10px 34px rgba(0,0,0,0.7), 0 0 26px rgba(255,123,142,0.4);
+      font-family: 'Segoe UI', system-ui, sans-serif; color: #ffe9ec;
+    }
+    #resoconto.mostra { display: block; animation: resocontoIn 0.3s ease-out; }
+    @keyframes resocontoIn { from { opacity: 0; transform: translateX(-50%) translateY(-12px); } to { opacity: 1; transform: translateX(-50%); } }
+    #resoconto .riga { font-size: 1rem; margin: 3px 0; }
+    #resoconto .riga b { color: #fff; }
+    #resoconto .riga .num { color: #ff9db0; font-weight: 800; }
+    #resoconto .titolo { font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.7; margin-bottom: 6px; }
+
+    /* Pozzetto già preso: resta al suo posto ma spento, così si vede a
+       colpo d'occhio chi lo ha ancora da prendere. */
+    .pozzetto-card.preso { opacity: 0.25; filter: grayscale(1); }
+
+    /* --- BARRA DEI PUNTI MAGIA ---
+       Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
+       a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
+       Carta Magica o un'abilità speciale. Ha preso il posto delle vecchie
+       barre azzurre che stavano su ogni singolo eroe. */
+    .barra-magia { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+    .barra-magia .etichetta { font-size: 9px; color: #9adcff; letter-spacing: 0.5px; white-space: nowrap; }
+    .barra-magia .tacche { display: flex; gap: 1px; }
+    .barra-magia .tacca {
+      width: 5px; height: 13px; border-radius: 1.5px;
+      background: rgba(0,0,0,0.55); border: 1px solid rgba(69,182,255,0.28); box-sizing: border-box;
+    }
+    .barra-magia .tacca.piena {
+      background: linear-gradient(180deg, #9adcff, var(--charge));
+      border-color: var(--charge); box-shadow: 0 0 4px rgba(69,182,255,0.8);
+    }
+    .barra-magia .conta { font-size: 11px; font-weight: 800; color: var(--charge); font-variant-numeric: tabular-nums; }
+    .barra-magia.piena .conta { animation: caricaPiena 1.2s ease-in-out infinite; }
+
+    /* --- I due cronometri del minuto a turno --- */
+    .turni-box { display: flex; flex-direction: column; gap: 3px; }
+    .riga-turno {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 3px 9px; border-radius: 7px; min-width: 132px;
+      background: rgba(0,0,0,0.32); border: 1px solid rgba(232,196,106,0.22);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .riga-turno .chi { font-size: 10px; color: #d6c9a8; letter-spacing: 0.3px; white-space: nowrap; }
+    .riga-turno .orologio { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: #f0e2c0; }
+    /* riga di chi sta giocando: si accende */
+    .riga-turno.attiva { background: rgba(232,196,106,0.16); border-color: var(--oro); }
+    .riga-turno.attiva .chi { color: #fff3d4; }
+    .riga-turno.attiva .orologio { color: var(--oro); }
+    /* ultimi 15 secondi: rosso e pulsante */
+    .riga-turno.agli-sgoccioli { border-color: #ff7b8e; background: rgba(255,123,142,0.18); }
+    .riga-turno.agli-sgoccioli .orologio { color: #ff9db0; animation: battito 1s ease-in-out infinite; }
+    @keyframes battito { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    /* chi non è di turno ha il cronometro fermo e spento */
+    .riga-turno:not(.attiva) .orologio { opacity: 0.45; }
+
+    /* pozzetto ancora da prendere: presente ma spento. Preso: acceso.
+       Due stati, uno sguardo. */
+    .riga-turno .spia-pozzetto {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.4px;
+      padding: 1px 5px; border-radius: 7px; white-space: nowrap;
+      border: 1px solid rgba(232,196,106,0.28); color: #8d8268;
+      background: rgba(0,0,0,0.22);
+    }
+    .riga-turno .spia-pozzetto.preso {
+      border-color: var(--verde, #6ecb8b); color: #0f1a12;
+      background: var(--verde, #6ecb8b);
+    }
+
+    /* contatore carte accanto alla mano */
+    .conta-carte.mia { flex: 0 0 auto; margin-left: 8px; }
+
+    /* --- LA MATTA NELLA COLONNA ---
+       Prima veniva mostrata ruotata di 90°: stava storta, rubava spazio in
+       verticale e non diceva niente di utile. Ora resta dritta e si
+       riconosce dalla cornice dorata. */
+    .card-column .e-matta { position: relative; }
+    .card-column .e-matta .card {
+      box-shadow: 0 0 0 2px var(--oro), 0 1px 4px rgba(0,0,0,0.5);
+      border-color: var(--oro);
+    }
+
+    /* --- TARGHETTA DELLA POTENZA ---
+       Sotto la colonna: dice di quanto quel gioco picchia più forte per la
+       sua lunghezza (5 carte +10%, 6 +20%, 7+ +35%). */
+    .targhetta-potenza {
+      margin-top: 5px; align-self: center; white-space: nowrap;
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 900;
+      font-size: 10px; letter-spacing: 0.3px; line-height: 1;
+      padding: 3px 7px; border-radius: 8px; color: #14100c;
+      background: linear-gradient(180deg, #ffe9a8, var(--oro));
+      box-shadow: 0 0 8px rgba(232,196,106,0.6), 0 1px 3px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.35);
+    }
+    /* più è alto il bonus, più la targhetta si fa notare */
+    .targhetta-potenza.liv20 { background: linear-gradient(180deg, #ffd08a, #f0a63c); box-shadow: 0 0 10px rgba(240,166,60,0.7), 0 1px 3px rgba(0,0,0,0.5); }
+    .targhetta-potenza.liv35 {
+      background: linear-gradient(180deg, #ffb3c0, #ff5f78); color: #2a0810;
+      box-shadow: 0 0 14px rgba(255,95,120,0.85), 0 1px 3px rgba(0,0,0,0.5);
+      animation: targhettaForte 1.6s ease-in-out infinite;
+    }
+    @keyframes targhettaForte { 0%,100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+
+    /* Le mie colonne calate si possono allungare: quando ho delle carte
+       selezionate si illuminano, per far capire che ci si può agganciare. */
+    .meld-side.mine .card-column { cursor: pointer; border-radius: 6px; transition: box-shadow 0.15s, transform 0.15s; }
+    body.ho-selezione .meld-side.mine .card-column {
+      box-shadow: 0 0 0 2px rgba(126,255,204,0.55), 0 0 14px rgba(126,255,204,0.4);
+    }
+    body.ho-selezione .meld-side.mine .card-column:hover { transform: translateY(-3px); box-shadow: 0 0 0 2px #7effcc, 0 0 20px rgba(126,255,204,0.8); }
+
+    /* --- Prima colonna riservata alle Carte Trappola --- */
+    .slot-trappole {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      width: var(--card-w); flex: 0 0 auto; margin-right: 10px; align-self: flex-start;
+    }
+    .slot-trappole .etichetta {
+      font-size: 7px; letter-spacing: 0.5px; color: rgba(255,255,255,0.55);
+      text-transform: uppercase; text-align: center;
+    }
+    .slot-trappole .posto {
+      width: var(--card-w); height: var(--card-h); border-radius: var(--card-radius);
+      border: 1px dashed rgba(232,196,106,0.45); box-sizing: border-box;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .trappola-posata {
+      width: var(--card-w); height: var(--card-h); border-radius: var(--card-radius);
+      box-sizing: border-box; border: 2px solid var(--blu); position: relative;
+      background: repeating-linear-gradient(45deg, #1e3348 0 4px, #131f2e 4px 8px);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--blu); font-size: calc(var(--card-w) * 0.5); font-weight: 900;
+      animation: pulsaTrappola 1.8s ease-in-out infinite;
+      cursor: default;
+    }
+
+    /* Scossone della carta colpita: più ampio e più lungo di prima, era
+       troppo veloce per accorgersene. */
+    @keyframes colpita {
+      0%   { transform: none; }
+      10%  { transform: translateX(-9px) rotate(-5deg) scale(1.1); }
+      25%  { transform: translateX(8px)  rotate(4deg)  scale(1.08); }
+      40%  { transform: translateX(-6px) rotate(-3deg) scale(1.05); }
+      55%  { transform: translateX(5px)  rotate(2deg); }
+      70%  { transform: translateX(-3px); }
+      85%  { transform: translateX(2px); }
+      100% { transform: none; }
+    }
+    /* eroe che ha gia' colpito in questo turno: c'e', ma e' scarico */
+    .bcard.esausta { filter: saturate(0.45) brightness(0.72); }
+    .bcard.esausta::after {
+      content: 'FATTO'; position: absolute; bottom: 2px; left: 0; right: 0;
+      font-size: 7px; font-weight: 900; letter-spacing: 1px; text-align: center;
+      color: #cbbf9f; text-shadow: 0 1px 2px #000;
+    }
+
+    .bcard.colpita {
+      animation: colpita 1.1s ease-out;
+      border-color: var(--hp) !important;
+      box-shadow: 0 0 22px var(--hp), inset 0 0 14px rgba(255,80,100,0.6) !important;
+      z-index: 300;
+    }
+    /* velo rosso che passa sulla carta nel momento del colpo */
+    .bcard.colpita::before { background: rgba(255,80,100,0.42); border-color: rgba(255,140,160,0.9); }
+
+    /* LAMPO ROSSO SU TUTTO LO SCHERMO quando incasso io */
+    .lampo-danno {
+      position: fixed; inset: 0; pointer-events: none; z-index: 860;
+      box-shadow: inset 0 0 22vh rgba(255,60,90,0.55);
+      animation: lampoVia 0.7s ease-out forwards;
+    }
+    @keyframes lampoVia {
+      0%   { opacity: 0; }
+      12%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ============================================================
+       IL JOLLY
+       Si riconosce da lontano senza dover leggere niente: fondo scuro,
+       bordo e stella d'oro, e la parola JOLLY di taglio sul fianco —
+       che resta visibile anche quando la carta e' quasi tutta coperta
+       dalla successiva nel ventaglio.
+       ============================================================ */
+    .card.jolly {
+      background: linear-gradient(160deg, #2a2140 0%, #1a1430 55%, #241b3c 100%) !important;
+      border-color: var(--oro, #e8c46a) !important;
+      box-shadow: inset 0 0 0 1px rgba(232,196,106,0.55), 0 0 10px rgba(232,196,106,0.35);
+    }
+    .card.jolly .v, .card.jolly .s, .card.jolly .centro,
+    .card.jolly .fil, .card.jolly .numgrande, .card.jolly .semino {
+      color: var(--oro, #e8c46a) !important;
+      text-shadow: 0 0 8px rgba(232,196,106,0.6);
+    }
+    .card.jolly .banda { background: linear-gradient(90deg, #3a2d17, #6b5320) !important; }
+    .card.jolly .centro { opacity: 0.55; }
+    .card.jolly .scritta-jolly {
+      position: absolute; right: 1px; top: 50%;
+      transform: translateY(-50%) rotate(180deg);
+      writing-mode: vertical-rl;
+      font-size: 7px; font-weight: 900; letter-spacing: 1.5px;
+      color: var(--oro, #e8c46a); opacity: 0.85; pointer-events: none;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    /* --- NUMERO DEL DANNO CHE SALE DALLA CARTA ---
+       Va in un elemento a parte agganciato alla pagina, non dentro la
+       carta: la carta ha overflow nascosto e il numero verrebbe tagliato. */
+    .dmg-float {
+      position: fixed; z-index: 880; pointer-events: none;
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 900;
+      font-size: 34px; line-height: 1; white-space: nowrap;
+      -webkit-text-stroke: 1px rgba(0,0,0,0.55);
+      text-shadow: 0 3px 6px #000, 0 0 20px currentColor;
+      animation: dmgSale 1.9s cubic-bezier(.16,.84,.44,1) forwards;
+    }
+    .dmg-float.danno { color: #ff5f78; }
+    .dmg-float.cura  { color: #6bf0a5; }
+    .dmg-float.grosso { font-size: 48px; }
+    /* più lento e con una sosta a mezz'aria: prima saliva e spariva in un
+       attimo, non si faceva in tempo a leggerlo */
+    @keyframes dmgSale {
+      0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.4); }
+      12%  { opacity: 1; transform: translate(-50%, -14px) scale(1.5); }
+      22%  { transform: translate(-50%, -20px) scale(1.05); }
+      30%  { transform: translate(-50%, -22px) scale(1.15); }
+      40%  { transform: translate(-50%, -24px) scale(1); }
+      72%  { opacity: 1; transform: translate(-50%, -34px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -78px) scale(0.9); }
+    }
+    /* LO STESSO NUMERO, MA VERSO IL BASSO.
+       Le carte dell'avversario stanno in cima allo schermo: un numero che
+       sale da li' esce dalla finestra e viene tagliato a meta'. Quando il
+       colpo e' in alto, il numero scende verso il centro del tavolo —
+       dove c'e' spazio e dove uno sta gia' guardando. */
+    .dmg-float.verso-giu { animation-name: dmgScende; }
+    @keyframes dmgScende {
+      0%   { opacity: 0; transform: translate(-50%, -6px) scale(0.4); }
+      12%  { opacity: 1; transform: translate(-50%, 14px) scale(1.5); }
+      22%  { transform: translate(-50%, 20px) scale(1.05); }
+      30%  { transform: translate(-50%, 22px) scale(1.15); }
+      40%  { transform: translate(-50%, 24px) scale(1); }
+      72%  { opacity: 1; transform: translate(-50%, 34px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, 78px) scale(0.9); }
+    }
+
+    /* alone che si espande dal punto colpito */
+    .dmg-onda {
+      position: fixed; z-index: 870; pointer-events: none;
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 2px solid rgba(255,95,120,0.9);
+      animation: dmgOnda 0.75s ease-out forwards;
+    }
+    @keyframes dmgOnda {
+      0%   { opacity: 0.9; transform: translate(-50%,-50%) scale(0.6); }
+      100% { opacity: 0; transform: translate(-50%,-50%) scale(11); }
+    }
+
+    /* Fine partita */
+
+    /* ============================================================
+       IL COLPO CHE ARRIVA
+       Prima il danno si vedeva solo dopo: la carta tremava e compariva
+       un numero. Non si capiva CHE COSA fosse successo, e sulla mossa
+       che chiudeva la partita si passava dal nulla a "hai perso".
+       Qui il colpo si vede partire, attraversare il tavolo e schiantarsi
+       sulla carta: e' la stessa informazione, ma raccontata.
+       ============================================================ */
+    .proiettile {
+      position: fixed; z-index: 880; pointer-events: none;
+      width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff, var(--oro) 45%, rgba(255,120,60,0.9) 70%, rgba(255,60,60,0) 72%);
+      box-shadow: 0 0 18px var(--oro), 0 0 34px rgba(255,120,60,0.8);
+    }
+    .proiettile.magico {
+      background: radial-gradient(circle at 35% 35%, #fff, var(--blu) 45%, rgba(90,160,255,0.9) 70%, rgba(90,160,255,0) 72%);
+      box-shadow: 0 0 18px var(--blu), 0 0 34px rgba(90,160,255,0.8);
+    }
+    .proiettile .scia {
+      position: absolute; inset: -6px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,220,150,0.5), transparent 65%);
+      animation: sciaPulsa 0.25s ease-in-out infinite alternate;
+    }
+    @keyframes sciaPulsa { to { transform: scale(1.45); opacity: 0.45; } }
+
+    /* lo schianto: un anello che si allarga e un lampo bianco */
+    .impatto {
+      position: fixed; z-index: 885; pointer-events: none;
+      width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+      border: 3px solid rgba(255,235,190,0.95);
+      animation: impattoVia 0.7s cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+    }
+    @keyframes impattoVia {
+      0%   { transform: scale(0.4); opacity: 1; border-width: 5px; }
+      100% { transform: scale(9);   opacity: 0; border-width: 1px; }
+    }
+    .squarcio {
+      position: fixed; z-index: 886; pointer-events: none;
+      width: 74px; height: 5px; margin: -2px 0 0 -37px; border-radius: 3px;
+      background: linear-gradient(90deg, transparent, #fff, transparent);
+      animation: squarcioVia 0.45s ease-out forwards;
+    }
+    @keyframes squarcioVia {
+      0%   { transform: rotate(-28deg) scaleX(0.2); opacity: 0; }
+      35%  { opacity: 1; }
+      100% { transform: rotate(-28deg) scaleX(1.5); opacity: 0; }
+    }
+
+    /* ============================================================
+       I TRENTA SECONDI IN CUI SI GUARDA IL TAVOLO
+       Non copre niente: sta in alto, grande, e lascia vedere le carte
+       — sono proprio quelle che si deve avere il tempo di guardare.
+       ============================================================ */
+    #studio {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 900; display: none; pointer-events: none; text-align: center;
+    }
+    #studio.mostra { display: block; animation: studioEntra 0.5s ease-out; }
+    @keyframes studioEntra { from { opacity: 0; transform: translate(-50%,-50%) scale(0.8); } }
+    #studio .numero {
+      font-size: 108px; font-weight: 900; line-height: 1;
+      color: var(--oro); font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 30px rgba(232,196,106,0.75), 0 6px 22px rgba(0,0,0,0.9);
+    }
+    #studio .numero.poco { color: #ff9db0; text-shadow: 0 0 30px rgba(255,120,150,0.8), 0 6px 22px rgba(0,0,0,0.9); animation: battito 1s ease-in-out infinite; }
+    #studio .dice {
+      margin-top: 6px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;
+      color: #f3e6c4; text-shadow: 0 2px 10px #000;
+    }
+    #studio .sotto {
+      margin-top: 4px; font-size: 12px; color: #cdbfa2; text-shadow: 0 2px 8px #000;
+      max-width: 340px; margin-left: auto; margin-right: auto; line-height: 1.5;
+    }
+    /* mentre si guarda, le carte dei personaggi si fanno notare */
+    body.in-studio .bcard[data-seme] {
+      animation: respiroStudio 2.2s ease-in-out infinite;
+      box-shadow: inset 0 0 0 1px rgba(232,196,106,0.55), 0 0 18px rgba(232,196,106,0.35);
+    }
+    @keyframes respiroStudio { 50% { transform: translateY(-4px); } }
+
+    #finePartita { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); z-index: 950; }
+    #finePartita.mostra { display: flex; }
+    #finePartita .box { text-align: center; padding: 30px 40px; background: #1b1430; border: 3px solid var(--oro); border-radius: 16px; }
+    #finePartita .box h2 { margin: 0 0 8px; color: var(--oro); }
+    #finePartita .box p { margin: 0; color: #c9bce6; }
+    #finePartita .box .conto { margin-top: 18px; font-size: 0.82rem; color: #8d81a8; }
+    #finePartita .box .conto b { color: var(--oro); font-variant-numeric: tabular-nums; }
+    #finePartita .box .subito {
+      display: inline-block; margin-top: 12px; padding: 8px 18px; border-radius: 9px;
+      background: var(--oro); color: #1b1220; font-weight: 800; text-decoration: none; font-size: 0.88rem;
+    }
+'''
+
+BODY = r'''
+<div class="lucciole" id="lucciole"></div>
+<div class="toast" id="toast"></div>
+<div id="resoconto"></div>
+
+<!-- ============ FASCIA SUPERIORE: AVVERSARIO ============
+     Struttura identica al tavolo originale. L'unica aggiunta sono le 7 carte
+     Battle dell'avversario, messe fra il tasto impostazioni e la sua mano,
+     come richiesto. -->
+<div class="top-shelf">
+    <button class="btn-fullscreen-top" onclick="ui.impostazioni()" title="Impostazioni" aria-label="Impostazioni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="7"  x2="14" y2="7"/>  <circle cx="17.5" cy="7"  r="2.5" fill="currentColor" stroke="none"/>
+            <line x1="3" y1="12" x2="8"  y2="12"/> <circle cx="11.5" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+            <line x1="3" y1="17" x2="16" y2="17"/> <circle cx="19.5" cy="17" r="2.5" fill="currentColor" stroke="none"/>
+        </svg>
+    </button>
+
+    <div class="battle-strip in-alto" id="battleAvversario"></div>
+    <div class="barra-magia" id="magiaAvversario"></div>
+
+    <div class="opp-groups-stack">
+        <div class="opp-center-group" id="oppSeatGroup1">
+            <div class="opp-profile">
+                <div class="avatar-ring" id="oppAvatarRing"><div class="opp-avatar">👤</div></div>
+                <div class="opp-text-col">
+                    <span class="opp-name" id="oppName">Avversario</span>
+                    <span class="opp-live-score" id="oppLiveScore">0 pt</span>
+                </div>
+            </div>
+            <div class="opp-hand-box" id="oppHandBox"></div>
+            <div class="conta-carte" id="oppConta">11 carte</div>
+        </div>
+    </div>
+
+    <!-- I DUE TIMER DEL TURNO
+         "Smazzata unica" è stato tolto: la smazzata è sempre una sola, era
+         un'informazione inutile. Al suo posto i due cronometri del minuto a
+         turno, uno per giocatore, così si vede sempre a chi sta scorrendo
+         il tempo e quanto ne resta. -->
+    <div class="tabellone">
+        <div class="turni-box">
+            <!-- La spia del pozzetto sta qui, accanto all'orologio, perché
+                 è la stessa domanda: a che punto è l'altro. Il mazzetto
+                 disegnato in tavola cambia aspetto quando viene preso, ma
+                 è piccolo e in un angolo: durante la partita non lo si
+                 guarda. Sapere se il pozzetto è già stato preso, e da chi,
+                 cambia come si gioca. -->
+            <div class="riga-turno" id="rigaTurnoAvv">
+                <span class="chi">Avversario</span>
+                <span class="spia-pozzetto" id="pozzettoAvv">poz</span>
+                <span class="orologio" id="turnoAvv">1:00</span>
+            </div>
+            <div class="riga-turno" id="rigaTurnoMio">
+                <span class="chi">Tu</span>
+                <span class="spia-pozzetto" id="pozzettoMio">poz</span>
+                <span class="orologio" id="turnoMio">1:00</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="corner-stack">
+        <div class="match-timer" id="oppMatchTimer">6:00</div>
+        <div class="turn-indicator" id="turnIndicator">—</div>
+    </div>
+</div>
+
+<!-- ============ TAVOLO CENTRALE: le due colonne dei giochi calati ============ -->
+<div class="table-battlefield">
+    <div class="lato-giocatore" id="latoSinistro"></div>
+    <div class="meld-side left mine" id="myMelds"></div>
+    <div class="meld-side right" id="oppMelds"></div>
+    <div class="lato-giocatore" id="latoDestro"></div>
+</div>
+
+<div class="selection-hint" id="selectionHint"></div>
+
+<!-- ============ RIGA RISORSE: pozzetti, mazzo, scarti, + le MIE 7 carte ============
+     Il monte scarti ha flex:1 1 auto: cresce e si restringe da solo nello spazio
+     che avanza, quindi non arriva mai a invadere le 7 carte a destra. -->
+<div class="table-resources-row">
+    <div class="pozzetti-cross" id="pozzettiCross"></div>
+    <div class="pile mazzo-tallone" id="palTallone" onclick="ui.pesca()">MAZZO<div class="pile-count" id="talloneCount">0</div></div>
+    <div class="discard-pile" id="palScarti" onclick="ui.clicScarti()"></div>
+    <div class="battle-strip" id="battleGiocatore"></div>
+    <div class="barra-magia" id="magiaGiocatore"></div>
+</div>
+
+<!-- ============ FASCIA INFERIORE: la mia mano ============ -->
+<div class="bottom-shelf">
+    <div class="hand-center-box" id="handBox"></div>
+    <div class="conta-carte mia" id="mieCarteLato">11 carte</div>
+
+    <div class="sort-controls-desktop">
+        <div class="sort-buttons-row">
+            <button class="btn-sort-premium" title="Ordina per Seme" onclick="ui.ordina('suit')">
+                <div class="suit-grid"><span class="red">♥</span><span class="red">♦</span><span class="black">♣</span><span class="black">♠</span></div>
+            </button>
+            <button class="btn-sort-premium" title="Ordina per Valore" onclick="ui.ordina('value')">
+                <div class="value-flow">3→A</div>
+            </button>
+        </div>
+        <div class="avatar-ring my-avatar-ring"><div class="my-avatar">🙂</div></div>
+    </div>
+
+    <div class="hud-controls">
+        <div class="avatar-ring my-avatar-ring" id="myAvatarBasso"><div class="my-avatar">🙂</div></div>
+        <div class="conta-carte" id="mieCarte">11 carte</div>
+        <div class="match-timer" id="myMatchTimer">6:00</div>
+    </div>
+</div>
+
+<div id="bcardPop"></div>
+<div id="istruzioneBersaglio"></div>
+<div id="sorpresaOverlay">
+  <div class="raggi"></div>
+  <div class="botto"></div>
+  <div class="sorpresa-grande" id="sorpresaCarta" data-simbolo="✦">
+    <div class="costo-grande" id="sorpresaCosto">4</div>
+    <div class="chi" id="sorpresaChi"></div>
+    <div class="sigillone" id="sorpresaSigillo">✦</div>
+    <div class="tit" id="sorpresaTit"></div>
+    <div class="txt" id="sorpresaTxt"></div>
+    <div class="esito" id="sorpresaEsito"></div>
+  </div>
+</div>
+<div id="studio">
+  <div class="numero" id="studioNumero">30</div>
+  <div class="dice">Guarda il tavolo</div>
+  <div class="sotto">I quattro personaggi tuoi e i suoi: vita, attacco e abilità.
+    Passaci sopra per leggerli. Gli orologi partono alla fine.</div>
+</div>
+
+<div id="finePartita"><div class="box">
+  <h2 id="fineTit"></h2>
+  <p id="fineTxt"></p>
+  <a class="subito" href="home.html">Torna alla home</a>
+  <div class="conto">Il tavolo si chiude fra <b id="fineConto">10</b> secondi</div>
+</div></div>
+
+<!-- RETE DI SICUREZZA
+     La pagina è autosufficiente e non carica nulla dall'esterno, quindi
+     col doppio clic funziona. Se però per un qualunque motivo il tavolo
+     restasse vuoto, meglio dirlo che lasciare uno schermo muto. -->
+<div id="avvisoServer"></div>
+<script>
+(function(){
+  setTimeout(function(){
+    var box = document.getElementById('handBox');
+    if(box && box.children.length > 0) return;   // tutto a posto
+    document.getElementById('avvisoServer').innerHTML =
+      '<div id="avvisoServerBox" style="position:fixed;inset:0;z-index:1000;background:#14100c;color:#f2ead9;'+
+      'display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;'+
+      'font-family:system-ui,Segoe UI,sans-serif;line-height:1.6">'+
+      '<div style="max-width:520px">'+
+      '<div style="font-size:2.4rem;margin-bottom:6px">🃏</div>'+
+      '<h2 style="color:#d9ad4f;margin:0 0 12px">Il tavolo non è partito</h2>'+
+      '<p>Le carte non sono state distribuite. Prova a ricaricare la pagina '+
+      '(Ctrl+Shift+R); se non basta, apri la Console del browser con F12 e riferisci '+
+      'l\'errore che compare in rosso.</p>'+
+      '</div></div>';
+  }, 3000);
+})();
+</script>
+'''
+
+SCRIPT = r'''
+// ============================================================
+// BURRACO LEGENDS — tavolo di gioco.
+//
+// L'IMPAGINAZIONE E IL CSS SONO QUELLI DI BURRACO PULITO (game.html),
+// copiati senza modifiche: feltro, mano a ventaglio, colonne dei giochi,
+// mazzo e scarti restano identici. Le uniche due aggiunte sono le due
+// strisce di 7 carte Battle (4 personaggi + 3 magiche):
+//   - le MIE nella riga di mazzo/scarti, a destra;
+//   - quelle dell'AVVERSARIO in alto, fra il tasto impostazioni e la sua mano.
+//
+// ATTENZIONE: QUESTO FILE È GENERATO da strumenti/genera-tavolo.py.
+// Non modificarlo a mano: le modifiche andrebbero perse alla prossima
+// generazione. Il motore (engine/*.js) e i dati carta (cards/*) vengono
+// INCORPORATI qui dentro al momento della generazione, così la pagina si
+// apre col doppio clic senza bisogno di alcun server.
+// Se cambi il motore o le carte, rigenera:  python strumenti/genera-tavolo.py
+//
+// Il motore è quello vero del progetto, non un mockup: è lo stesso codice
+// coperto dai test automatici in engine/*.test.js.
+//
+// Modalità "hotseat": si gioca a turni alternati sullo stesso schermo.
+// Non c'è ancora rete né IA per l'avversario.
+// ============================================================
+const SEMI = ['♥', '♦', '♣', '♠'];
+const SUIT_CLASS = { '♥': 'cuori', '♦': 'quadri', '♣': 'fiori', '♠': 'picche' };
+const IDS_PERSONAGGI = {
+  io:  ['personaggio_001', 'personaggio_003', 'personaggio_005', 'personaggio_007'],
+  avv: ['personaggio_002', 'personaggio_004', 'personaggio_006', 'personaggio_008']
+};
+const IDS_MAGICHE = {
+  io:  ['sorpresa_001', 'trappola_001', 'trappola_002'],
+  avv: ['sorpresa_002', 'trappola_001', 'trappola_002']
+};
+
+// ------------------------------------------------------------
+// IL MAZZO SCELTO DAL GIOCATORE
+//
+// La pagina "Il tuo mazzo" mette da parte quattro eroi (uno per seme) e
+// tre Carte Magiche. Qui si rileggono, ma NON si prendono per buone:
+// quel testo sta nel browser, chiunque puo' riscriverlo, e soprattutto
+// puo' essere rimasto li' da una versione in cui certe carte esistevano
+// e adesso non piu'. Si controlla tutto contro le carte vere; al primo
+// dubbio si torna alla squadra predefinita, e lo si dice.
+//
+// (Nota per dopo: la pagina del mazzo ha un suo elenco di carte scritto
+// a mano, copia di cards/data. Due elenchi della stessa cosa prima o poi
+// divergono. Andrebbe generata come le altre pagine — e' il motivo per
+// cui questo controllo qui non e' un lusso.)
+// ------------------------------------------------------------
+function mazzoScelto() {
+  let salvato = null;
+  try { salvato = JSON.parse(localStorage.getItem('bb_mazzo') || 'null'); } catch (e) { return null; }
+  if (!salvato || typeof salvato !== 'object') return null;
+
+  const perche = (motivo) => {
+    setTimeout(() => avviso('Mazzo salvato non valido (' + motivo + '): gioco con la squadra predefinita.'), 500);
+    return null;
+  };
+
+  const scelti = salvato.personaggi;
+  if (!scelti || typeof scelti !== 'object') return perche('mancano i personaggi');
+  const personaggi = [];
+  for (const seme of SEMI) {
+    const id = scelti[seme];
+    if (typeof id !== 'string' || !dati.personaggi[id]) return perche('manca o non esiste l\'eroe di ' + seme);
+    if (dati.personaggi[id].seme !== seme) return perche('un eroe e\' finito sul seme sbagliato');
+    personaggi.push(id);
+  }
+
+  const magicheScelte = salvato.carteMagiche;
+  if (!Array.isArray(magicheScelte) || magicheScelte.length !== 3) return perche('servono 3 Carte Magiche');
+  for (const id of magicheScelte) {
+    if (typeof id !== 'string' || !dati.magiche[id]) return perche('una Carta Magica non esiste piu\'');
+  }
+  if (new Set(magicheScelte).size !== 3) return perche('la stessa Carta Magica e\' ripetuta');
+
+  return { personaggi, carteMagiche: magicheScelte };
+}
+
+let S = null;              // stato di partita (motore)
+let magie = null;          // [magicState giocatore 0, magicState giocatore 1]
+let dati = null;           // { i18n, personaggi, magiche }
+const selezione = new Set();
+let ordinamento = 'suit';
+// seme dell'eroe che sta per usare l'abilità speciale, mentre si sceglie
+// il bersaglio; null quando non si sta scegliendo nulla
+let bersaglioAttivo = null;
+
+const $ = (id) => document.getElementById(id);
+const testo = (id) => (dati.i18n[id] || { nome: id, descrizione: '' });
+
+function squadra(ids) {
+  const characters = {}, abilities = {};
+  for (const id of ids) {
+    const p = dati.personaggi[id];
+    characters[p.seme] = {
+      pv: p.vita, pvMax: p.vita, att: p.att, carica: 0, cardId: id, rarita: p.rarita || 1,
+      turniCarica: p.turniCarica || 4   // quanti turni per riempire la barra dell'abilità
+    };
+    if (p.abilita) abilities[p.seme] = p.abilita;
+  }
+  return { characters, abilities };
+}
+
+function stelle(n) { return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n)); }
+
+// quanti punti magia costa l'abilità speciale di questo eroe
+function costoAbilita(ch) {
+  const a = ch && ch._ability;
+  const c = a && (a.costo ?? a.puntiMagia);
+  return (c === undefined || c === null) ? 4 : Number(c);
+}
+
+// ------------------------------------------------------------
+// DISEGNO DELLE CARTE DA GIOCO
+// Stessa struttura HTML del tavolo originale, stile "striscia" (la carta
+// disegnata con CSS invece che con un'immagine): identica a vedersi, ma
+// non servono i 375 KB di immagini di Burraco Pulito.
+// ------------------------------------------------------------
+// ------------------------------------------------------------
+// LO STILE DELLE CARTE
+//
+// Stesso sistema di Circolo Burraco, e non per pigrizia: il foglio di
+// stile che questo tavolo eredita da lì contiene GIÀ tutti questi
+// stili, completi e provati. Riscriverli sarebbe stato rifare una cosa
+// che esiste, con la certezza di farla un po' diversa.
+//
+// PREDEFINITO: L'ANGOLO GRANDE.
+// A ventaglio le carte si coprono a vicenda e resta visibile solo una
+// striscia sul lato sinistro: l'angolo grande mette lì dentro tutto
+// quello che serve — valore e seme, grandi — mentre gli stili che
+// puntano sul centro della carta lo perdono proprio quando servirebbe.
+// ------------------------------------------------------------
+const STILI_CARTE = {
+  angolo:       { nome: 'Angolo grande' },
+  angolocolori: { nome: 'Angolo grande a colori' },
+  striscia:     { nome: 'Striscia laterale' },
+  colori:       { nome: 'Striscia a colori' },
+  filigrana:    { nome: 'Filigrana' },
+  numero:       { nome: 'Numero solo' }
+};
+const STILE_PREDEFINITO = 'angolo';
+
+let stileCarteScelto = null;
+function stileCarte() {
+  if (stileCarteScelto === null) {
+    let salvato = null;
+    try { salvato = localStorage.getItem('bb_stile_carte'); } catch (e) {}
+    stileCarteScelto = (salvato && STILI_CARTE[salvato]) ? salvato : STILE_PREDEFINITO;
+  }
+  return stileCarteScelto;
+}
+
+// Il corpo della carta, senza il riquadro esterno.
+function corpoCarta(valore, seme, stile) {
+  if (stile === 'filigrana') {
+    return '<div class="fil">' + seme + '</div>' +
+           '<div class="angv"><span class="v">' + valore + '</span><span class="s">' + seme + '</span></div>';
+  }
+  if (stile === 'numero') {
+    // "10" è largo il doppio di "7" e "JLY" il triplo: con una misura
+    // sola uno dei tre esce dalla carta. La classe dice quanto è lungo,
+    // il foglio di stile decide quanto rimpicciolire.
+    const lung = valore.length >= 3 ? ' lungo' : (valore.length === 2 ? ' medio' : '');
+    return '<div class="numgrande' + lung + '">' + valore + '</div>' +
+           '<span class="semino su">' + seme + '</span>' +
+           '<span class="semino giu">' + seme + '</span>';
+  }
+  if (stile === 'angolo' || stile === 'angolocolori') {
+    return '<div class="ang"><span class="v">' + valore + '</span><span class="s">' + seme + '</span></div>' +
+           '<div class="centro">' + seme + '</div>';
+  }
+  // 'striscia' e 'colori' hanno la stessa struttura: cambia solo il colore
+  return '<div class="banda"><span class="v">' + valore + '</span><span class="s">' + seme + '</span></div>' +
+         '<div class="centro">' + seme + '</div>';
+}
+
+function cartaHtml(c, selezionabile) {
+  const cls = c.isJolly ? (c.jollyColor === 'red' ? 'cuori' : 'picche') : SUIT_CLASS[c.suit];
+  // IL JOLLY.
+  // Diceva "JLY", che a occhio e' un "J" con del rumore intorno: in una
+  // mano stretta a ventaglio si scambiava per un fante. Ora non ha piu'
+  // ne' un numero ne' un seme da leggere — ha una stella, e la carta
+  // intera cambia aspetto: fondo scuro e bordo dorato. Non e' una carta
+  // come le altre e non deve sembrarlo.
+  const valore = c.isJolly ? '★' : valueLabel(c.value);
+  const seme = c.isJolly ? '★' : c.suit;
+  const sel = selezionabile && selezione.has(c.id);
+  const stile = stileCarte();
+  return '<div class="card ' + cls + (c.isJolly ? ' jolly' : '') + ' disegnata st-' + stile +
+         (selezionabile ? ' selectable' : '') + (sel ? ' selected' : '') +
+         '" data-cid="' + c.id + '"' + (selezionabile ? ' onclick="ui.tocca(\'' + c.id + '\')"' : '') + '>' +
+           corpoCarta(valore, seme, stile) +
+           (c.isJolly ? '<div class="scritta-jolly">JOLLY</div>' : '') +
+         '</div>';
+}
+
+// Sovrapposizione a ventaglio: stessa formula del tavolo originale.
+// Se le carte ci stanno larghe si lascia un filo di spazio fra una e
+// l'altra; se non ci stanno si stringono, senza mai ridursi a meno di
+// una striscia visibile.
+function fanOverlap(n, itemSize, gapMin, containerSize, minVisibleStrip) {
+  if (n <= 1) return 0;
+  const naturale = n * itemSize + (n - 1) * gapMin;
+  if (naturale <= containerSize) return gapMin;
+  const serve = (containerSize - itemSize) / (n - 1) - itemSize;
+  const limite = -(itemSize - minVisibleStrip);
+  if (serve >= limite) return serve;
+  const largAlLimite = itemSize + (n - 1) * (itemSize + limite);
+  return (largAlLimite <= containerSize) ? limite : serve;
+}
+
+function misuraCarta(nome, fallback) {
+  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(nome));
+  return v || fallback;
+}
+
+// Le "matte" (jolly e pinelle, cioè i 2) stanno SEMPRE a sinistra della mano,
+// staccate dal resto e in qualunque ordinamento: sono le carte jolly del
+// Burraco e vanno tenute sott'occhio a parte, non sparse fra le altre.
+//
+// L'ASSO VALE PIÙ DEL K. Nel mazzo l'asso è la carta numero 1, ma a
+// vederlo in mano sta in fondo al proprio seme, dopo il K: è lì che uno
+// lo cerca. Vale solo per la disposizione a schermo — nelle scale l'asso
+// può ancora fare sia l'1 sia il 14, quello lo decide il motore.
+const VALORE_ORDINE = (c) => (c.value === 1 ? 14 : c.value);
+
+function ordinaCarte(carte) {
+  const ordineSemi = { '♠': 0, '♦': 1, '♣': 2, '♥': 3 };   // ordine semi di Burraco Pulito
+  const matta = (c) => c.isJolly || c.isPinella;
+  const matte = carte.filter(matta).sort((a, b) => (a.isJolly ? 1 : 0) - (b.isJolly ? 1 : 0) || (ordineSemi[a.suit] ?? 9) - (ordineSemi[b.suit] ?? 9));
+  const resto = carte.filter((c) => !matta(c)).sort((a, b) => {
+    if (ordinamento === 'value') return (VALORE_ORDINE(a) - VALORE_ORDINE(b)) || (ordineSemi[a.suit] - ordineSemi[b.suit]);
+    return (ordineSemi[a.suit] - ordineSemi[b.suit]) || (VALORE_ORDINE(a) - VALORE_ORDINE(b));
+  });
+  return [...matte, ...resto];
+}
+
+// LE CARTE APPENA ARRIVATE RESTANO IN FONDO.
+// Pescando dal mazzo o raccogliendo il monte, le carte nuove non vanno
+// infilate al loro posto: restano in coda finché non si ripreme un
+// pulsante di ordinamento. Così si vede a colpo d'occhio cosa è appena
+// arrivato, invece di doverlo ricercare in mezzo alla mano.
+let carteNuove = [];        // id delle carte arrivate e non ancora riordinate
+
+function manoDaMostrare(mano) {
+  if (!carteNuove.length) return ordinaCarte(mano);
+  const nuoveSet = new Set(carteNuove);
+  const vecchie = mano.filter((c) => !nuoveSet.has(c.id));
+  // le nuove restano nell'ordine in cui sono arrivate
+  const nuove = carteNuove.map((id) => mano.find((c) => c.id === id)).filter(Boolean);
+  return [...ordinaCarte(vecchie), ...nuove];
+}
+
+// ------------------------------------------------------------
+// DISPOSIZIONE DI UNA COLONNA CALATA
+// Porting fedele di orderMeldForDisplay/buildColumnDisplay del tavolo
+// originale: carta più alta in cima, e la wildcard messa al posto della
+// carta che sta sostituendo (non buttata in fondo). Le carte si
+// sovrappongono, mostrando solo una striscia di ciascuna: senza questo la
+// colonna diventava una fila di carte intere, alta quanto tutto il tavolo.
+// ------------------------------------------------------------
+function wildcardDiMeld(m) {
+  if (m.wildcardId) { const t = m.cards.find((c) => c.id === m.wildcardId); if (t) return t; }
+  if (m.type === 'group') return m.cards.find((c) => c.isJolly || (c.isPinella && m.value !== 2)) || null;
+  return m.cards.find((c) => c.isJolly || (c.isPinella && c.suit !== m.suit)) || null;
+}
+
+function ordinaMeldPerColonna(m) {
+  const w = wildcardDiMeld(m);
+  const naturali = m.cards.filter((c) => c !== w);
+  if (m.type !== 'sequence') return w ? [...naturali, w] : naturali;
+
+  const aceHigh = m.order ? m.order.aceHigh : false;
+  const val = (c) => (aceHigh && c.value === 1) ? 14 : c.value;
+  naturali.sort((a, b) => val(b) - val(a));            // decrescente: la più alta in cima
+  if (!w) return naturali;
+
+  // la wildcard tappa un buco? allora va messa in quel punto preciso
+  const vals = naturali.map(val);
+  let mancante = null;
+  for (let v = vals[0]; v >= vals[vals.length - 1]; v--) { if (!vals.includes(v)) { mancante = v; break; } }
+  if (mancante === null) return [...naturali, w];      // scala già completa: la wildcard sta in coda
+  let dove = naturali.findIndex((c) => val(c) < mancante);
+  if (dove === -1) dove = naturali.length;
+  const out = naturali.slice();
+  out.splice(dove, 0, w);
+  return out;
+}
+
+// ------------------------------------------------------------
+// DISEGNO DELLE 7 CARTE BATTLE
+// ------------------------------------------------------------
+function bcardPersonaggio(ch, seme, mio) {
+  const t = testo(ch.cardId);
+  const pct = Math.max(0, (ch.pv / ch.pvMax) * 100);
+  const rosso = (seme === '♥' || seme === '♦');
+  // "pronta" non dipende più da una carica sulla singola carta: l'abilità
+  // si paga dalla riserva comune di punti magia
+  // "pronta" adesso vuol dire anche: non ha ancora colpito in questo
+  // turno. Un tasto acceso che poi rifiuta e' peggio di un tasto spento.
+  const giaUsata = mio && (S.players[0].abilitaUsate || []).includes(seme);
+  const pronta = mio && ch.pv > 0 && !giaUsata && S.players[0].puntiMagia >= costoAbilita(ch);
+  // in modalità "scegli il bersaglio" si accendono i personaggi avversari vivi
+  const mirabile = !mio && bersaglioAttivo && ch.pv > 0;
+  // I dati per il pannello viaggiano negli attributi: così il riquadro si
+  // riempie senza dover ricercare la carta a ogni passaggio del cursore.
+  return '<div class="bcard' + (ch.pv <= 0 ? ' ko' : '') + (pronta ? ' pronta' : '') +
+      (giaUsata && ch.pv > 0 ? ' esausta' : '') + (mirabile ? ' mirabile' : '') +
+      '" data-seme="' + seme + '" data-lato="' + (mio ? 'mio' : 'avv') + '"' +
+      (pronta ? ' onclick="ui.attivaAbilita(\'' + seme + '\')"' : '') +
+      (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
+      ' data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione) + '"' +
+      ' data-stelle="' + stelle(ch.rarita) + '"' +
+      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) + '"' +
+      ' data-carica="Abilità speciale: costa ' + costoAbilita(ch) + ' punti magia' +
+        (giaUsata ? ' · ha già colpito in questo turno' : '') +
+        (ch.pv <= 0 ? ' · eroe caduto: i suoi colpi valgono l\'80%' : '') + '">' +
+      (pronta ? '<div class="pronta-tag">USA</div>' : '') +
+      '<div class="seme ' + (rosso ? 'rosso' : 'nero') + '">' + seme + '</div>' +
+      '<div class="nome">' + t.nome + '</div>' +
+      '<div class="stelle">' + stelle(ch.rarita) + '</div>' +
+      '<div class="barra vita"><i style="width:' + pct + '%"></i></div>' +
+    '</div>';
+}
+
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+function disegnaStriscia(contenitore, indiceGiocatore, mie) {
+  const g = S.players[indiceGiocatore];
+  const ms = magie[indiceGiocatore];
+  let html = '';
+  for (const s of SEMI) html += bcardPersonaggio(g.characters[s], s, mie);
+  html += '<div class="divisore"></div>';
+
+  // Una carta già giocata sparisce dal tavolo. Restava lì, spenta ma
+  // presente, e sembrava ancora disponibile. L'indice non si tocca:
+  // ui.magica(i) punta dentro selection, e rinumerare le carte
+  // rimaste farebbe giocare quella sbagliata.
+  const giocate = ms.giocate || [];
+  ms.selection.forEach((carta, i) => {
+    if (giocate.includes(carta.id)) return;
+    if (!mie) {
+      // Le Carte Magiche dell'avversario non si possono conoscere: sempre coperte.
+      html += '<div class="bcard magica coperta" data-nome="Carta Magica sconosciuta"' +
+              ' data-desc="Non puoi sapere quale carta ha scelto l\'avversario finché non la gioca.">' +
+              '<div class="sigillo">?</div></div>';
+      return;
+    }
+    const t = testo(carta.id);
+    const armata = ms.trappoleArmate.some((x) => x.cardId === carta.id);
+    const usata = carta.tipo === 'sorpresa' && ms.sorpresaUsed;
+    const stato = usata ? ' — già usata' : (armata ? ' — armata, in attesa che scatti' : '');
+    const costo = carta.costo ?? 4;
+    const senzaPunti = g.puntiMagia < costo;
+    html += '<div class="bcard magica ' + carta.tipo + (usata ? ' usata' : '') + (armata ? ' armata' : '') +
+            (senzaPunti ? ' senza-punti' : '') +
+            '" data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione + stato) + '"' +
+            ' data-carica="Costa ' + costo + ' punti magia (ne hai ' + g.puntiMagia + ')"' +
+            ' data-tipo="' + carta.tipo + '"' +
+            ' data-stelle="' + stelle(carta.rarita || 1) + '"' +
+            ' onclick="ui.magica(' + i + ')">' +
+            '<div class="sigillo">' + (carta.tipo === 'sorpresa' ? '✦' : '⚡') + '</div>' +
+            '<div class="etichetta">' + (carta.tipo === 'sorpresa' ? 'SORPRESA' : 'TRAPPOLA') + '</div>' +
+            '<div class="nome-magia">' + t.nome + '</div>' +
+            '<div class="costo-magia">' + costo + '</div>' +
+          '</div>';
+  });
+  contenitore.innerHTML = html;
+}
+
+// ------------------------------------------------------------
+// PANNELLO DI DETTAGLIO
+// Un solo riquadro riusato da tutte le carte: si apre accanto a quella
+// sotto il cursore. Prima il testo stava dentro la carta ingrandita e
+// usciva dai bordi; qui ha una larghezza propria e non può sbordare.
+// ------------------------------------------------------------
+function agganciaPannello() {
+  const pop = $('bcardPop');
+  document.addEventListener('mouseover', (e) => {
+    const c = e.target.closest ? e.target.closest('.bcard') : null;
+    if (!c) return;
+    const tipo = c.getAttribute('data-tipo');
+    pop.innerHTML =
+      (tipo ? '<div class="ptipo">' + (tipo === 'sorpresa' ? 'Carta Sorpresa' : 'Carta Trappola') + '</div>' : '') +
+      '<div class="pnome">' + (c.getAttribute('data-nome') || '') + '</div>' +
+      (c.getAttribute('data-stelle') ? '<div class="pstelle">' + c.getAttribute('data-stelle') + '</div>' : '') +
+      (c.getAttribute('data-stat') ? '<div class="pstat">' + c.getAttribute('data-stat') + '</div>' : '') +
+      (c.getAttribute('data-carica') ? '<div class="pcarica">' + c.getAttribute('data-carica') + '</div>' : '') +
+      '<div class="pdesc">' + (c.getAttribute('data-desc') || '') + '</div>';
+    pop.classList.add('mostra');
+
+    const r = c.getBoundingClientRect();
+    const pr = pop.getBoundingClientRect();
+    // sotto la carta se sta in alto, sopra se sta in basso; sempre dentro lo schermo
+    const sotto = r.top < window.innerHeight / 2;
+    let top = sotto ? r.bottom + 8 : r.top - pr.height - 8;
+    let left = r.left + r.width / 2 - pr.width / 2;
+    left = Math.max(6, Math.min(left, window.innerWidth - pr.width - 6));
+    top = Math.max(6, Math.min(top, window.innerHeight - pr.height - 6));
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  });
+  document.addEventListener('mouseout', (e) => {
+    const c = e.target.closest ? e.target.closest('.bcard') : null;
+    if (c) pop.classList.remove('mostra');
+  });
+}
+
+// ------------------------------------------------------------
+// DISEGNO COMPLETO
+// ------------------------------------------------------------
+// ============================================================
+// LE CARTE SI MUOVONO
+//
+// Il tavolo si ridisegna tutto intero a ogni cambiamento, quindi le
+// carte non si spostavano: sparivano da una parte e ricomparivano
+// dall'altra. Funzionava, ma non si capiva che cosa fosse successo —
+// quale carta avevo pescato, dove era finita quella scartata, quali
+// erano scese in tavola.
+//
+// Il modo di rimediare e' vecchio e si chiama FLIP. Si segna DOVE sta
+// ogni carta PRIMA di ridisegnare; dopo il ridisegno la si trova nel
+// posto nuovo, le si dice "fai finta di essere ancora dov'eri" e poi si
+// toglie la finzione. Il browser ci mette in mezzo il movimento. Nessuna
+// carta si sposta davvero: si disegna il salto all'indietro e lo si
+// annulla, e questo e' il motivo per cui non tocca nulla della partita.
+//
+// Le carte che PRIMA non c'erano (una pescata dal mazzo coperto, una
+// calata dell'avversario che esce dalla sua mano) non hanno un "dove
+// stavano": gli si assegna un punto di partenza sensato — il mazzo, il
+// monte scarti, la mano di chi ha giocato.
+// ============================================================
+const DURATA_VOLO_CARTA = 420;
+
+function rettangoliDelleCarte() {
+  const mappa = new Map();
+  if (typeof document === 'undefined') return mappa;
+  for (const el of document.querySelectorAll('[data-cid]')) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0) mappa.set(el.dataset.cid, r);
+  }
+  return mappa;
+}
+
+// Da dove arriva una carta che prima non c'era, a seconda di dove e'
+// atterrata. Non si puo' sapere con certezza, ma indovinare bene copre
+// tutti i casi che capitano davvero.
+function origineDiUnaCartaNuova(el) {
+  const rettangolo = (id) => {
+    const n = $(id);
+    return n ? n.getBoundingClientRect() : null;
+  };
+  if (el.closest('#handBox')) return rettangolo('palTallone') || rettangolo('palScarti');
+  if (el.closest('#palScarti')) return rettangolo('handBox');
+  if (el.closest('#myMelds')) return rettangolo('handBox');
+  if (el.closest('#oppMelds')) return rettangolo('oppHandBox');
+  return null;
+}
+
+function faiVolareLeCarte(prima) {
+  if (!prima || typeof document === 'undefined') return;
+  if (!document.querySelectorAll) return;
+  for (const el of document.querySelectorAll('[data-cid]')) {
+    const dopo = el.getBoundingClientRect();
+    if (dopo.width <= 0) continue;
+    const da = prima.get(el.dataset.cid) || origineDiUnaCartaNuova(el);
+    if (!da) continue;
+
+    const dx = da.left - dopo.left;
+    const dy = da.top - dopo.top;
+    const scala = dopo.width > 0 ? Math.min(2, Math.max(0.3, da.width / dopo.width)) : 1;
+    // se non si e' mossa quasi per niente, meglio non animare: un
+    // tremolio a ogni ridisegno stanca e non racconta niente
+    if (Math.abs(dx) < 3 && Math.abs(dy) < 3 && Math.abs(scala - 1) < 0.05) continue;
+
+    if (!el.animate) continue;
+    const zPrima = el.style.zIndex;
+    el.style.zIndex = '400';
+    const anim = el.animate([
+      { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(' + scala + ')' },
+      { transform: 'none' }
+    ], { duration: DURATA_VOLO_CARTA, easing: 'cubic-bezier(0.22, 0.72, 0.26, 1)' });
+    const rimetti = () => { el.style.zIndex = zPrima; };
+    if (anim.finished) anim.finished.then(rimetti).catch(rimetti);
+    else setTimeout(rimetti, DURATA_VOLO_CARTA + 40);
+  }
+}
+
+// Il disegno vero sta in disegnaTutto(); qui intorno c'e' solo il
+// movimento. Cosi' ogni chiamata a disegna(), da qualunque punto del
+// tavolo arrivi, anima le carte senza doversene ricordare.
+function disegna() {
+  const prima = rettangoliDelleCarte();
+  disegnaTutto();
+  faiVolareLeCarte(prima);
+}
+
+function disegnaTutto() {
+  const io = S.players[0], avv = S.players[1];
+
+  // LA SCELTA DEL BERSAGLIO NON SOPRAVVIVE AL TURNO.
+  // Restava aperta: si premeva un eroe, non si sceglieva nessun
+  // bersaglio, e la scritta "scegli chi colpire" rimaneva li' anche dopo
+  // aver passato la mano — chiedendo una cosa che non si poteva piu'
+  // fare. Se non e' piu' il mio turno, o la partita e' finita, si chiude.
+  if (bersaglioAttivo && (S.currentPlayerIndex !== 0 || S.status !== 'in_progress')) {
+    bersaglioAttivo = null;
+    const nota = $('istruzioneBersaglio');
+    if (nota) nota.classList.remove('mostra');
+  }
+
+  // mia mano: ventaglio in basso, carte sovrapposte come nel tavolo originale
+  const mano = manoDaMostrare(io.hand);
+  const cw = misuraCarta('--card-w', 40.25);
+  const largh = $('handBox').clientWidth || 320;
+  const ov = fanOverlap(mano.length, cw, 4, largh, 8);
+  $('handBox').innerHTML = mano.map((c, i) =>
+    '<div style="margin-right:' + (i === mano.length - 1 ? 0 : ov) + 'px">' + cartaHtml(c, true) + '</div>'
+  ).join('');
+  const etichettaCarte = (n) => n + (n === 1 ? ' carta' : ' carte');
+  $('mieCarte').textContent = etichettaCarte(io.hand.length);
+  $('mieCarteLato').textContent = etichettaCarte(io.hand.length);
+  $('oppConta').textContent = etichettaCarte(avv.hand.length);
+
+  // mano avversario: solo dorsi, non si vede mai cosa ha
+  const ocw = misuraCarta('--opp-card-w', 19);
+  const olargh = misuraCarta('--larghezza-ventaglio', 96);
+  const oov = fanOverlap(avv.hand.length, ocw, 2, olargh, 5);
+  $('oppHandBox').innerHTML = new Array(avv.hand.length).fill(0).map((_, i) =>
+    '<div style="margin-right:' + (i === avv.hand.length - 1 ? 0 : oov) + 'px"><div class="card back"></div></div>'
+  ).join('');
+
+  // colonne dei giochi calati, precedute dallo spazio riservato alle Trappole
+  $('myMelds').innerHTML  = slotTrappole(0) + io.melds.map((m) => colonnaMeld(m, $('myMelds'))).join('');
+  $('oppMelds').innerHTML = slotTrappole(1) + avv.melds.map((m) => colonnaMeld(m, $('oppMelds'))).join('');
+
+  // I due pozzetti, a sinistra del mazzo (come nel tavolo originale).
+  // Uno per giocatore: si prendono automaticamente quando la mano si
+  // svuota. Restano visibili anche dopo, ma spenti.
+  $('pozzettiCross').innerHTML =
+    pozzettoHtml(io, 'sotto', 'Il tuo pozzetto') +
+    pozzettoHtml(avv, 'sopra', 'Pozzetto avversario');
+
+  // mazzo e scarti
+  $('talloneCount').textContent = S.tallone.length;
+  const scarti = $('palScarti');
+  if (S.scarti.length === 0) {
+    scarti.className = 'discard-pile empty';
+    scarti.innerHTML = '<div class="segnaposto-scarti"></div>';
+  } else {
+    scarti.className = 'discard-pile';
+    // Le scartate si sovrappongono con la stessa formula del ventaglio: più
+    // ce ne sono, più si stringono dentro lo spazio che hanno. Quello spazio
+    // è quello che avanza nella riga, perché le 7 carte Battle a destra non
+    // sono comprimibili: il monte non arriva mai a invaderle.
+    const n = S.scarti.length;
+    const spazio = scarti.clientWidth || 240;
+    const cwS = misuraCarta('--card-w', 40.25);
+    const ovS = fanOverlap(n, cwS, 2, spazio - 34, 7); // -34: lascia posto al contatore
+    scarti.innerHTML = S.scarti.map((c, i) =>
+      '<div style="margin-right:' + (i === n - 1 ? 0 : ovS) + 'px">' + cartaHtml(c, false) + '</div>'
+    ).join('') + '<div class="pile-count">' + n + '</div>';
+  }
+
+  // strisce Battle e riserve di punti magia
+  disegnaStriscia($('battleGiocatore'), 0, true);
+  disegnaStriscia($('battleAvversario'), 1, false);
+  disegnaMagia($('magiaGiocatore'), io);
+  disegnaMagia($('magiaAvversario'), avv);
+
+  // intestazioni
+  $('turnIndicator').textContent = S.status !== 'in_progress' ? 'Fine' : (S.currentPlayerIndex === 0 ? 'Tocca a te' : 'Avversario');
+  $('oppName').textContent = 'Avversario';
+  $('oppLiveScore').textContent = Math.round(SEMI.reduce((t, s) => t + avv.characters[s].pv, 0)) + ' PV';
+  aggiornaMonteTempo();
+
+  const g = S.players[S.currentPlayerIndex];
+  document.body.classList.toggle('ho-selezione', selezione.size > 0 && S.status === 'in_progress');
+  document.body.classList.toggle('scelta-bersaglio', !!bersaglioAttivo);
+  $('selectionHint').textContent = S.status !== 'in_progress' ? ''
+    : (!g.hasDrawnThisTurn ? 'Pesca dal mazzo o prendi il monte scarti.'
+       : (selezione.size
+          ? (io.melds.length
+             ? 'Tocca un gioco già calato per agganciarci le carte (anche una sola), lo spazio vuoto per calarne uno nuovo, o gli scarti per scartare.'
+             : 'Tocca lo spazio delle calate per calare (minimo 3 carte), o gli scarti per scartare.')
+          : 'Scegli le carte da giocare, oppure scarta.'));
+
+  if (S.status === 'finished') mostraFine();
+}
+
+// La riserva di punti magia: 15 tacche, quelle piene sono i punti che hai.
+function disegnaMagia(box, giocatore) {
+  const punti = giocatore.puntiMagia || 0;
+  let tacche = '';
+  for (let i = 0; i < 15; i++) tacche += '<div class="tacca' + (i < punti ? ' piena' : '') + '"></div>';
+  box.className = 'barra-magia' + (punti >= 15 ? ' piena' : '');
+  box.title = 'Punti magia: ' + punti + ' su 15 — crescono di 2 a ogni tuo turno e si spendono per le Carte Magiche e le abilità speciali';
+  box.innerHTML = '<span class="etichetta">MAGIA</span><div class="tacche">' + tacche + '</div><span class="conta">' + punti + '/15</span>';
+}
+
+// ------------------------------------------------------------
+// PRIMA COLONNA RISERVATA ALLE CARTE TRAPPOLA
+// La trappola resta coperta (l'avversario non sa QUALE sia), ma deve
+// vedersi CHE c'è: altrimenti non avrebbe modo di accorgersene. Perciò
+// la prima colonna dell'area delle calate resta sempre libera e ospita
+// le trappole armate, a faccia in giù. Solo le Trappole finiscono qui:
+// le Sorprese si risolvono subito, non restano sul tavolo.
+// ------------------------------------------------------------
+function slotTrappole(indiceGiocatore) {
+  const armate = magie[indiceGiocatore].trappoleArmate;
+  const contenuto = armate.length === 0
+    ? '<div class="posto"></div>'
+    : armate.map(() => '<div class="trappola-posata" title="Carta Trappola armata: attiva, ma non si sa quale sia">⚡</div>').join('');
+  return '<div class="slot-trappole">' + contenuto +
+         '<div class="etichetta">' + (armate.length ? 'TRAPPOLE ATTIVE' : 'trappole') + '</div></div>';
+}
+
+function pozzettoHtml(giocatore, posizione, titolo) {
+  const preso = giocatore.pozzettoTaken;
+  return '<div class="pozzetto-card ' + posizione + (preso ? ' preso' : '') + '" title="' + titolo +
+         (preso ? ' — già preso' : ' — ancora da prendere') + '"></div>';
+}
+
+function colonnaMeld(m, contenitore) {
+  const cardH = misuraCarta('--card-h', 58.65);
+  const cardW = misuraCarta('--card-w', 40.25);
+  const ordinate = ordinaMeldPerColonna(m);
+  const w = wildcardDiMeld(m);
+
+  // quanto spazio in verticale si lascia a ogni carta oltre la prima: solo
+  // una striscia. Se la colonna non ci sta in altezza, la striscia si
+  // assottiglia finché rientra (stessa idea del tavolo originale).
+  const PASSO = 20;
+  const dispH = (contenitore && contenitore.clientHeight) || 260;
+  const spazioTarghetta = bonusLunghezza(m.cards.length) ? 22 : 0;   // la targhetta occupa il suo posto
+  const costo = (ordinate.length - 1) * PASSO;
+  const utile = Math.max(cardH, dispH - 12 - spazioTarghetta) - cardH;
+  const scala = (costo > 0 && costo > utile) ? Math.max(0.28, utile / costo) : 1;
+  const passo = PASSO * scala;
+
+  // La wildcard NON si mostra più colcata a 90°: stava storta e basta, e
+  // rubava spazio in verticale. Ora resta dritta come le altre e si
+  // riconosce da una cornice dorata.
+  const html = ordinate.map((c, i) => {
+    const stile = i === 0 ? '' : 'margin-top:' + (passo - cardH) + 'px;';
+    const marchio = (c === w) ? ' class="e-matta"' : '';
+    return '<div' + marchio + ' style="' + stile + '">' + cartaHtml(c, false) + '</div>';
+  }).join('');
+
+  return '<div class="card-column" data-meld-id="' + m.id + '">' + html +
+         targhettaPotenza(m) + '</div>';
+}
+
+// ------------------------------------------------------------
+// TARGHETTA DELLA POTENZA
+// Al posto della carta storta, sotto la colonna si legge quanto quel
+// gioco picchia più forte per la sua lunghezza: 5 carte +10%, 6 carte
+// +20%, 7 o più +35%. Sotto le 5 carte non c'è bonus e non si scrive nulla.
+// Vale per entrambi: nei tris è il moltiplicatore sul danno di ogni carta,
+// nelle scale è l'ondata d'urto che colpisce tutti e quattro.
+// ------------------------------------------------------------
+function bonusLunghezza(n) {
+  if (n >= 7) return 35;
+  if (n === 6) return 20;
+  if (n === 5) return 10;
+  return 0;
+}
+
+function targhettaPotenza(m) {
+  const bonus = bonusLunghezza(m.cards.length);
+  if (!bonus) return '';
+  const aoe = (m.type === 'sequence');
+  const spiega = aoe
+    ? 'Scala da ' + m.cards.length + ' carte: ondata d\'urto del ' + bonus + '% su tutti e quattro i personaggi avversari'
+    : 'Gruppo da ' + m.cards.length + ' carte: +' + bonus + '% di danno su ogni carta';
+  return '<div class="targhetta-potenza liv' + bonus + '" title="' + spiega + '">+' + bonus + '%</div>';
+}
+
+function mmss(sec) {
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+// ------------------------------------------------------------
+// I DUE CRONOMETRI DEL MINUTO A TURNO
+// Il motore non tiene un timer che scorre: registra quando è iniziato il
+// turno e ricostruisce il tempo passato quando serve. Qui si legge quel
+// valore quattro volte al secondo per mostrarlo, e si chiede al motore di
+// far scattare la scadenza quando il minuto è finito.
+// ------------------------------------------------------------
+// ------------------------------------------------------------
+// IL MONTE TEMPO DEI SEI MINUTI
+// Il motore non lo fa scorrere: tiene in cassa i secondi e li scala
+// tutti insieme quando arriva la mossa dopo. Come conto è esatto, ma a
+// schermo si vedeva fermo per tutto il turno e poi calare di colpo di
+// quaranta secondi — ecco l'andare "a tratti".
+// Qui il numero viene ricostruito a ogni disegno: quello che il motore
+// ha in cassa, meno i secondi passati dall'ultima mossa, e solo per chi
+// ha il turno. Il valore che conta resta quello del motore — questo è
+// soltanto il modo di mostrarlo, e per questo non tocca lo stato.
+// ------------------------------------------------------------
+function monteTempo(indice) {
+  let sec = S.players[indice].clockSecondsLeft;
+  if (S.status === 'in_progress' && S.currentPlayerIndex === indice) {
+    const da = Date.parse(S.lastMoveAt);
+    if (!isNaN(da)) sec -= Math.max(0, Math.floor((adessoVero() - da) / 1000));
+  }
+  return Math.max(0, sec);
+}
+
+function aggiornaMonteTempo() {
+  if (!S) return;
+  const mio = $('myMatchTimer'), suo = $('oppMatchTimer');
+  if (!mio || !suo) return;
+  mio.textContent = mmss(monteTempo(0));
+  suo.textContent = mmss(monteTempo(1));
+}
+
+function aggiornaSpiePozzetto() {
+  if (!S) return;
+  const spie = [['pozzettoMio', 0], ['pozzettoAvv', 1]];
+  for (const [id, chi] of spie) {
+    const el = $(id);
+    if (!el) continue;
+    const preso = !!S.players[chi].pozzettoTaken;
+    el.classList.toggle('preso', preso);
+    el.textContent = preso ? 'POZZETTO PRESO' : 'pozzetto';
+    el.title = preso
+      ? 'Il pozzetto è già stato preso: le sue carte valgono il 150%'
+      : 'Il pozzetto è ancora lì da prendere';
+  }
+}
+
+// ------------------------------------------------------------
+// LO STUDIO DEL TAVOLO
+// Non e' un conto alla rovescia del browser: e' l'istante scritto nella
+// partita. Qui si legge e si mostra, come per gli altri due orologi —
+// cosi' i due giocatori vedono lo stesso numero, e chiudere e riaprire
+// la pagina non regala secondi a nessuno.
+// ------------------------------------------------------------
+function secondiDiStudioRimasti() {
+  if (!S || !S.iniziaAlle || S.status !== 'in_progress') return 0;
+  const inizio = Date.parse(S.iniziaAlle);
+  if (isNaN(inizio)) return 0;
+  return Math.max(0, Math.ceil((inizio - adessoVero()) / 1000));
+}
+
+function aggiornaStudio() {
+  const box = $('studio');
+  if (!box) return;
+  const restano = secondiDiStudioRimasti();
+  const dentro = restano > 0;
+  box.classList.toggle('mostra', dentro);
+  document.body.classList.toggle('in-studio', dentro);
+  if (!dentro) return;
+  const n = $('studioNumero');
+  n.textContent = restano;
+  n.classList.toggle('poco', restano <= 5);
+}
+
+function rigiaMiaSpenta() {
+  for (const id of ['rigaTurnoMio', 'rigaTurnoAvv']) {
+    const r = $(id);
+    if (r) r.classList.remove('attiva', 'agli-sgoccioli');
+  }
+}
+
+function aggiornaOrologiTurno() {
+  // Puo' scattare prima che il primo aggiornamento sia arrivato dal
+  // server: senza questa riga qui sotto si legge S.status con S ancora
+  // vuoto, e l'orologio si ferma prima di cominciare.
+  if (!S) return;
+  aggiornaMonteTempo();
+  aggiornaSpiePozzetto();
+  aggiornaStudio();
+  const rigaMia = $('rigaTurnoMio'), rigaAvv = $('rigaTurnoAvv');
+  if (!rigaMia || S.status !== 'in_progress') {
+    if (rigaMia) { rigaMia.classList.remove('attiva', 'agli-sgoccioli'); rigaAvv.classList.remove('attiva', 'agli-sgoccioli'); }
+    return;
+  }
+  const passati = Math.max(0, Math.floor((adessoVero() - Date.parse(S.turnStartedAt)) / 1000));
+  const restano = Math.max(0, TURN_SECONDS - passati);
+  // durante lo studio il minuto non e' ancora cominciato: si mostra intero
+  if (secondiDiStudioRimasti() > 0) {
+    $('turnoMio').textContent = mmss(TURN_SECONDS);
+    $('turnoAvv').textContent = mmss(TURN_SECONDS);
+    rigiaMiaSpenta();
+    return;
+  }
+  const mioTurno = S.currentPlayerIndex === 0;
+
+  $('turnoMio').textContent = mioTurno ? mmss(restano) : mmss(TURN_SECONDS);
+  $('turnoAvv').textContent = mioTurno ? mmss(TURN_SECONDS) : mmss(restano);
+  rigaMia.classList.toggle('attiva', mioTurno);
+  rigaAvv.classList.toggle('attiva', !mioTurno);
+  rigaMia.classList.toggle('agli-sgoccioli', mioTurno && restano <= 15);
+  rigaAvv.classList.toggle('agli-sgoccioli', !mioTurno && restano <= 15);
+
+  // minuto finito: il motore pesca e scarta d'ufficio una carta a caso e
+  // passa il turno all'avversario.
+  // In rete non lo decide questo tavolo: lo decide il server, e la
+  // novità arriva da sola. Se lo facesse anche qui, i due tavoli
+  // scadrebbero in momenti diversi e si sfaserebbero.
+  if (restano === 0 && mioTurno && !ONLINE) {
+    const r = checkTurnTimeout(S, Date.now());
+    if (r.expired) {
+      avviso(r.scartata
+        ? 'Tempo scaduto: pescata e scartata d\'ufficio una carta a caso.'
+        : 'Tempo scaduto: turno passato all\'avversario.');
+      selezione.clear();
+      disegna();
+      if (S.currentPlayerIndex === 1 && S.status === 'in_progress') setTimeout(turnoBot, 900);
+    }
+  }
+}
+
+function avviso(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('mostra');
+  t.style.opacity = '1';
+  clearTimeout(avviso._t);
+  avviso._t = setTimeout(() => { t.style.opacity = '0'; }, 2200);
+}
+
+// ------------------------------------------------------------
+// L'ULTIMO COLPO SI DEVE VEDERE
+// La schermata di fine partita si apriva nello stesso istante in cui
+// partiva l'animazione del colpo che aveva chiuso la partita: il colpo
+// decisivo — l'unico che uno vuole davvero vedere — era l'unico che non
+// si vedeva mai. Peggio ancora quando finiva per KO: si scopriva di
+// aver vinto senza aver visto quanto danno fosse arrivato.
+// Ora chi mette in scena un'animazione dice fin quando dura, e la
+// schermata aspetta il suo turno.
+// ------------------------------------------------------------
+let animazioneFinoA = 0;
+function segnaAnimazione(durataMs) {
+  animazioneFinoA = Math.max(animazioneFinoA, Date.now() + durataMs);
+}
+
+let fineGiaProgrammata = false;
+function mostraFine() {
+  if (fineGiaProgrammata) return;
+  fineGiaProgrammata = true;
+  // se non c'è niente in scena, l'attesa è zero e si apre subito
+  const attesa = Math.max(0, animazioneFinoA - Date.now());
+  setTimeout(apriSchermataFine, attesa);
+}
+
+// Dieci secondi e si torna in home. Il tavolo di una partita finita non
+// serve piu' a niente: restare li' a guardarlo e' solo un vicolo cieco,
+// e su telefono non c'e' nemmeno un tasto indietro comodo. Chi vuole
+// andarsene prima ha il bottone.
+const SECONDI_PRIMA_DI_TORNARE_A_CASA = 10;
+function contoAllaRovescia() {
+  let restano = SECONDI_PRIMA_DI_TORNARE_A_CASA;
+  const spia = $('fineConto');
+  if (spia) spia.textContent = restano;
+  const battito = setInterval(() => {
+    restano--;
+    if (spia) spia.textContent = Math.max(0, restano);
+    if (restano <= 0) {
+      clearInterval(battito);
+      ancoraQui = false;          // smetti di stare in ascolto: si va via
+      window.location.href = 'home.html';
+    }
+  }, 1000);
+}
+
+function apriSchermataFine() {
+  if (ONLINE) dimenticaIlTavolo();
+  $('fineTit').textContent = S.winner === null ? 'Pareggio' : (S.winner === 0 ? 'Hai vinto!' : 'Hai perso');
+  const motivi = { chiusura: 'Chiusura', chiusura_al_volo: 'Chiusura al volo', ko: 'KO: tutti i personaggi azzerati',
+                   timeout: 'Tempo scaduto: vince chi ha più PV totali', mazzo_esaurito: 'Mazzo esaurito: vince chi ha più PV totali', pareggio: 'PV totali pari',
+                   abbandono: S.winner === 0 ? 'L\'avversario ha abbandonato il tavolo' : 'Hai abbandonato il tavolo' };
+  $('fineTxt').textContent = motivi[S.winReason] || S.winReason || '';
+  SUONI.fine(S.winner === 0);
+  $('finePartita').classList.add('mostra');
+  contoAllaRovescia();
+}
+
+// ============================================================
+// LA RETE
+//
+// Se nell'indirizzo (dopo il cancelletto) ci sono codice e segreto,
+// questo tavolo non possiede più la partita: la chiede al server. Il
+// disegno resta identico, cambia solo da dove arriva lo stato.
+//
+// IL TRUCCO CHE TIENE TUTTO IN PIEDI
+// Il tavolo è scritto dando per scontato che players[0] sia sempre "io"
+// e players[1] "l'avversario". Il server invece parla di giocatore 0 e
+// giocatore 1 in assoluto. Allora la vista si ribalta all'ingresso: chi
+// gioca come secondo si ritrova comunque sé stesso in posizione 0, e
+// nessuna riga del disegno ha dovuto cambiare.
+// ============================================================
+const RETE = (function () {
+  // Le credenziali stanno nel frammento, dopo il cancelletto: quella
+  // parte dell'indirizzo il browser non la manda a nessun server.
+  const p = new URLSearchParams(location.hash.slice(1));
+  let codice = p.get('codice'), segreto = p.get('segreto'), chi = p.get('giocatore');
+
+  // SE L'INDIRIZZO NON CE LE HA, SI GUARDA NEL BROWSER.
+  // Serve a chi cade: chiude la scheda per sbaglio, va via la rete, si
+  // spegne il telefono. Senza questo, l'indirizzo lungo col cancelletto
+  // se ne andrebbe con la scheda e non ci sarebbe modo di rientrare in
+  // una partita già cominciata.
+  if (!codice || !segreto) {
+    try {
+      const messoDaParte = JSON.parse(localStorage.getItem('bb_tavolo') || 'null');
+      if (messoDaParte && messoDaParte.codice && messoDaParte.segreto) {
+        codice = messoDaParte.codice;
+        segreto = messoDaParte.segreto;
+        chi = String(messoDaParte.giocatore);
+      }
+    } catch (e) {}
+  }
+  if (!codice || !segreto) return null;
+
+  // e si rimettono da parte, così valgono anche per la prossima volta
+  try {
+    localStorage.setItem('bb_tavolo', JSON.stringify({
+      codice, segreto, giocatore: chi === '1' ? 1 : 0, quando: Date.now()
+    }));
+  } catch (e) {}
+
+  return { codice, segreto, io: chi === '1' ? 1 : 0, versione: -1, nomi: [null, null] };
+})();
+
+// Quando la partita è finita — o il tavolo non c'è più — le credenziali
+// si buttano: rientrare in una partita conclusa non serve a nessuno, e
+// lasciarle in giro farebbe riaprire un tavolo morto a ogni visita.
+function dimenticaIlTavolo() {
+  try { localStorage.removeItem('bb_tavolo'); } catch (e) {}
+}
+const ONLINE = RETE !== null;
+
+// una carta che non si può vedere: il disegno le mostra a faccia in giù
+function cartaCoperta(prefisso, i) {
+  return { id: prefisso + i, suit: null, value: 0, isJolly: false, isPinella: false, coperta: true };
+}
+
+function giocatoreDaVista(g, mio, prefisso) {
+  return {
+    hand: mio ? g.mano : Array.from({ length: g.manoQuante }, (_, i) => cartaCoperta(prefisso + 'h', i)),
+    pozzetto: Array.from({ length: g.pozzettoQuante }, (_, i) => cartaCoperta(prefisso + 'p', i)),
+    pozzettoTaken: g.pozzettoPreso,
+    melds: g.calate,
+    characters: g.personaggi,
+    clockSecondsLeft: g.secondiRimasti,
+    hasDrawnThisTurn: g.haPescato,
+    abilitaUsate: g.abilitaUsate || [],
+    puntiMagia: g.puntiMagia,
+    magic: g.magia ? {
+      selection: g.magia.selezione || [],
+      sorpresaUsed: g.magia.sorpresaUsata,
+      trappoleArmate: g.magia.trappoleArmate || Array.from({ length: g.magia.trappoleArmateQuante || 0 }, () => ({ coperta: true })),
+      trappoleUsateCount: g.magia.trappoleUsate,
+      giocateQuestoTurno: g.magia.giocateQuestoTurno,
+      giocate: g.magia.giocate || [],
+      effettiAttivi: g.magia.effettiAttivi || [],
+      quanteCoperte: g.magia.selezioneQuante || 0
+    } : null,
+    effettiSubiti: g.effettiSubiti || []
+  };
+}
+
+function statoDaVista(v) {
+  const io = v.io, avv = io === 0 ? 1 : 0;
+  return {
+    status: v.stato,
+    // anche il vincitore si ribalta: qui 0 vuol dire sempre "io"
+    winner: v.vincitore === null || v.vincitore === undefined ? null : (v.vincitore === io ? 0 : 1),
+    winReason: v.motivo,
+    tallone: Array.from({ length: v.talloneQuante }, (_, i) => cartaCoperta('t', i)),
+    scarti: v.scarti,
+    players: [giocatoreDaVista(v.giocatori[io], true, 'mia'),
+              giocatoreDaVista(v.giocatori[avv], false, 'avv')],
+    currentPlayerIndex: v.eIlMioTurno ? 0 : 1,
+    // Questo mancava, ed e' il motivo per cui il conto alla rovescia dei
+    // trenta secondi non si vedeva IN RETE. Contro il bot lo stato E' la
+    // partita, quindi il campo c'era; in rete lo stato viene ricostruito
+    // qui dalla vista, e un campo non copiato semplicemente non esiste.
+    // La regola intanto funzionava lo stesso — la fa rispettare il
+    // server — quindi il gioco ti bloccava senza mai dirti quanto
+    // mancava: il modo peggiore di avere ragione.
+    iniziaAlle: v.iniziaAlle || null,
+    turnStartedAt: v.turnoIniziatoAlle,
+    lastMoveAt: v.ultimaMossaAlle,
+    moveCounter: v.numeroMossa,
+    // lo scarto fra l'orologio del server e quello di questo computer:
+    // i timer devono contare sul tempo dell'arbitro, non sul nostro
+    scartoOrologio: Date.parse(v.adesso) - Date.now()
+  };
+}
+
+let scartoOrologio = 0;
+const adessoVero = () => Date.now() + scartoOrologio;
+
+function accettaVista(risposta) {
+  if (!risposta || !risposta.vista) return;
+  const primaVolta = S === null;
+  const turnoPrima = S ? S.currentPlayerIndex : null;
+  const manoPrima = S ? S.players[0].hand.map((c) => c.id) : [];
+  // CHI SONO LO DICE IL SERVER.
+  // Prima veniva preso dall'indirizzo (?giocatore=0 o 1). Se quel
+  // numero e' sbagliato o manca, il tavolo si disegna lo stesso — la
+  // vista dice gia' chi e' chi — ma tutto quello che confronta "sono
+  // stato io?" sbaglia in silenzio: chi subisce un colpo lo scambia per
+  // uno suo e non mostra nessuna animazione. La vista porta la risposta
+  // giusta a ogni aggiornamento: si usa quella.
+  if (typeof risposta.vista.io === 'number') RETE.io = risposta.vista.io;
+  S = statoDaVista(risposta.vista);
+  scartoOrologio = S.scartoOrologio;
+  magie = [S.players[0].magic, S.players[1].magic];
+  if (risposta.nomi) RETE.nomi = risposta.nomi;
+  if (typeof risposta.versione === 'number') RETE.versione = risposta.versione;
+
+  // le carte appena arrivate vanno in coda alla mano, come in locale
+  // LE CARTE APPENA ARRIVATE VANNO IN CODA, ANCHE IN RETE.
+  // Qui prima si filtrava soltanto, non si aggiungeva mai niente: la
+  // coda funzionava contro il bot e non in rete. La carta pescata
+  // finiva mescolata fra le altre in ordine di valore, e dopo una
+  // pescata — peggio ancora dopo aver raccolto il monte scarti — non si
+  // capiva più che cosa fosse appena entrato in mano.
+  if (!primaVolta) {
+    const arrivate = S.players[0].hand.filter((c) => !manoPrima.includes(c.id)).map((c) => c.id);
+    if (arrivate.length) carteNuove = [...carteNuove, ...arrivate];
+  }
+  carteNuove = carteNuove.filter((id) => S.players[0].hand.some((c) => c.id === id));
+  selezione.clear();
+  disegna();
+  return { primaVolta, turnoPrima };
+}
+
+// Racconta a chi ha subito la mossa che cosa è appena successo: senza,
+// i punti vita calerebbero e basta.
+function raccontaLaMossaDellAltro(esito) {
+  if (!esito || esito.giocatore === RETE.io) return;
+  const nome = RETE.nomi[esito.giocatore] || 'L\'avversario';
+  if (esito.tipo === 'tempo_scaduto') { avviso('Tempo scaduto per ' + nome + '.'); return; }
+  if (esito.pozzettoPreso) avviso(nome + ' ha preso il pozzetto!');
+  if (esito.dannoAnnullato) avviso('Una tua Trappola ha annullato il danno!');
+  if (esito.dannoRaddoppiato) avviso('Danno raddoppiato!');
+  // le trappole scattate arrivano con il loro nome: chi le subisce (o
+  // chi se le vede scattare a favore) deve vedere QUALE carta era
+  const attesa = segnalaTrappole(esito, 1);
+  if (esito.danno) {
+    // L'elenco dei colpi arriva dal server: senza, qui non si sapeva
+    // QUALI personaggi erano stati colpiti e non si animava niente.
+    const colpo = {
+      damage: esito.danno, ondata: esito.ondata, colpi: esito.colpi,
+      abilita: esito.tipo === 'abilita',
+      semeAttaccante: esito.semeAttaccante, semeBersaglio: esito.semeBersaglio
+    };
+    setTimeout(() => { mostraResoconto(colpo, 1); lampeggiaColpiti('battleGiocatore', colpo); }, attesa);
+  }
+  mostraRiflesso(esito, 1, attesa + 700);
+}
+
+async function eseguiInRete(azione) {
+  let r;
+  try {
+    const risposta = await fetch('/api/mossa', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codice: RETE.codice, segreto: RETE.segreto, azione })
+    });
+    r = await risposta.json();
+  } catch (e) {
+    avviso('Il server non risponde. La mossa non è passata.');
+    return { ok: false, motivo: 'Il server non risponde.' };
+  }
+  if (!r.ok) { avviso(r.motivo || 'Mossa non valida.'); return r; }
+  SUONI.perAzione(azione && azione.tipo);
+
+  // il server rimanda la vista aggiornata: si ridisegna da quella
+  if (r.vista) { accettaVista({ vista: r.vista, versione: r.versione, nomi: RETE.nomi }); }
+  if (r.pozzettoPreso) { SUONI.pozzetto(); avviso('Hai preso il pozzetto!'); }
+  // In rete le trappole non venivano mostrate affatto: si vedeva calare
+  // la vita e basta. Adesso passano di qui come in locale.
+  const attesa = segnalaTrappole(r, 0);
+  if (r.dannoAnnullato) avviso('Una Trappola ha annullato il tuo danno!');
+  if (r.dannoRaddoppiato) avviso('Danno raddoppiato!');
+  if (r.damage) setTimeout(() => { mostraResoconto(r, 0); lampeggiaColpiti('battleAvversario', r); }, attesa);
+  mostraRiflesso(r, 0, attesa + 700);
+  if (S.status !== 'in_progress') mostraFine();
+  return r;
+}
+
+// Se l'avversario è caduto, meglio dirlo. Aspettare una mossa che non
+// arriverà mai credendo che stia pensando è la cosa più frustrante che
+// possa capitare — e il minuto scade lo stesso, quindi non è nemmeno
+// una notizia inutile.
+let avvisatoCheECaduto = false;
+function guardaSeCEAncora(r) {
+  const fermo = r.avversarioVistoSecondiFa;
+  if (typeof fermo !== 'number') return;
+  if (fermo > 45 && !avvisatoCheECaduto) {
+    avvisatoCheECaduto = true;
+    const nome = RETE.nomi[RETE.io === 0 ? 1 : 0] || 'L\'avversario';
+    avviso(nome + ' non risponde da ' + fermo + ' secondi. Il suo turno scadrà da solo.');
+  } else if (fermo <= 20 && avvisatoCheECaduto) {
+    avvisatoCheECaduto = false;
+    const nome = RETE.nomi[RETE.io === 0 ? 1 : 0] || 'L\'avversario';
+    avviso(nome + ' è tornato.');
+  }
+}
+
+// Sta in ascolto: una domanda sola, tenuta appesa dal server, che torna
+// nell'istante in cui l'altro muove. Se cade, si riprova.
+// Quando la pagina se ne va, l'ascolto deve smettere. Sembra ovvio, e
+// in un browser vero chiudere la scheda spegne tutto — ma la richiesta
+// tenuta appesa può tornare mentre la pagina sta già morendo, e allora
+// si prova a disegnare su un documento che non c'è più. Meglio una
+// bandierina e un controllo in mezzo al giro.
+let ancoraQui = true;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => { ancoraQui = false; });
+  window.addEventListener('beforeunload', () => { ancoraQui = false; });
+}
+const laPaginaCEAncora = () => ancoraQui && typeof document !== 'undefined' && !!document.documentElement;
+
+async function ascolta() {
+  while (ONLINE && laPaginaCEAncora()) {
+    let r;
+    try {
+      const risposta = await fetch('/api/stato?codice=' + encodeURIComponent(RETE.codice) +
+        '&segreto=' + encodeURIComponent(RETE.segreto) + '&da=' + RETE.versione);
+      r = await risposta.json();
+    } catch (e) {
+      await new Promise((ok) => setTimeout(ok, 2000));
+      continue;
+    }
+    if (!laPaginaCEAncora()) return;                 // la pagina se n'è andata mentre aspettavo
+    if (!r.ok) { avviso(r.motivo || 'Il tavolo non c\'è più.'); return; }
+    guardaSeCEAncora(r);
+    if (r.versione === RETE.versione) continue;      // solo il tempo scaduto dell'attesa
+    const esito = r.ultimoEsito;
+    const eraMioTurno = S ? S.currentPlayerIndex === 0 : false;
+    accettaVista(r);
+    if (!eraMioTurno && S && S.currentPlayerIndex === 0 && S.status === 'in_progress') SUONI.tuoTurno();
+    raccontaLaMossaDellAltro(esito);
+    if (S && S.status !== 'in_progress') { mostraFine(); return; }
+  }
+}
+
+// ------------------------------------------------------------
+// AZIONI
+// ------------------------------------------------------------
+// In rete la mossa non si esegue qui: si CHIEDE. Il server decide, e
+// quello che torna indietro è già la nuova verità. Il resto della
+// funzione — le carte nuove in coda alla mano, gli avvisi, le
+// animazioni — resta identico, perché l'esito ha la stessa forma.
+async function esegui(azione, fn) {
+  // Contro il bot le azioni non passano da applica(), quindi il divieto
+  // di giocare durante lo studio va ripetuto qui. In rete lo dice il
+  // server e questo e' solo cortesia: si evita un viaggio inutile e si
+  // risponde subito.
+  const attesa = secondiDiStudioRimasti();
+  if (attesa > 0) {
+    avviso('Si comincia fra ' + attesa + ' second' + (attesa === 1 ? 'o' : 'i') + ': per ora guarda il tavolo.');
+    return { ok: false, reason: 'studio' };
+  }
+  if (ONLINE) return eseguiInRete(azione);
+  const chiAgisce = S.currentPlayerIndex;
+  const turnoPrima = S.currentPlayerIndex;
+  const manoPrima = S.players[0].hand.map((c) => c.id);
+  const r = fn();
+  // le carte arrivate con questa mossa vanno in coda alla mano
+  if (chiAgisce === 0) {
+    const arrivate = S.players[0].hand.filter((c) => !manoPrima.includes(c.id)).map((c) => c.id);
+    if (arrivate.length) carteNuove = [...carteNuove.filter((id) => S.players[0].hand.some((c) => c.id === id)), ...arrivate];
+    // le carte giocate spariscono anche dall'elenco delle "nuove"
+    carteNuove = carteNuove.filter((id) => S.players[0].hand.some((c) => c.id === id));
+  }
+  if (!r.ok) { avviso(r.reason || 'Mossa non valida.'); return r; }
+  SUONI.perAzione(azione && azione.tipo);
+  if (r.pozzettoPreso) { SUONI.pozzetto(); avviso('Hai preso il pozzetto!'); }
+  // PRIMA LA CARTA, POI QUELLO CHE FA. Se le due cose partono insieme si
+  // guardano tutte e due a metà e non se ne capisce nessuna.
+  const attesaTrappole = segnalaTrappole(r, chiAgisce);
+  if (r.dannoAnnullato) avviso('Una Trappola ha annullato il tuo danno!');
+  if (r.dannoRaddoppiato) avviso('Danno raddoppiato!');
+  if (r.damage) setTimeout(() => mostraResoconto(r, chiAgisce), attesaTrappole);
+  mostraRiflesso(r, chiAgisce, attesaTrappole + 700);
+  selezione.clear();
+  // se il turno è passato, il nuovo giocatore torna a poter usare una magia
+  if (S.currentPlayerIndex !== turnoPrima) resetTurnoMagie(magie[S.currentPlayerIndex]);
+  disegna();
+  if (r.damage) setTimeout(() => lampeggiaColpiti(chiAgisce === 0 ? 'battleAvversario' : 'battleGiocatore', r), attesaTrappole);
+  // passato il turno, tocca al bot
+  if (S.currentPlayerIndex === 1 && S.status === 'in_progress') setTimeout(turnoBot, 900);
+  // l'esito torna a chi ha chiamato: abilità e carte magiche hanno da
+  // raccontare cose loro (il costo pagato, quali PV sono cambiati) e
+  // devono poterlo fare senza scavalcare questa funzione.
+  return r;
+}
+
+// ------------------------------------------------------------
+// IL BOT GIOCA IL SUO TURNO
+// Il motore risolve il turno tutto insieme; qui lo si mostra a pezzi, con
+// una pausa fra una mossa e l'altra, altrimenti si vedrebbe solo il
+// risultato finale e non si capirebbe cosa ha fatto l'avversario.
+// ------------------------------------------------------------
+function turnoBot() {
+  if (ONLINE) return;                     // dall'altra parte c'è una persona
+  if (S.status !== 'in_progress' || S.currentPlayerIndex !== 1) return;
+  avviso('L\'avversario sta giocando…');
+  const mosse = botGiocaTurno(S, 1, Date.now());
+  disegna();
+
+  let i = 0;
+  const passo = () => {
+    if (i >= mosse.length) {
+      if (S.status === 'in_progress') { resetTurnoMagie(magie[0]); avviso('Tocca a te.'); }
+      disegna();
+      return;
+    }
+    const m = mosse[i++];
+    if (m.tipo === 'pesca')  avviso('L\'avversario pesca ' + m.quante + ' carte.');
+    if (m.tipo === 'monte')  avviso('L\'avversario raccoglie il monte scarti.');
+    if (m.tipo === 'cala')     avviso('L\'avversario cala ' + m.carte + ' carte' + (m.pozzetto ? ' e prende il pozzetto!' : '') + '.');
+    if (m.tipo === 'aggancia') avviso('L\'avversario aggancia una carta a un suo gioco.');
+    if (m.tipo === 'abilita')  avviso('L\'avversario usa l\'abilità speciale di ' + testo(S.players[1].characters[m.semeAttaccante].cardId).nome + '!');
+    if (m.tipo === 'scarta')   avviso('L\'avversario scarta.');
+
+    // PRIMA si ridisegna il tavolo, POI parte l'animazione del colpo.
+    // Invertendo l'ordine il ridisegno buttava via le carte appena
+    // animate e il colpo restava invisibile.
+    disegna();
+    if (m.danno) {
+      mostraResoconto({ colpi: m.colpi, damage: m.danno, abilita: m.tipo === 'abilita' }, 1);
+      lampeggiaColpiti('battleGiocatore', { colpi: m.colpi });
+    }
+    // con un colpo a schermo si aspetta di più: c'è da guardarlo
+    setTimeout(passo, m.danno ? 2600 : 850);
+  };
+  passo();
+}
+
+// ------------------------------------------------------------
+// RESOCONTO DEL DANNO — chi ha subito quanto, per nome.
+// Prima si leggeva solo il totale ("Danno inflitto: 40"), senza sapere
+// quale personaggio l'avesse incassato.
+// ------------------------------------------------------------
+// Quando una Trappola scatta lo si deve capire: fino a ieri non
+// succedeva proprio nulla, quindi ora si annuncia a chiare lettere.
+function segnalaTrappole(r, chiAgisce) {
+  const scattate = r.trappoleScattate || [];
+  if (!scattate.length) return 0;
+  const mia = chiAgisce !== 0;      // la trappola è di chi NON ha appena agito
+
+  // Quanto dura tutto lo spettacolo. Serve a chi chiama: il danno sulle
+  // carte bersaglio non deve partire mentre la carta è ancora a mezzo
+  // schermo, se no si guardano due cose insieme e non se ne vede
+  // nessuna. Prima si vede LA CARTA, poi si vede COSA FA.
+  const durataUna = 2800;
+  const totale = (scattate.length - 1) * 3000 + durataUna;
+  segnaAnimazione(totale + 900);
+
+  scattate.forEach((t, i) => {
+    const info = (t.cardId && dati.i18n[t.cardId]) || { nome: 'Trappola', descrizione: '' };
+    setTimeout(() => {
+      // scattando la trappola si rivela: ora si vede quale era
+      apriCartaMagica({
+        tipo: 'trappola',
+        chi: mia ? 'La tua Trappola scatta!' : 'Trappola avversaria!',
+        nome: info.nome, descrizione: info.descrizione,
+        esito: 'Era nascosta fino a ora',
+        durata: durataUna
+      });
+      avviso('È scattata una Trappola ' + (mia ? 'tua' : 'dell\'avversario') + ': ' + info.nome + '!');
+    }, i * 3000);
+  });
+  return totale;
+}
+
+// ------------------------------------------------------------
+// IL DANNO CHE TORNA INDIETRO
+// Lo Specchio di Ritorsione rimanda a chi ha colpito metà di quello che
+// ha inflitto. Finora lo diceva solo una scritta di passaggio: si vedeva
+// calare la propria vita senza capire da dove arrivasse. Ora il colpo si
+// vede tornare, sulla carta giusta e col suo numero.
+// ------------------------------------------------------------
+function mostraRiflesso(r, chiAgisce, ritardo) {
+  if (!r || !r.riflesso) return;
+  // il rimbalzo colpisce chi ha attaccato: se ho attaccato io, colpisce me
+  const striscia = chiAgisce === 0 ? 'battleGiocatore' : 'battleAvversario';
+  segnaAnimazione((ritardo || 0) + 2200);
+  setTimeout(() => {
+    const el = $(striscia) && $(striscia).querySelector('.bcard[data-seme="' + r.riflesso.suit + '"]');
+    if (!el) return;
+    volaColpo(chiAgisce === 0 ? 'battleAvversario' : 'battleGiocatore', el, true, () => {
+      const vivo = $(striscia).querySelector('.bcard[data-seme="' + r.riflesso.suit + '"]') || el;
+      vivo.classList.remove('colpita');
+      void vivo.offsetWidth;
+      vivo.classList.add('colpita');
+      setTimeout(() => vivo.classList.remove('colpita'), 1100);
+      SUONI.danno(r.riflesso.damage);
+      numeroDanno(vivo, r.riflesso.damage);
+    });
+  }, ritardo || 0);
+}
+
+function mostraResoconto(r, chiAgisce) {
+  const colpi = r.colpi || [];
+  if (!colpi.length) return;
+  segnaAnimazione(2600);   // la fine partita aspetta che si sia visto
+  const box = $('resoconto');
+  const righe = colpi.map((c) => {
+    const nome = c.cardId ? testo(c.cardId).nome : ('personaggio ' + c.suit);
+    return '<div class="riga"><b>' + nome + '</b> (' + c.suit + ') subisce <span class="num">' +
+           Math.round(c.damage) + '</span> danni · restano ' + Math.round(c.pvRimasti) + ' PV</div>';
+  }).join('');
+  const titolo = r.abilita
+    ? (chiAgisce === 0 && r.semeAttaccante
+        ? 'Abilità speciale — ' + testo(S.players[0].characters[r.semeAttaccante].cardId).nome
+        : 'Abilità speciale avversaria')
+    : (chiAgisce === 0 ? 'Il tuo attacco' : 'Attacco avversario');
+  box.innerHTML = '<div class="titolo">' + titolo + '</div>' + righe +
+    (r.jolly ? '<div class="riga" style="opacity:.85">colpo del <b>Jolly</b> (' + Math.round(r.jolly.damage) + ') scagliato dal tuo eroe di ' + r.jolly.semeAttaccante + '</div>' : '') +
+    (r.ondata ? '<div class="riga" style="opacity:.85">ondata d\'urto: ' + Math.round(r.ondataPercent * 100) + '% su tutti e quattro</div>' : '');
+  box.classList.add('mostra');
+  clearTimeout(mostraResoconto._t);
+  // 4,6s: un secondo in più rispetto a prima, per fare in tempo a leggere
+  mostraResoconto._t = setTimeout(() => box.classList.remove('mostra'), 4600);
+}
+
+// La barra blu è il CONTATORE DI VELOCITÀ dell'abilità speciale: la
+// riempie il motore, una fetta a ogni turno del proprietario, in base a
+// `turniCarica` scritto sulla carta (abilità debole = pochi turni, forte =
+// tanti). Quando è piena l'abilità scatta da sola e la barra riparte.
+// Qui non c'è nulla da calcolare: si legge e basta.
+
+
+// ============================================================
+// I SUONI
+//
+// NESSUN FILE AUDIO. I suoni si costruiscono qui, sul momento, con
+// qualche oscillatore e un po' di rumore filtrato. Non e' un vezzo: la
+// pagina deve poter essere aperta col doppio clic, senza rete e senza
+// cartelle accanto, e un file .mp3 da scaricare romperebbe proprio
+// questo. In cambio si ottiene qualcosa che i file non danno: il tonfo
+// del danno cambia con QUANTO danno e', il fruscio della pescata non e'
+// mai identico a se stesso.
+//
+// I browser non lasciano suonare niente finche' l'utente non ha toccato
+// la pagina — regola sacrosanta, se no i siti urlerebbero da soli. Il
+// primo tocco sveglia l'audio, e da li' in poi funziona.
+// ============================================================
+const SUONI = (function () {
+  let ctx = null, svegliato = false;
+  let acceso = true;
+  try { acceso = localStorage.getItem('bb_suoni') !== 'no'; } catch (e) {}
+
+  function contesto() {
+    if (ctx) return ctx;
+    const A = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+    if (!A) return null;
+    try { ctx = new A(); } catch (e) { return null; }
+    return ctx;
+  }
+
+  // Il primo gesto dell'utente, qualunque sia, sveglia l'audio.
+  function sveglia() {
+    if (svegliato) return;
+    svegliato = true;
+    const c = contesto();
+    if (c && c.state === 'suspended') c.resume().catch(() => {});
+  }
+  if (typeof window !== 'undefined') {
+    for (const evento of ['pointerdown', 'keydown', 'touchstart']) {
+      window.addEventListener(evento, sveglia, { once: false, passive: true });
+    }
+  }
+
+  const fra = (a, b) => a + Math.random() * (b - a);
+
+  // Una nota: parte da una frequenza e ci scivola su un'altra.
+  function tono({ da, a, durata, tipo = 'sine', volume = 0.12, ritardo = 0 }) {
+    const c = contesto();
+    if (!c || !acceso) return;
+    const t0 = c.currentTime + ritardo;
+    const osc = c.createOscillator(), gua = c.createGain();
+    osc.type = tipo;
+    osc.frequency.setValueAtTime(da, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, a), t0 + durata);
+    gua.gain.setValueAtTime(0.0001, t0);
+    gua.gain.exponentialRampToValueAtTime(volume, t0 + Math.min(0.02, durata / 4));
+    gua.gain.exponentialRampToValueAtTime(0.0001, t0 + durata);
+    osc.connect(gua).connect(c.destination);
+    osc.start(t0); osc.stop(t0 + durata + 0.02);
+  }
+
+  // Un soffio: rumore bianco fatto passare per un filtro che si muove.
+  // E' quello che da' il fruscio della carta e il crepitio del colpo.
+  function soffio({ durata, filtroDa, filtroA, volume = 0.1, q = 1, ritardo = 0 }) {
+    const c = contesto();
+    if (!c || !acceso) return;
+    const t0 = c.currentTime + ritardo;
+    const campioni = Math.max(1, Math.floor(c.sampleRate * durata));
+    const buffer = c.createBuffer(1, campioni, c.sampleRate);
+    const dati = buffer.getChannelData(0);
+    for (let i = 0; i < campioni; i++) dati[i] = Math.random() * 2 - 1;
+    const sorgente = c.createBufferSource();
+    sorgente.buffer = buffer;
+    const filtro = c.createBiquadFilter();
+    filtro.type = 'bandpass';
+    filtro.Q.value = q;
+    filtro.frequency.setValueAtTime(filtroDa, t0);
+    filtro.frequency.exponentialRampToValueAtTime(Math.max(60, filtroA), t0 + durata);
+    const gua = c.createGain();
+    gua.gain.setValueAtTime(0.0001, t0);
+    gua.gain.exponentialRampToValueAtTime(volume, t0 + durata * 0.15);
+    gua.gain.exponentialRampToValueAtTime(0.0001, t0 + durata);
+    sorgente.connect(filtro).connect(gua).connect(c.destination);
+    sorgente.start(t0); sorgente.stop(t0 + durata + 0.02);
+  }
+
+  return {
+    acceso: () => acceso,
+    accendi(si) {
+      acceso = !!si;
+      try { localStorage.setItem('bb_suoni', acceso ? 'si' : 'no'); } catch (e) {}
+      if (acceso) { sveglia(); this.pesca(); }
+    },
+
+    // carta che scivola via dal mazzo
+    pesca() { soffio({ durata: 0.16, filtroDa: fra(900, 1200), filtroA: fra(2200, 3000), volume: 0.075, q: 0.8 }); },
+
+    // carta che atterra sul monte: fruscio piu' corto e un colpetto secco
+    scarta() {
+      soffio({ durata: 0.13, filtroDa: fra(1800, 2400), filtroA: fra(500, 700), volume: 0.07, q: 0.9 });
+      tono({ da: 190, a: 90, durata: 0.09, tipo: 'triangle', volume: 0.055, ritardo: 0.05 });
+    },
+
+    // il monte scarti raccolto tutto insieme: molte carte, non una
+    monte() {
+      for (let i = 0; i < 5; i++) {
+        soffio({ durata: 0.11, filtroDa: fra(800, 1600), filtroA: fra(1800, 2600), volume: 0.05, q: 0.8, ritardo: i * 0.045 });
+      }
+    },
+
+    // le carte scendono in tavola: un accordo che sale
+    cala() {
+      tono({ da: 300, a: 460, durata: 0.16, tipo: 'triangle', volume: 0.07 });
+      tono({ da: 450, a: 690, durata: 0.2, tipo: 'sine', volume: 0.055, ritardo: 0.05 });
+      soffio({ durata: 0.14, filtroDa: 1400, filtroA: 2600, volume: 0.05, q: 0.9 });
+    },
+
+    // il colpo che parte e attraversa il tavolo
+    colpoParte(magico) {
+      if (magico) {
+        tono({ da: 700, a: 1500, durata: 0.26, tipo: 'sine', volume: 0.075 });
+        tono({ da: 1050, a: 2250, durata: 0.26, tipo: 'sine', volume: 0.04, ritardo: 0.02 });
+      } else {
+        soffio({ durata: 0.3, filtroDa: 400, filtroA: 2000, volume: 0.085, q: 1.4 });
+      }
+    },
+
+    // lo schianto sulla carta bersaglio: piu' forte e' il colpo, piu'
+    // basso e lungo e' il tonfo. Trenta danni e centoventi non possono
+    // fare lo stesso rumore.
+    danno(quanto) {
+      const forza = Math.max(0, Math.min(1, (Number(quanto) || 10) / 90));
+      const grave = 130 - forza * 60;
+      tono({ da: grave, a: grave * 0.45, durata: 0.16 + forza * 0.24, tipo: 'sine', volume: 0.11 + forza * 0.09 });
+      soffio({ durata: 0.1 + forza * 0.1, filtroDa: 2600 - forza * 900, filtroA: 320, volume: 0.07 + forza * 0.06, q: 0.7 });
+      if (forza > 0.55) tono({ da: 70, a: 40, durata: 0.34, tipo: 'sine', volume: 0.1, ritardo: 0.03 });
+    },
+
+    // la carta magica che si apre a mezzo schermo
+    magia(trappola) {
+      const base = trappola ? 520 : 660;
+      [0, 0.07, 0.14].forEach((r, i) => {
+        tono({ da: base * (1 + i * 0.26), a: base * (1 + i * 0.26) * 1.5, durata: 0.5, tipo: 'sine', volume: 0.07, ritardo: r });
+      });
+      if (trappola) soffio({ durata: 0.22, filtroDa: 2800, filtroA: 700, volume: 0.06, q: 1.2, ritardo: 0.05 });
+    },
+
+    pozzetto() {
+      [0, 0.11, 0.22, 0.36].forEach((r, i) => tono({ da: 520 + i * 180, a: 560 + i * 200, durata: 0.3, tipo: 'triangle', volume: 0.08, ritardo: r }));
+    },
+
+    fine(vinto) {
+      const note = vinto ? [523, 659, 784, 1047] : [523, 466, 392, 294];
+      note.forEach((n, i) => tono({ da: n, a: n, durata: 0.5, tipo: vinto ? 'triangle' : 'sine', volume: 0.09, ritardo: i * 0.17 }));
+    },
+
+    // il proprio turno che comincia
+    tuoTurno() {
+      tono({ da: 660, a: 880, durata: 0.18, tipo: 'sine', volume: 0.06 });
+    },
+
+    perAzione(tipo) {
+      if (tipo === 'pesca') this.pesca();
+      else if (tipo === 'scarta') this.scarta();
+      else if (tipo === 'prendi_scarti') this.monte();
+      else if (tipo === 'cala' || tipo === 'aggancia') this.cala();
+    }
+  };
+})();
+
+// ------------------------------------------------------------
+// IL COLPO CHE ATTRAVERSA IL TAVOLO
+// Parte dalla striscia di chi attacca, arriva sulla carta bersaglio e
+// si schianta. Non cambia niente nei conti — il danno l'ha gia' deciso
+// il motore — ma senza, il colpo che chiude la partita si vedeva solo
+// come uno schermo che dice "hai perso".
+// ------------------------------------------------------------
+function volaColpo(idStrisciaPartenza, elBersaglio, magico, poiFai) {
+  const partenza = $(idStrisciaPartenza);
+  if (!partenza || !elBersaglio || !document.body) { if (poiFai) poiFai(); return; }
+  const a = partenza.getBoundingClientRect();
+  const b = elBersaglio.getBoundingClientRect();
+  const x0 = a.left + a.width / 2, y0 = a.top + a.height / 2;
+  const x1 = b.left + b.width / 2, y1 = b.top + b.height / 2;
+
+  SUONI.colpoParte(magico);
+  const p = document.createElement('div');
+  p.className = 'proiettile' + (magico ? ' magico' : '');
+  p.innerHTML = '<div class="scia"></div>';
+  p.style.left = x0 + 'px';
+  p.style.top = y0 + 'px';
+  document.body.appendChild(p);
+
+  const DURATA = 380;
+  // un arco, non una linea dritta: il colpo si vede partire e cadere
+  const anim = p.animate([
+    { transform: 'translate(0px, 0px) scale(0.6)' },
+    { transform: 'translate(' + ((x1 - x0) * 0.5) + 'px, ' + ((y1 - y0) * 0.5 - 46) + 'px) scale(1.15)', offset: 0.55 },
+    { transform: 'translate(' + (x1 - x0) + 'px, ' + (y1 - y0) + 'px) scale(0.85)' }
+  ], { duration: DURATA, easing: 'cubic-bezier(0.3, 0, 0.7, 1)' });
+
+  const schianta = () => {
+    p.remove();
+    for (const classe of ['impatto', 'squarcio']) {
+      const e = document.createElement('div');
+      e.className = classe;
+      e.style.left = x1 + 'px';
+      e.style.top = y1 + 'px';
+      document.body.appendChild(e);
+      setTimeout(() => e.remove(), 800);
+    }
+    if (poiFai) poiFai();
+  };
+  if (anim && anim.finished) anim.finished.then(schianta).catch(schianta);
+  else setTimeout(schianta, DURATA);
+}
+
+function lampeggiaColpiti(idStriscia, r) {
+  segnaAnimazione(2600);
+  const colpi = (r.colpi && r.colpi.length) ? r.colpi : null;
+  // In ordine: l'elenco dei colpi, il danno diviso per seme, il seme
+  // dell'attaccante, quello del bersaglio, e infine tutti e quattro se
+  // era un colpo ad area. L'ultima spiaggia — "so che c'e' stato del
+  // danno ma non so dove" — vale comunque piu' del niente: prima si
+  // usciva in silenzio e il colpo subito non si vedeva affatto.
+  const semi = colpi ? colpi.map((c) => c.suit)
+             : (r.dannoPerSeme ? Object.keys(r.dannoPerSeme)
+             : (r.suit ? [r.suit]
+             : (r.semeBersaglio ? [r.semeBersaglio]
+             : ((r.target === 'aoe' || r.damage) ? SEMI : []))));
+  if (!semi.length) return;
+
+  // Se a essere colpito sono io, tutto lo schermo lampeggia di rosso: un
+  // colpo incassato non deve poter passare inosservato.
+  if (idStriscia === 'battleGiocatore') setTimeout(lampoSchermo, 380);
+
+  semi.forEach((s, i) => {
+    // Il nodo va ricercato DENTRO il timer, non prima: fra un colpo e
+    // l'altro il tavolo si ridisegna e la carta di prima non è più nella
+    // pagina. Cercandola prima si finiva per animare un elemento staccato
+    // — invisibile — ed era il motivo per cui i colpi del bot sulle mie
+    // carte non si vedevano affatto.
+    setTimeout(() => {
+      const el = $(idStriscia).querySelector('.bcard[data-seme="' + s + '"]');
+      if (!el) return;
+      // da dove parte il colpo: dalla striscia OPPOSTA a quella colpita
+      const daDove = idStriscia === 'battleGiocatore' ? 'battleAvversario' : 'battleGiocatore';
+      volaColpo(daDove, el, !!r.abilita, () => {
+        const vivo = $(idStriscia).querySelector('.bcard[data-seme="' + s + '"]') || el;
+        vivo.classList.remove('colpita');
+        void vivo.offsetWidth;
+        vivo.classList.add('colpita');
+        setTimeout(() => vivo.classList.remove('colpita'), 1100);
+        const colpo = colpi ? colpi.find((c) => c.suit === s) : null;
+        const quanto = colpo ? colpo.damage : (r.dannoPerSeme ? r.dannoPerSeme[s] : r.damage);
+        if (quanto) { SUONI.danno(quanto); numeroDanno(vivo, quanto); }
+      });
+    }, i * 240);
+  });
+}
+
+// Lampo rosso ai bordi dello schermo: "hai incassato".
+function lampoSchermo() {
+  const v = document.createElement('div');
+  v.className = 'lampo-danno';
+  document.body.appendChild(v);
+  setTimeout(() => v.remove(), 700);
+}
+
+// ------------------------------------------------------------
+// LA CARTA MAGICA SI APRE A SCHERMO
+// Una sola funzione per tutte e tre le occasioni: Sorpresa giocata,
+// Trappola posata, Trappola che scatta. La carta arriva ruotando, si
+// pianta al centro con un colpo e delle scintille, resta ferma il tempo
+// di leggerla e se ne va.
+// ------------------------------------------------------------
+function apriCartaMagica({ tipo, chi, nome, descrizione, esito, costo, durata = 3400 }) {
+  const ov = $('sorpresaOverlay');
+  const sorpresa = (tipo === 'sorpresa');
+  SUONI.magia(!sorpresa);
+  const simbolo = sorpresa ? '✦' : '⚡';
+
+  ov.classList.toggle('trappola', !sorpresa);
+  $('sorpresaCarta').setAttribute('data-simbolo', simbolo);
+  $('sorpresaSigillo').textContent = simbolo;
+  $('sorpresaChi').textContent = chi || (sorpresa ? 'Carta Sorpresa' : 'Carta Trappola');
+  $('sorpresaTit').textContent = nome || '';
+  $('sorpresaTxt').textContent = descrizione || '';
+  $('sorpresaEsito').textContent = esito || '';
+  $('sorpresaCosto').textContent = (costo === undefined || costo === null) ? '' : costo;
+  $('sorpresaCosto').style.display = (costo === undefined || costo === null) ? 'none' : 'flex';
+
+  // scintille che schizzano via dal punto d'atterraggio, tutte diverse
+  ov.querySelectorAll('.scintilla').forEach((s) => s.remove());
+  for (let i = 0; i < 18; i++) {
+    const ang = (Math.PI * 2 * i) / 18 + Math.random() * 0.3;
+    const dist = 18 + Math.random() * 26;
+    const s = document.createElement('div');
+    s.className = 'scintilla';
+    s.style.setProperty('--sx', (Math.cos(ang) * dist).toFixed(1) + 'vh');
+    s.style.setProperty('--sy', (Math.sin(ang) * dist).toFixed(1) + 'vh');
+    ov.appendChild(s);
+  }
+
+  ov.classList.remove('mostra');
+  void ov.offsetWidth;              // fa ripartire l'animazione da capo
+  ov.classList.add('mostra');
+  clearTimeout(apriCartaMagica._t);
+  apriCartaMagica._t = setTimeout(() => ov.classList.remove('mostra'), durata);
+}
+
+// ------------------------------------------------------------
+// NUMERO DEL DANNO CHE SALE DALLA CARTA
+// Vedere la barra della vita accorciarsi non dice DI QUANTO: il numero
+// che parte dalla carta colpita lo dice subito. Verde e col segno più se
+// invece sono PV recuperati.
+// ------------------------------------------------------------
+function numeroDanno(cardEl, valore) {
+  const r = cardEl.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  const cura = valore < 0;
+  const n = Math.round(Math.abs(valore));
+  if (n === 0) return;
+
+  const onda = document.createElement('div');
+  onda.className = 'dmg-onda';
+  onda.style.left = cx + 'px';
+  onda.style.top = cy + 'px';
+  if (cura) onda.style.borderColor = 'rgba(107,240,165,0.9)';
+  document.body.appendChild(onda);
+  setTimeout(() => onda.remove(), 700);
+
+  // DA CHE PARTE MANDARLO.
+  // Il numero saliva sempre. Sulle carte dell'avversario, che stanno in
+  // cima allo schermo, saliva fuori dalla finestra e si vedeva tagliato a
+  // meta': proprio il colpo subito, quello che interessa di piu'.
+  // Se la carta e' nella meta' alta il numero scende, se e' nella meta'
+  // bassa sale: in tutti e due i casi va verso il centro del tavolo.
+  const altezza = (typeof window !== 'undefined' && window.innerHeight) || 800;
+  const larghezza = (typeof window !== 'undefined' && window.innerWidth) || 1200;
+  const versoGiu = cy < altezza * 0.45;
+
+  const el = document.createElement('div');
+  el.className = 'dmg-float ' + (cura ? 'cura' : 'danno') + (n >= 40 ? ' grosso' : '') +
+                 (versoGiu ? ' verso-giu' : '');
+  el.textContent = (cura ? '+' : '−') + n;
+  // e nemmeno di lato: sui semi ai bordi il numero usciva dalla finestra
+  el.style.left = Math.min(larghezza - 52, Math.max(52, cx)) + 'px';
+  el.style.top = (versoGiu ? r.bottom + 6 : r.top - 6) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
+}
+
+const ui = {
+  tocca(cid) {
+    if (selezione.has(cid)) selezione.delete(cid); else selezione.add(cid);
+    // QUI NIENTE VOLO DELLE CARTE.
+    // Selezionare non sposta niente: la carta si solleva, e il
+    // sollevamento lo fa il foglio di stile con la sua transizione.
+    // Passando da disegna() si sovrapponevano due movimenti sulla stessa
+    // carta — prima il "torna dov'eri e rivieni" del riposizionamento,
+    // poi il sollevamento del CSS che partiva solo dopo. Da fuori era un
+    // tentennamento: partiva, si fermava, ripartiva. Il riposizionamento
+    // serve quando una carta cambia posto davvero; qui non succede.
+    disegnaTutto();
+  },
+  pesca() { esegui({ tipo: 'pesca' }, () => actionDraw(S, S.currentPlayerIndex, Date.now())); },
+  clicScarti() {
+    const g = S.players[S.currentPlayerIndex];
+    // stessa logica del tavolo originale: se non ho ancora pescato il monte
+    // si prende, altrimenti il clic sugli scarti serve a scartare la carta scelta
+    if (!g.hasDrawnThisTurn) { esegui({ tipo: 'prendi_scarti' }, () => actionTakeDiscardPile(S, S.currentPlayerIndex, Date.now())); return; }
+    if (selezione.size !== 1) { avviso('Seleziona una sola carta da scartare.'); return; }
+    esegui({ tipo: 'scarta', carta: [...selezione][0] }, () => actionDiscard(S, S.currentPlayerIndex, [...selezione][0], Date.now()));
+  },
+  cala() {
+    if (!selezione.size) { avviso('Seleziona le carte da calare.'); return; }
+    esegui({ tipo: 'cala', carte: [...selezione] }, () => actionLayMeld(S, S.currentPlayerIndex, [...selezione], Date.now()));
+  },
+  // Aggancio: clic su una colonna già calata. Basta anche UNA carta sola —
+  // il minimo di tre vale solo per aprire un gioco nuovo.
+  aggancia(meldId) {
+    if (!selezione.size) { avviso('Scegli prima le carte da agganciare a questo gioco.'); return; }
+    esegui({ tipo: 'aggancia', gioco: meldId, carte: [...selezione] }, () => actionAttachToMeld(S, S.currentPlayerIndex, meldId, [...selezione], Date.now()));
+  },
+  // riordinare rimette al loro posto anche le carte appena arrivate
+  ordina(modo) { ordinamento = modo; carteNuove = []; disegna(); },
+
+  // ------------------------------------------------------------
+  // IMPOSTAZIONI
+  // ------------------------------------------------------------
+  impostazioni() {
+    // Le anteprime sono CARTE VERE in miniatura, costruite con la
+    // stessa funzione del tavolo. Se un giorno cambio come si disegna
+    // una carta, l'anteprima cambia da sola: un disegnino a parte
+    // finirebbe per mentire nel giro di un mese.
+    const eSempio = { id: 'ant', suit: '♥', value: 7, isJolly: false, isPinella: false };
+    $('scelteStile').innerHTML = Object.keys(STILI_CARTE).map((k) => {
+      const anteprima = '<div class="card cuori disegnata st-' + k + ' anteprima">' +
+                        corpoCarta('7', '♥', k) + '</div>';
+      return '<button class="scelta-stile' + (stileCarte() === k ? ' scelto' : '') +
+             '" data-stile="' + k + '">' + anteprima +
+             '<span>' + STILI_CARTE[k].nome + '</span></button>';
+    }).join('');
+
+    for (const b of document.querySelectorAll('[data-stile]')) {
+      b.addEventListener('click', () => {
+        stileCarteScelto = b.getAttribute('data-stile');
+        try { localStorage.setItem('bb_stile_carte', stileCarteScelto); } catch (e) {}
+        disegna();              // il tavolo cambia sotto, subito
+        ui.impostazioni();      // e le anteprime si riaggiornano
+      });
+    }
+    $('veloImpostazioni').classList.add('aperto');
+  },
+
+  // ------------------------------------------------------------
+  // ABILITÀ SPECIALE, in due tempi
+  // 1) tocchi il TUO eroe con la barra piena  → si entra in "scegli il bersaglio"
+  // 2) tocchi un personaggio AVVERSARIO vivo  → il colpo parte
+  // ------------------------------------------------------------
+  attivaAbilita(seme) {
+    if (S.currentPlayerIndex !== 0) { avviso('Non è il tuo turno.'); return; }
+    const eroe = S.players[0].characters[seme];
+    const costo = costoAbilita(eroe);
+    if (S.players[0].puntiMagia < costo) {
+      avviso('Punti magia insufficienti: servono ' + costo + ', ne hai ' + S.players[0].puntiMagia + '.');
+      return;
+    }
+    bersaglioAttivo = seme;
+    const t = testo(eroe.cardId);
+    const pct = (eroe._ability && eroe._ability.parametro) || 30;
+    $('istruzioneBersaglio').innerHTML =
+      '<b>' + t.nome + '</b>: scegli quale personaggio avversario colpire ' +
+      '(' + pct + '% del suo attacco, ' + Math.round(eroe.att * pct / 100) + ' danni circa · costa ' + costo + ' punti magia)' +
+      '<span class="annulla" onclick="ui.annullaBersaglio()">annulla</span>';
+    $('istruzioneBersaglio').classList.add('mostra');
+    disegna();
+  },
+  annullaBersaglio() {
+    bersaglioAttivo = null;
+    $('istruzioneBersaglio').classList.remove('mostra');
+    disegna();
+  },
+  // IN RETE LA MOSSA NON SI FA QUI.
+  // Prima l'abilità veniva applicata direttamente allo stato di questa
+  // pagina. In locale andava bene, perché questa pagina È la partita. In
+  // rete no: il colpo si vedeva, i punti magia calavano, e poi il primo
+  // aggiornamento dal server rimetteva tutto com'era — perché il server
+  // non ne aveva mai saputo niente, e la verità è la sua. Dall'altra
+  // parte l'avversario non vedeva proprio nulla.
+  // Ora passa da esegui(), che in locale chiama il motore e in rete
+  // chiede al server. Stessa forma dell'esito, un solo percorso.
+  async colpisci(semeBersaglio) {
+    if (!bersaglioAttivo) return;
+    const attaccante = bersaglioAttivo;
+    bersaglioAttivo = null;
+    $('istruzioneBersaglio').classList.remove('mostra');
+    const r = await esegui(
+      { tipo: 'abilita', seme: attaccante, bersaglio: semeBersaglio },
+      () => usaAbilitaSpeciale(S, 0, attaccante, semeBersaglio, Date.now()));
+    // Un rifiuto muto e' peggio di un rifiuto: premi, non succede niente,
+    // e non sai se hai sbagliato tu o se e' rotto il gioco.
+    if (!r || !r.ok) { avviso((r && (r.reason || r.motivo)) || 'Non si e\' potuto usare l\'abilita\'.'); disegna(); return; }
+    avviso('Abilità usata: -' + r.costo + ' punti magia (te ne restano ' + r.puntiRimasti + ').');
+  },
+  // Stessa storia dell'abilità: anche la Carta Magica passa dal server.
+  // Il confronto "PV prima / PV dopo" continua a funzionare in tutte e
+  // due le modalità, perché in rete lo stato viene sostituito da quello
+  // che risponde il server: prima e dopo restano confrontabili.
+  async magica(i) {
+    if (S.currentPlayerIndex !== 0) { avviso('Non è il tuo turno.'); return; }
+    const ms = magie[0], carta = ms.selection[i];
+    if (!carta) return;
+    if (ms.giocateQuestoTurno >= 1) { avviso('Puoi giocare una sola Carta Magica per turno.'); return; }
+    if (carta.tipo === 'sorpresa' && ms.sorpresaUsed) { avviso('Hai già usato la tua Carta Sorpresa.'); return; }
+    const t = testo(carta.id);
+
+    const pvPrima = {};
+    for (const s of SEMI) pvPrima[s] = { mio: S.players[0].characters[s].pv, suo: S.players[1].characters[s].pv };
+
+    const r = await esegui({ tipo: 'magia', indice: i },
+                           () => giocaCartaMagica(S, 0, i, Date.now()));
+    if (!r || !r.ok) { avviso((r && (r.reason || r.motivo)) || 'Non si e\' potuta giocare la carta.'); disegna(); return; }
+
+    if (carta.tipo === 'sorpresa') {
+
+      // che cosa è successo, in parole: chi ha perso o guadagnato PV
+      const cambi = [], numeri = [];
+      for (const s of SEMI) {
+        const dSuo = pvPrima[s].suo - S.players[1].characters[s].pv;
+        const dMio = pvPrima[s].mio - S.players[0].characters[s].pv;
+        if (Math.abs(dSuo) > 0.01) {
+          cambi.push(testo(S.players[1].characters[s].cardId).nome + ' (' + s + ') ' + (dSuo > 0 ? 'subisce ' + Math.round(dSuo) + ' danni' : 'recupera ' + Math.round(-dSuo) + ' PV'));
+          numeri.push({ striscia: 'battleAvversario', seme: s, valore: dSuo });
+        }
+        if (Math.abs(dMio) > 0.01) {
+          cambi.push(testo(S.players[0].characters[s].cardId).nome + ' (' + s + ') ' + (dMio > 0 ? 'subisce ' + Math.round(dMio) + ' danni' : 'recupera ' + Math.round(-dMio) + ' PV'));
+          numeri.push({ striscia: 'battleGiocatore', seme: s, valore: dMio });
+        }
+      }
+
+      segnaAnimazione(3600);   // la carta resta grande 3,2s, poi i numeri
+      apriCartaMagica({
+        tipo: 'sorpresa', chi: 'Carta Sorpresa',
+        nome: t.nome, descrizione: t.descrizione,
+        esito: cambi.length ? cambi.join(' · ') : 'Effetto attivato',
+        costo: r.costo
+      });
+      disegna();
+      // i numeri partono quando l'animazione grande si toglie di mezzo
+      setTimeout(() => {
+        numeri.forEach((n, i) => setTimeout(() => {
+          const el = $(n.striscia).querySelector('.bcard[data-seme="' + n.seme + '"]');
+          if (!el) return;
+          if (n.valore > 0) { el.classList.add('colpita'); setTimeout(() => el.classList.remove('colpita'), 440); }
+          numeroDanno(el, n.valore);
+        }, i * 130));
+      }, 3200);
+      // 3,2s: il tempo di vedere la carta ingrandirsi, restare ferma e leggerla
+      clearTimeout(ui._sorpresaT);
+      ui._sorpresaT = setTimeout(() => ov.classList.remove('mostra'), 3200);
+    } else {
+      apriCartaMagica({
+        tipo: 'trappola', chi: 'Trappola posata',
+        nome: t.nome, descrizione: t.descrizione,
+        esito: 'Resta coperta: l\'avversario la vede, ma non sa quale sia',
+        costo: r.costo, durata: 2600
+      });
+      avviso('Trappola posata: scatterà da sola quando serve.');
+      disegna();
+    }
+  }
+};
+// ------------------------------------------------------------
+// ABBANDONARE
+// Due tocchi, non uno: il primo chiede conferma, il secondo va. Un
+// bottone che chiude la partita al primo colpo, dentro un pannello che
+// si apre col dito su un telefono, e' una trappola.
+// Il tempo per ripensarci e' di cinque secondi, poi torna com'era.
+// ------------------------------------------------------------
+if ($('abbandona')) {
+  let sicuro = false;
+  $('abbandona').addEventListener('click', async () => {
+    const b = $('abbandona');
+    if (!S || S.status !== 'in_progress') { avviso('La partita è già finita.'); return; }
+    if (!sicuro) {
+      sicuro = true;
+      b.classList.add('sicuro');
+      b.textContent = 'Sicuro? Premi di nuovo';
+      setTimeout(() => {
+        sicuro = false;
+        b.classList.remove('sicuro');
+        b.textContent = 'Abbandona la partita';
+      }, 5000);
+      return;
+    }
+    sicuro = false;
+    b.classList.remove('sicuro');
+    b.textContent = 'Abbandona la partita';
+    $('veloImpostazioni').classList.remove('aperto');
+    await esegui({ tipo: 'abbandona' }, () => abbandona(S, 0, Date.now()));
+    disegna();
+  });
+}
+
+// interruttore dei suoni
+function aggiornaBottoniSuoni() {
+  const si = $('suoniSi'), no = $('suoniNo');
+  if (!si || !no) return;
+  si.classList.toggle('scelto', SUONI.acceso());
+  no.classList.toggle('scelto', !SUONI.acceso());
+}
+if ($('suoniSi')) $('suoniSi').addEventListener('click', () => { SUONI.accendi(true); aggiornaBottoniSuoni(); });
+if ($('suoniNo')) $('suoniNo').addEventListener('click', () => { SUONI.accendi(false); aggiornaBottoniSuoni(); });
+aggiornaBottoniSuoni();
+
+// il pannello si chiude col bottone, toccando fuori, o con Esc
+$('chiudiImpostazioni').addEventListener('click', () => $('veloImpostazioni').classList.remove('aperto'));
+$('veloImpostazioni').addEventListener('click', (e) => {
+  if (e.target === $('veloImpostazioni')) $('veloImpostazioni').classList.remove('aperto');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') $('veloImpostazioni').classList.remove('aperto');
+});
+
+window.ui = ui;
+// una finestra sullo stato, per le verifiche automatiche: restituisce
+// una copia, così nessuno può muovere la partita passando di qui
+window.__tavolo = () => (S ? JSON.parse(JSON.stringify({
+  status: S.status, winner: S.winner, winReason: S.winReason,
+  currentPlayerIndex: S.currentPlayerIndex, scarti: S.scarti, tallone: S.tallone,
+  players: S.players.map((p) => ({
+    hand: p.hand, melds: p.melds, characters: p.characters,
+    hasDrawnThisTurn: p.hasDrawnThisTurn, puntiMagia: p.puntiMagia,
+    pozzettoTaken: p.pozzettoTaken
+  }))
+})) : null);
+window.__inRete = ONLINE;
+
+// Clic nell'area delle mie calate:
+//  - su una colonna già in tavola → AGGANCIA lì le carte selezionate
+//  - nello spazio vuoto           → cala un gioco NUOVO
+document.getElementById('myMelds').addEventListener('click', (e) => {
+  const col = e.target.closest ? e.target.closest('.card-column') : null;
+  if (col && col.dataset.meldId) ui.aggancia(col.dataset.meldId);
+  else ui.cala();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'c' || e.key === 'C') ui.cala();
+  if (e.key === 'p' || e.key === 'P') ui.pesca();
+});
+
+(async function avvia() {
+  dati = DATI_CARTE;   // incorporati alla generazione: nessun caricamento da rete
+
+  if (ONLINE) {
+    // La partita non è nostra: esiste già sul server, con le carte già
+    // distribuite. Qui si chiede solo com'è messa e si comincia a
+    // guardare. Se il tavolo non risponde, meglio dirlo che restare su
+    // uno schermo vuoto.
+    document.body.classList.add('in-rete');
+    let r;
+    try {
+      const risposta = await fetch('/api/stato?codice=' + encodeURIComponent(RETE.codice) +
+        '&segreto=' + encodeURIComponent(RETE.segreto) + '&da=-1');
+      r = await risposta.json();
+    } catch (e) { r = null; }
+
+    if (!r || !r.ok || !r.vista) {
+      dimenticaIlTavolo();
+      avviso((r && r.motivo) || 'Questo tavolo non c\'è più. Torna alla sala.');
+      setTimeout(() => (location.href = 'sala.html'), 2500);
+      return;
+    }
+    accettaVista(r);
+    agganciaPannello();
+    accendiLucciole();
+    setInterval(aggiornaOrologiTurno, 250);
+    window.addEventListener('resize', () => disegna());
+    const nome = RETE.nomi[RETE.io === 0 ? 1 : 0];
+    avviso(nome ? 'Giochi contro ' + nome : 'Partita in corso');
+    ascolta();                                  // resta in ascolto delle sue mosse
+    return;
+  }
+
+  // IL MAZZO SCELTO NELLA PAGINA "IL TUO MAZZO"
+  // Se c'e', si gioca con quello. Se non c'e', o se e' scritto male, o se
+  // contiene carte che non esistono piu', si torna alla squadra
+  // predefinita dicendolo — perche' partire in silenzio con eroi diversi
+  // da quelli scelti e' il modo migliore per far credere che sia rotto
+  // il gioco quando invece e' rotto il mazzo salvato.
+  const mio = mazzoScelto();
+  const a = squadra(mio ? mio.personaggi : IDS_PERSONAGGI.io);
+  const b = squadra(IDS_PERSONAGGI.avv);
+  const mieMagiche = (mio ? mio.carteMagiche : IDS_MAGICHE.io).map((id) => dati.magiche[id]);
+  // le Carte Magiche vivono ora DENTRO lo stato di partita: così il motore
+  // può far scattare le trappole e rispettare gli effetti sul flusso
+  S = createMatch({
+    characters: [a.characters, b.characters],
+    abilities: [a.abilities, b.abilities],
+    magiche: [mieMagiche, IDS_MAGICHE.avv.map((id) => dati.magiche[id])],
+    // gli stessi trenta secondi anche contro il bot: e' il momento in cui
+    // si guarda chi si ha davanti, e vale in tutte e due le modalita'
+    studioSecondi: SECONDI_DI_STUDIO
+  });
+  magie = [S.players[0].magic, S.players[1].magic];
+  disegna();
+  agganciaPannello();
+  accendiLucciole();
+  if (mio) setTimeout(() => avviso('Giochi con il tuo mazzo.'), 400);
+  setInterval(aggiornaOrologiTurno, 250);   // i due cronometri del minuto
+  window.addEventListener('resize', () => disegna());  // il ventaglio si ricalcola sulla larghezza vera
+})();
+
+// Lucciole dello sfondo fatato: puntini luminosi che salgono piano, con
+// tempi e posizioni diversi così non si vede la ripetizione.
+function accendiLucciole() {
+  const box = $('lucciole');
+  if (!box) return;
+  let html = '';
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * 100, y = 25 + Math.random() * 70;
+    const durata = 7 + Math.random() * 9, ritardo = Math.random() * 10;
+    const dim = 2 + Math.random() * 2.5;
+    html += '<div class="lucciola" style="left:' + x.toFixed(2) + '%; top:' + y.toFixed(2) + '%;' +
+            'width:' + dim.toFixed(1) + 'px; height:' + dim.toFixed(1) + 'px;' +
+            'animation-duration:' + durata.toFixed(1) + 's; animation-delay:-' + ritardo.toFixed(1) + 's"></div>';
+  }
+  box.innerHTML = html;
+}
+'''
+
+# ------------------------------------------------------------
+# INCORPORAZIONE DEL MOTORE (mini-impacchettatore)
+# Ogni modulo del motore viene chiuso in una funzione a sé, che restituisce
+# le sue "export". Serve davvero: due moduli diversi possono dichiarare lo
+# stesso nome (per esempio SUITS sta sia in core-rules.js sia in
+# magic-cards.js) e incollandoli uno dietro l'altro il browser si ferma con
+# "Identifier 'SUITS' has already been declared". Isolandoli, ognuno tiene
+# i suoi nomi e si scambiano solo quello che si esportano davvero.
+# Il codice delle funzioni non viene toccato: è lo stesso coperto dai test.
+# ------------------------------------------------------------
+PROG = DST.rsplit('/client/', 1)[0]
+
+# Ordine di impacchettamento: ogni modulo deve venire DOPO quelli da cui
+# dipende. `vocabolario.js` non dipende da nessuno e deve stare per primo.
+ORDINE = ['vocabolario.js', 'core-rules.js', 'magic-cards.js', 'character-abilities.js', 'partita.js', 'bot.js']
+def var_modulo(nome): return '__M_' + re.sub(r'[^a-zA-Z0-9]', '_', nome[:-3])
+
+def impacchetta(nome):
+    testo = io.open(os.path.join(PROG, 'engine', nome), encoding='utf-8').read()
+
+    # 1. i nomi che il modulo esporta
+    esportati = re.findall(r'^export\s+(?:function|const|let|class)\s+([A-Za-z0-9_$]+)', testo, flags=re.M)
+
+    # 2. gli import diventano un prelievo dal modulo già impacchettato
+    def sostituisci_import(m):
+        nomi, da = m.group(1), m.group(2)
+        return 'const {%s} = %s;' % (nomi, var_modulo(os.path.basename(da)))
+    testo = re.sub(r'^import\s*\{([^}]*)\}\s*from\s*[\'"]([^\'"]+)[\'"];?\s*$',
+                   sostituisci_import, testo, flags=re.M)
+
+    # 3. via la parola "export", che ha senso solo fra file separati
+    testo = re.sub(r'^export\s+', '', testo, flags=re.M)
+
+    return ('\n// ===== engine/%s (incorporato) =====\nconst %s = (function(){\n%s\nreturn {%s};\n})();\n'
+            % (nome, var_modulo(nome), testo, ', '.join(esportati)))
+
+# CONTROLLO PRIMA DI IMPACCHETTARE
+# Se un modulo del motore importa un file che non è in ORDINE, il tavolo
+# generato si rompe all'avvio: il nome importato resta indefinito e la
+# pagina muore senza dire niente ("Il tavolo non è partito"). È già
+# successo aggiungendo vocabolario.js. Meglio fermarsi qui e dirlo.
+def controlla_ordine():
+    mancanti = []
+    for nome in ORDINE:
+        testo = io.open(os.path.join(PROG, 'engine', nome), encoding='utf-8').read()
+        for dip in re.findall(r'^import\s*\{[^}]*\}\s*from\s*[\'"]\./([^\'"]+)[\'"]', testo, flags=re.M):
+            if dip not in ORDINE:
+                mancanti.append('engine/%s importa %s, che non è in ORDINE' % (nome, dip))
+            elif ORDINE.index(dip) > ORDINE.index(nome):
+                mancanti.append('engine/%s importa %s, che in ORDINE viene DOPO: va spostato prima' % (nome, dip))
+    if mancanti:
+        raise SystemExit('IMPACCHETTAMENTO INTERROTTO — il tavolo sarebbe nato rotto:\n  - ' + '\n  - '.join(mancanti))
+
+controlla_ordine()
+motore = ''.join(impacchetta(n) for n in ORDINE)
+
+# I NOMI CHE LA PAGINA USA, prelevati dai moduli impacchettati.
+# Questo elenco e' l'unica porta fra il motore e il tavolo: quello che
+# non passa di qui, nella pagina non esiste.
+PRELIEVI = [
+    ('partita.js', ['createMatch', 'actionDraw', 'actionTakeDiscardPile', 'actionLayMeld',
+                    'actionAttachToMeld', 'actionDiscard', 'usaAbilitaSpeciale',
+                    'giocaCartaMagica', 'haEffetto', 'checkTurnTimeout',
+                    'TURN_SECONDS', 'SECONDI_DI_STUDIO',
+                    'abbandona']),
+    ('magic-cards.js', ['makeMagicState', 'activateSorpresa', 'armTrappola', 'resetTurnoMagie']),
+    ('core-rules.js', ['valueLabel']),
+    ('bot.js', ['botGiocaTurno'])
+]
+NOMI_PRELEVATI = set(n for _, nomi in PRELIEVI for n in nomi)
+motore += ''.join('\nconst {%s} = %s;' % (', '.join(nomi), var_modulo(mod))
+                  for mod, nomi in PRELIEVI) + '\n'
+
+# dati carta incorporati
+import json as _json
+carte = {}
+for f in sorted(os.listdir(os.path.join(PROG, 'cards', 'data'))):
+    if f.endswith('.json'):
+        carte[f[:-5]] = _json.loads(io.open(os.path.join(PROG, 'cards', 'data', f), encoding='utf-8').read())
+i18n = _json.loads(io.open(os.path.join(PROG, 'cards', 'i18n', 'it.json'), encoding='utf-8').read())
+
+personaggi = {k: v for k, v in carte.items() if k.startswith('personaggio_')}
+magiche    = {k: v for k, v in carte.items() if not k.startswith('personaggio_')}
+
+DATI = ('\n// ===== dati carta incorporati da cards/data e cards/i18n =====\n'
+        'const DATI_CARTE = {\n'
+        '  i18n: ' + _json.dumps(i18n, ensure_ascii=False) + ',\n'
+        '  personaggi: ' + _json.dumps(personaggi, ensure_ascii=False) + ',\n'
+        '  magiche: ' + _json.dumps(magiche, ensure_ascii=False) + '\n};\n')
+
+# ------------------------------------------------------------
+# I NOMI DEL MOTORE CHE LA PAGINA USA SENZA AVERLI PRESI
+#
+# Il motore viene impacchettato dentro la pagina, ma i suoi nomi non
+# sono automaticamente disponibili: vanno prelevati uno per uno nella
+# riga qui sopra. Dimenticarne uno non da' nessun errore in fase di
+# costruzione — la pagina si scrive benissimo — e poi al primo
+# caricamento muore con un "non definito" alla prima riga che lo usa.
+# Muore TUTTA: il tavolo resta vuoto e non si capisce perche'.
+# E' successo con SECONDI_DI_STUDIO.
+# Qui si controlla prima di scrivere il file.
+# ------------------------------------------------------------
+def controlla_nomi_prelevati():
+    esportati = set()
+    for nome in ORDINE:
+        sorgente = io.open(os.path.join(PROG, 'engine', nome), encoding='utf-8').read()
+        esportati.update(re.findall(r'export\s+(?:const|let|function)\s+([A-Za-z_$][\w$]*)', sorgente))
+    # SCRIPT e' il codice scritto a mano della pagina: e' li' che si usano
+    usati = set(re.findall(r'\b([A-Za-z_$][\w$]*)\b', SCRIPT))
+    dimenticati = sorted((esportati & usati) - NOMI_PRELEVATI)
+    # i nomi definiti anche dentro la pagina non contano
+    definiti_qui = set(re.findall(r'(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)', SCRIPT))
+    dimenticati = [d for d in dimenticati if d not in definiti_qui]
+    if dimenticati:
+        raise SystemExit(
+            'COSTRUZIONE INTERROTTA — la pagina nascerebbe morta.\n'
+            'Questi nomi del motore vengono usati nel tavolo ma non sono fra\n'
+            'quelli prelevati dai moduli impacchettati:\n  - ' +
+            '\n  - '.join(dimenticati) +
+            '\nAggiungili alla riga "i nomi che la pagina usa" in questo file.')
+
+controlla_nomi_prelevati()
+
+out = []
+out.append('<!DOCTYPE html>\n<html lang="it">\n<head>\n<meta charset="UTF-8">\n')
+out.append('<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n')
+out.append('<title>Burraco Legends — Tavolo</title>\n')
+out.append('<style>')
+out.append(css)
+out.append(BATTLE_CSS)
+out.append(CSS_IMPOSTAZIONI)
+out.append('</style>\n</head>\n<body>\n')
+out.append(BODY)
+# Il pannello va PRIMA dello script: lo script cerca i suoi bottoni
+# appena parte, e se l'HTML venisse dopo non li troverebbe.
+out.append(PANNELLO_IMPOSTAZIONI)
+out.append('\n<script>\n(function(){\n"use strict";\n')
+out.append(motore)
+out.append(DATI)
+out.append(SCRIPT)
+out.append('\n})();\n</script>\n</body>\n</html>\n')
+
+os.makedirs(os.path.dirname(DST), exist_ok=True)
+# newline='\n' NON e' un dettaglio: senza, su Windows Python traduce
+# ogni a-capo in CR+LF e la pagina esce diversa da quella generata su
+# Linux o Mac, byte per byte. Il controllo di allineamento confronta
+# proprio i byte, quindi segnalava tutte le pagine come 'rimaste
+# indietro' su un computer e non sull'altro — e non era vero.
+# Le pagine sono le stesse ovunque, e devono esserlo davvero.
+io.open(DST, 'w', encoding='utf-8', newline='\n').write(''.join(out))
+print('scritto', DST, os.path.getsize(DST), 'byte')

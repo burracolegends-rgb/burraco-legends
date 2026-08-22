@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends — Accedi</title>
+<style>
+  :root {
+    --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;
+    --pergamena: #f2e6cc; --tenue: #b7a686; --notte: #0b0810;
+    --verde: #58c48a; --rosso: #f0736b;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+    background:
+      radial-gradient(ellipse at 50% -10%, #2f2148 0%, transparent 58%),
+      radial-gradient(ellipse at 50% 110%, #3a2410 0%, transparent 55%),
+      var(--notte);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; min-height: 100vh;
+    padding: max(22px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom));
+  }
+
+  .braci { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .brace {
+    position: absolute; border-radius: 50%; background: #ffb457;
+    box-shadow: 0 0 7px 2px rgba(255,150,60,0.5); animation: sale linear infinite;
+  }
+  @keyframes sale {
+    0% { transform: translateY(0); opacity: 0; }
+    12% { opacity: 0.7; }
+    100% { transform: translateY(-104vh) translateX(26px); opacity: 0; }
+  }
+
+  .insegna { text-align: center; position: relative; z-index: 1; }
+  .insegna h1 {
+    margin: 0; font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.7rem, 5.5vw, 2.6rem); font-weight: 700;
+    letter-spacing: clamp(2px, 0.9vw, 6px); line-height: 1.05;
+    background: linear-gradient(180deg, #fff6d8, var(--oro) 45%, var(--oro-scuro) 72%, #ffe9ae);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.75));
+  }
+  .insegna .motto { margin-top: 7px; font-size: 0.68rem; letter-spacing: 3px; text-transform: uppercase; color: var(--tenue); }
+
+  .riquadro {
+    position: relative; z-index: 1; width: min(400px, 100%);
+    border-radius: 18px; padding: 20px; border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(52,38,22,0.94), rgba(20,14,8,0.96));
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.2), 0 12px 34px rgba(0,0,0,0.66);
+    display: flex; flex-direction: column; gap: 13px;
+  }
+
+  /* le due linguette: entra / registrati */
+  .linguette { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(0,0,0,0.38); }
+  .linguette button {
+    flex: 1; padding: 10px; border-radius: 9px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 0.88rem; font-weight: 800; letter-spacing: 0.4px;
+    background: transparent; color: var(--tenue); transition: background 0.16s, color 0.16s;
+  }
+  .linguette button.scelta { background: linear-gradient(180deg, #fff0c2, var(--oro)); color: #2a1c08; }
+
+  label { font-size: 0.74rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--tenue); margin-bottom: -7px; }
+  input {
+    width: 100%; padding: 13px 15px; border-radius: 11px; font-family: inherit;
+    border: 1px solid var(--oro-scuro); background: rgba(0,0,0,0.42); color: var(--pergamena);
+    font-size: 1rem; outline: none;
+  }
+  input:focus { border-color: var(--oro); box-shadow: 0 0 0 3px rgba(232,196,106,0.16); }
+  input::placeholder { color: #7d715c; }
+  input.sbagliato { border-color: var(--rosso); box-shadow: 0 0 0 3px rgba(240,115,107,0.14); }
+
+  .campo-password { position: relative; }
+  .campo-password input { padding-right: 52px; }
+  .occhio {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; border: none; background: transparent; cursor: pointer;
+    color: var(--tenue); display: grid; place-items: center; padding: 0;
+  }
+  .occhio:hover { color: var(--oro); }
+  .occhio svg { width: 20px; height: 20px; }
+
+  .forza { height: 4px; border-radius: 99px; background: rgba(0,0,0,0.5); overflow: hidden; margin-top: -6px; }
+  .forza i { display: block; height: 100%; width: 0; border-radius: 99px; transition: width 0.3s, background 0.3s; }
+  .aiuto { font-size: 0.72rem; color: var(--tenue); line-height: 1.45; margin-top: -6px; }
+  .aiuto.male { color: #ffc9c4; }
+
+  button.azione {
+    width: 100%; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 1rem; font-weight: 800; letter-spacing: 0.5px;
+    background: linear-gradient(180deg, #fff0c2, var(--oro) 55%, #b98d2c); color: #2a1c08;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5); transition: transform 0.14s, opacity 0.14s;
+  }
+  button.azione:hover:not(:disabled) { transform: translateY(-2px); }
+  button.azione:disabled { opacity: 0.45; cursor: default; transform: none; }
+
+  .dimenticata {
+    background: none; border: none; cursor: pointer; font-family: inherit;
+    font-size: 0.8rem; color: var(--tenue); text-decoration: underline; padding: 2px;
+    align-self: center;
+  }
+  .dimenticata:hover { color: var(--oro); }
+
+  .oppure {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 0.66rem; letter-spacing: 2px; text-transform: uppercase; color: #7d715c;
+  }
+  .oppure::before, .oppure::after { content: ''; flex: 1; height: 1px; background: rgba(232,196,106,0.2); }
+
+  button.ospite {
+    width: 100%; padding: 13px; border-radius: 12px; cursor: pointer; font-family: inherit;
+    font-size: 0.92rem; font-weight: 700;
+    background: rgba(255,255,255,0.06); color: var(--pergamena);
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  button.ospite:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.32); }
+  .sotto-ospite { font-size: 0.7rem; color: #85795f; text-align: center; line-height: 1.5; margin-top: -6px; }
+
+  .fornitori { display: flex; flex-direction: column; gap: 9px; }
+  .fornitore {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 12px; border-radius: 11px; cursor: pointer; font-family: inherit;
+    font-size: 0.88rem; font-weight: 700;
+    background: rgba(255,255,255,0.06); color: var(--pergamena); border: 1px solid rgba(255,255,255,0.16);
+  }
+  .fornitore:disabled { opacity: 0.4; cursor: default; }
+  .fornitore svg { width: 18px; height: 18px; flex: 0 0 auto; }
+  .fornitore .presto { font-size: 0.58rem; letter-spacing: 1.1px; text-transform: uppercase; color: #8a7e68; margin-left: auto; }
+
+  .avviso {
+    font-size: 0.83rem; padding: 11px 13px; border-radius: 11px; line-height: 1.55;
+    border: 1px solid rgba(240,115,107,0.5); background: rgba(90,30,26,0.36); color: #ffc9c4;
+  }
+  .avviso.buono { border-color: rgba(88,196,138,0.5); background: rgba(30,66,48,0.4); color: #b6ffd4; }
+  .avviso a { color: inherit; }
+  .avviso code {
+    display: block; margin-top: 8px; padding: 8px; border-radius: 7px; font-size: 0.7rem;
+    background: rgba(0,0,0,0.45); word-break: break-all; color: #ffe9ae;
+  }
+  .nascosto { display: none !important; }
+
+  .nota { position: relative; z-index: 1; max-width: 400px; font-size: 0.7rem; color: #85795f; line-height: 1.6; text-align: center; }
+  .nota b { color: var(--tenue); }
+</style>
+</head>
+<body>
+
+<div class="braci" id="braci"></div>
+
+<div class="insegna">
+  <h1>BURRACO LEGENDS</h1>
+  <div class="motto">Le regole del burraco · La forza degli eroi</div>
+</div>
+
+<div class="riquadro">
+
+  <div class="linguette" id="linguette">
+    <button id="tab-entra" class="scelta">Accedi</button>
+    <button id="tab-registrati">Registrati</button>
+  </div>
+
+  <!-- ===== ACCEDI ===== -->
+  <form id="modulo-entra" autocomplete="on">
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <label for="entra-email">Email</label>
+      <input id="entra-email" type="email" autocomplete="username" placeholder="latua@email.it" required>
+
+      <label for="entra-password">Password</label>
+      <div class="campo-password">
+        <input id="entra-password" type="password" autocomplete="current-password" placeholder="La tua password" required>
+        <button type="button" class="occhio" data-per="entra-password" title="Mostra la password"></button>
+      </div>
+
+      <button type="submit" class="azione" id="bottone-entra">Accedi</button>
+      <button type="button" class="dimenticata" id="ho-dimenticato">Ho dimenticato la password</button>
+    </div>
+  </form>
+
+  <!-- ===== REGISTRATI ===== -->
+  <form id="modulo-registrati" class="nascosto" autocomplete="on">
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <label for="reg-nome">Come ti chiami</label>
+      <input id="reg-nome" maxlength="20" autocomplete="nickname" placeholder="Il nome che vedranno gli altri">
+
+      <label for="reg-email">Email</label>
+      <input id="reg-email" type="email" autocomplete="username" placeholder="latua@email.it" required>
+
+      <label for="reg-password">Password</label>
+      <div class="campo-password">
+        <input id="reg-password" type="password" autocomplete="new-password" placeholder="Almeno 8 caratteri" required>
+        <button type="button" class="occhio" data-per="reg-password" title="Mostra la password"></button>
+      </div>
+      <div class="forza"><i id="forza"></i></div>
+      <div class="aiuto" id="aiuto-password">Almeno 8 caratteri. Più è lunga, meglio è.</div>
+
+      <button type="submit" class="azione" id="bottone-registrati">Crea l'account</button>
+    </div>
+  </form>
+
+  <!-- ===== HO DIMENTICATO LA PASSWORD ===== -->
+  <form id="modulo-recupero" class="nascosto">
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <div class="aiuto">Scrivi l'indirizzo con cui ti sei registrato: ti mandiamo un collegamento per sceglierne una nuova.</div>
+      <label for="rec-email">Email</label>
+      <input id="rec-email" type="email" autocomplete="username" placeholder="latua@email.it" required>
+      <button type="submit" class="azione" id="bottone-recupero">Mandami il collegamento</button>
+      <button type="button" class="dimenticata" id="torna-entra">← Torna all'accesso</button>
+    </div>
+  </form>
+
+  <div class="oppure">oppure</div>
+
+  <button class="ospite" id="ospite">Entra come ospite</button>
+  <div class="sotto-ospite">Si gioca subito, senza registrarsi. Quello che guadagni resta su questo dispositivo.</div>
+
+  <div class="fornitori" id="fornitori">
+    <button class="fornitore" id="google">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#4285F4" d="M23 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.2a5.3 5.3 0 0 1-2.3 3.5v2.9h3.7c2.2-2 3.4-5 3.4-8.6z"/>
+        <path fill="#34A853" d="M12 23.5c3.1 0 5.7-1 7.6-2.8l-3.7-2.9c-1 .7-2.3 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.8v3C3.7 20.9 7.6 23.5 12 23.5z"/>
+        <path fill="#FBBC05" d="M5.6 14.2a6.9 6.9 0 0 1 0-4.4v-3H1.8a11.5 11.5 0 0 0 0 10.4l3.8-3z"/>
+        <path fill="#EA4335" d="M12 5.4c1.7 0 3.2.6 4.4 1.7l3.3-3.3C17.7 1.9 15.1.8 12 .8 7.6.8 3.7 3.4 1.8 7.2l3.8 3c.9-2.7 3.4-4.8 6.4-4.8z"/>
+      </svg>
+      <span>Continua con Google</span><span class="presto nascosto">da collegare</span>
+    </button>
+    <button class="fornitore" id="facebook">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#1877F2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/>
+      </svg>
+      <span>Continua con Facebook</span><span class="presto nascosto">da collegare</span>
+    </button>
+  </div>
+</div>
+
+<div id="avviso" class="avviso nascosto"></div>
+<div class="nota" id="nota"></div>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const CHIAVE_GETTONE = 'bb_gettone';
+
+const gettoneAttuale = () => { try { return localStorage.getItem(CHIAVE_GETTONE); } catch (e) { return null; } };
+const ricorda = (g) => { try { localStorage.setItem(CHIAVE_GETTONE, g); } catch (e) {} };
+
+function dice(html, buono) {
+  const a = $('avviso');
+  a.innerHTML = html;
+  a.className = 'avviso' + (buono ? ' buono' : '');
+  a.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function zitto() { $('avviso').className = 'avviso nascosto'; }
+
+async function posta(via, corpo) {
+  const r = await fetch(via, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo)
+  });
+  return r.json();
+}
+
+// ------------------------------------------------------------
+// LE BRACI
+// ------------------------------------------------------------
+(function () {
+  let html = '';
+  for (let i = 0; i < 16; i++) {
+    const d = (2 + Math.random() * 2.2).toFixed(1);
+    html += '<div class="brace" style="left:' + (Math.random() * 100).toFixed(1) + '%;bottom:-10px;' +
+            'width:' + d + 'px;height:' + d + 'px;animation-duration:' + (9 + Math.random() * 11).toFixed(1) + 's;' +
+            'animation-delay:-' + (Math.random() * 16).toFixed(1) + 's"></div>';
+  }
+  $('braci').innerHTML = html;
+})();
+
+// ------------------------------------------------------------
+// L'OCCHIO PER VEDERE LA PASSWORD
+// Non è un vezzo: senza, chi ha le dita grosse sul telefono sbaglia,
+// non capisce perché non entra, e se ne va.
+// ------------------------------------------------------------
+const OCCHIO_APERTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+  '<path d="M1.6 12S5.3 5 12 5s10.4 7 10.4 7-3.7 7-10.4 7S1.6 12 1.6 12z"/><circle cx="12" cy="12" r="3.2"/></svg>';
+const OCCHIO_CHIUSO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+  '<path d="M1.6 12S5.3 5 12 5s10.4 7 10.4 7-3.7 7-10.4 7S1.6 12 1.6 12z"/><circle cx="12" cy="12" r="3.2"/>' +
+  '<path d="M3 3l18 18"/></svg>';
+
+for (const b of document.querySelectorAll('.occhio')) {
+  b.innerHTML = OCCHIO_CHIUSO;
+  b.addEventListener('click', () => {
+    const campo = $(b.getAttribute('data-per'));
+    const nascosta = campo.type === 'password';
+    campo.type = nascosta ? 'text' : 'password';
+    b.innerHTML = nascosta ? OCCHIO_APERTO : OCCHIO_CHIUSO;
+    b.title = nascosta ? 'Nascondi la password' : 'Mostra la password';
+    campo.focus();
+  });
+}
+
+// ------------------------------------------------------------
+// QUANTO È SOLIDA LA PASSWORD
+// Conta soprattutto la LUNGHEZZA. Una frase lunga e semplice regge
+// meglio di otto caratteri pieni di simboli, che poi nessuno ricorda
+// e finiscono scritti su un foglietto.
+// ------------------------------------------------------------
+function quantoRegge(p) {
+  if (!p) return { punti: 0, colore: '#555', parola: '' };
+  let punti = Math.min(60, p.length * 5);
+  if (/[a-z]/.test(p) && /[A-Z]/.test(p)) punti += 10;
+  if (/[0-9]/.test(p)) punti += 10;
+  if (/[^a-zA-Z0-9]/.test(p)) punti += 15;
+  if (/^(.)\1+$/.test(p)) punti = 10;
+  punti = Math.min(100, punti);
+  if (punti < 40) return { punti, colore: '#f0736b', parola: 'Troppo corta o troppo semplice.' };
+  if (punti < 70) return { punti, colore: '#e8c46a', parola: 'Va bene. Allungandola diventa molto più solida.' };
+  return { punti, colore: '#58c48a', parola: 'Solida.' };
+}
+
+$('reg-password').addEventListener('input', (e) => {
+  const q = quantoRegge(e.target.value);
+  $('forza').style.width = q.punti + '%';
+  $('forza').style.background = q.colore;
+  const aiuto = $('aiuto-password');
+  aiuto.textContent = q.parola || 'Almeno 8 caratteri. Più è lunga, meglio è.';
+  aiuto.className = 'aiuto' + (q.punti && q.punti < 40 ? ' male' : '');
+});
+
+// ------------------------------------------------------------
+// LE LINGUETTE
+// ------------------------------------------------------------
+function mostra(quale) {
+  zitto();
+  for (const id of ['modulo-entra', 'modulo-registrati', 'modulo-recupero']) {
+    $(id).classList.toggle('nascosto', id !== 'modulo-' + quale);
+  }
+  $('linguette').classList.toggle('nascosto', quale === 'recupero');
+  $('tab-entra').classList.toggle('scelta', quale === 'entra');
+  $('tab-registrati').classList.toggle('scelta', quale === 'registrati');
+  for (const c of document.querySelectorAll('input')) c.classList.remove('sbagliato');
+}
+$('tab-entra').addEventListener('click', () => mostra('entra'));
+$('tab-registrati').addEventListener('click', () => mostra('registrati'));
+$('ho-dimenticato').addEventListener('click', () => {
+  $('rec-email').value = $('entra-email').value;
+  mostra('recupero');
+});
+$('torna-entra').addEventListener('click', () => mostra('entra'));
+
+function segnalaCampo(id) {
+  const c = $(id);
+  if (!c) return;
+  c.classList.add('sbagliato');
+  c.focus();
+  c.addEventListener('input', () => c.classList.remove('sbagliato'), { once: true });
+}
+
+async function conAttesa(bottone, testoDuranteAttesa, fn) {
+  const prima = bottone.textContent;
+  bottone.disabled = true;
+  bottone.textContent = testoDuranteAttesa;
+  try { return await fn(); }
+  catch (e) { dice('Il server non risponde. È acceso?'); return null; }
+  finally { bottone.disabled = false; bottone.textContent = prima; }
+}
+
+// ------------------------------------------------------------
+// ACCEDI
+// ------------------------------------------------------------
+$('modulo-entra').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  zitto();
+  const r = await conAttesa($('bottone-entra'), 'Un attimo…', () =>
+    posta('/api/accedi', { email: $('entra-email').value, password: $('entra-password').value }));
+  if (!r) return;
+  if (!r.ok) {
+    dice(r.motivo || 'Accesso non riuscito.');
+    if (!r.bloccato) segnalaCampo('entra-password');
+    return;
+  }
+  ricorda(r.gettone);
+  location.href = 'home.html';
+});
+
+// ------------------------------------------------------------
+// REGISTRATI
+// ------------------------------------------------------------
+$('modulo-registrati').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  zitto();
+  const r = await conAttesa($('bottone-registrati'), 'Creo l\'account…', () =>
+    posta('/api/registrati', {
+      email: $('reg-email').value, password: $('reg-password').value,
+      nome: $('reg-nome').value, gettone: gettoneAttuale()
+    }));
+  if (!r) return;
+  if (!r.ok) {
+    dice(r.motivo || 'Non sono riuscito a registrarti.');
+    segnalaCampo(r.campo === 'email' ? 'reg-email' : 'reg-password');
+    return;
+  }
+  ricorda(r.gettone);
+  location.href = 'home.html';
+});
+
+// ------------------------------------------------------------
+// HO DIMENTICATO LA PASSWORD
+// La risposta è la stessa che l'indirizzo esista o no: non deve
+// diventare un modo per scoprire chi è registrato qui.
+// ------------------------------------------------------------
+$('modulo-recupero').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  zitto();
+  const r = await conAttesa($('bottone-recupero'), 'Mando…', () =>
+    posta('/api/recupera', { email: $('rec-email').value }));
+  if (!r) return;
+  let html = r.messaggio || 'Se quell\'indirizzo è registrato, ti abbiamo mandato le istruzioni.';
+  // Finché non c'è un servizio di posta, il collegamento lo mostro qui:
+  // meglio dirlo che far aspettare una mail che non partirà mai.
+  if (r.collegamentoDiProva) {
+    html += '<br><br><b>Non c\'è ancora un servizio di posta configurato</b>, quindi ' +
+            'il collegamento te lo do direttamente:<code>' + r.collegamentoDiProva + '</code>';
+  }
+  dice(html, true);
+});
+
+// ------------------------------------------------------------
+// OSPITE
+// ------------------------------------------------------------
+$('ospite').addEventListener('click', async () => {
+  zitto();
+  const r = await conAttesa($('ospite'), 'Un attimo…', async () => {
+    const mio = gettoneAttuale();
+    if (mio) {
+      const suo = await posta('/api/io', { gettone: mio });
+      if (suo && suo.ok && !suo.nuovo) return { ok: true, gettone: mio };
+    }
+    return posta('/api/entra-ospite', {});
+  });
+  if (!r) return;
+  if (!r.ok) { dice(r.motivo || 'Non sono riuscito a farti entrare.'); return; }
+  ricorda(r.gettone);
+  location.href = 'home.html';
+});
+
+// ------------------------------------------------------------
+// GOOGLE E FACEBOOK
+// ------------------------------------------------------------
+let attivi = [], configurazione = {};
+
+async function collega(fornitore, credenziale) {
+  const r = await posta('/api/entra-con', { fornitore, credenziale, gettone: gettoneAttuale() });
+  if (!r.ok) { dice(r.motivo || 'Accesso non riuscito.'); return; }
+  ricorda(r.gettone);
+  if (r.ospiteLasciatoIndietro) {
+    dice('Sei entrato nel tuo account ' + fornitore + '. Attenzione: quello che avevi da ospite su ' +
+         'questo dispositivo (' + r.ospiteLasciatoIndietro.sharkini + ' sharkini, ' +
+         r.ospiteLasciatoIndietro.carte + ' carte) resta separato.<br><br>' +
+         '<a href="home.html">Vai avanti →</a>', true);
+    return;
+  }
+  location.href = 'home.html';
+}
+
+function preparaFornitore(id, comeSiChiama) {
+  const b = $(id);
+  if (attivi.includes(id)) { b.querySelector('.presto').classList.add('nascosto'); return true; }
+  b.disabled = true;
+  b.querySelector('.presto').classList.remove('nascosto');
+  b.title = 'Chi gestisce il server deve ancora registrare l\'applicazione presso ' + comeSiChiama + '.';
+  return false;
+}
+
+// ------------------------------------------------------------
+(async function avvia() {
+  if (location.protocol === 'file:') {
+    dice('Questa pagina va aperta dal server, non con un doppio clic. ' +
+         'Avvia AVVIA-SERVER.bat e vai su http://localhost:8080');
+    for (const b of document.querySelectorAll('button')) b.disabled = true;
+    return;
+  }
+
+  let r;
+  try { r = await (await fetch('/api/accessi')).json(); }
+  catch (e) { dice('Il server non risponde. È acceso?'); return; }
+  attivi = r.fornitori || [];
+  configurazione = r;
+
+  if (preparaFornitore('google', 'Google')) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    s.onload = () => {
+      google.accounts.id.initialize({
+        client_id: configurazione.googleIdApp,
+        callback: (risposta) => collega('google', risposta.credential)
+      });
+      $('google').addEventListener('click', () => google.accounts.id.prompt());
+    };
+    s.onerror = () => { $('google').disabled = true; };
+    document.head.appendChild(s);
+  }
+  if (preparaFornitore('facebook', 'Facebook')) {
+    const s = document.createElement('script');
+    s.src = 'https://connect.facebook.net/it_IT/sdk.js'; s.async = true;
+    s.onload = () => {
+      FB.init({ appId: configurazione.facebookIdApp, cookie: false, xfbml: false, version: 'v19.0' });
+      $('facebook').addEventListener('click', () => {
+        FB.login((x) => x.authResponse ? collega('facebook', x.authResponse.accessToken)
+                                       : dice('Accesso con Facebook annullato.'),
+                 { scope: 'public_profile' });
+      });
+    };
+    s.onerror = () => { $('facebook').disabled = true; };
+    document.head.appendChild(s);
+  }
+
+  // Chi sono già, su questo dispositivo
+  const mio = gettoneAttuale();
+  if (mio) {
+    const chi = await posta('/api/chi-sono', { gettone: mio });
+    if (chi.ok) {
+      if (chi.registrato) {
+        $('entra-email').value = chi.email || '';
+        $('nota').innerHTML = 'Su questo dispositivo eri entrato come <b>' + (chi.email || chi.nome) + '</b>.';
+      } else {
+        $('ospite').textContent = chi.nome ? 'Continua come ' + chi.nome : 'Continua come ospite';
+        $('nota').innerHTML = 'Stai giocando <b>come ospite</b>. Registrandoti ti porti dietro ' +
+          'tutto quello che hai già, e lo ritrovi anche da un altro telefono.';
+      }
+      if (!chi.postaConfigurata) {
+        $('nota').innerHTML += '<br><br>Nota: non c\'è ancora un servizio di posta collegato, ' +
+          'quindi il recupero password mostra il collegamento a schermo invece di spedirlo.';
+      }
+      return;
+    }
+  }
+  $('nota').innerHTML = 'Registrandoti ritrovi le tue carte da qualunque dispositivo. ' +
+    'Come ospite si gioca subito, ma <b>tutto resta solo su questo browser</b>.';
+})();
+
+window.__prova = { attivi: () => attivi, gettone: gettoneAttuale, mostra };
+})();
+</script>
+</body>
+</html>

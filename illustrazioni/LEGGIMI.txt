@@ -1,0 +1,33 @@
+LE ILLUSTRAZIONI DELLE CARTE
+
+grezze/   ci metti le immagini appena generate, con lo sfondo
+pulite/   ci trovi le stesse immagini senza sfondo, in PNG
+
+Per pulirle: doppio clic su PULISCI-ILLUSTRAZIONI.bat nella cartella
+principale. Le immagini gia' pulite non vengono rifatte.
+
+
+COME CHIEDERE LE IMMAGINI PERCHE' SI POSSANO PULIRE
+
+Il ritaglio automatico riesce solo se lo sfondo e' A TINTA UNITA e ben
+diverso dal soggetto. Nella richiesta metti sempre qualcosa come:
+
+    "su sfondo verde brillante uniforme (#00b140), tinta piatta,
+     senza ombre proiettate sullo sfondo, soggetto intero e centrato"
+
+Il VERDE funziona meglio del bianco: armature, ali, capelli chiari e
+nebbia sul bianco si confondono e il ritaglio se li mangia.
+Se il personaggio e' verde (un drago, un elfo dei boschi), usa il
+magenta (#ff00ff) invece del verde.
+
+DA EVITARE
+  - sfondi scenici (castelli, boschi, cieli): non si possono togliere
+  - ombre lunghe proiettate a terra: vengono ritagliate insieme
+  - bordi sfumati o effetti di luce che escono dal personaggio
+
+
+DOPO LA PULIZIA
+
+Guardale sempre. Se una carta ha il bordo mangiato o pezzi di sfondo
+attaccati, quasi sempre la colpa e' dell'immagine di partenza: rigenerala
+con lo sfondo piu' netto invece di ritoccarla a mano.

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends — Gioca con un amico</title>
+<style>
+  /* ============================================================
+     LA SALA
+     Due strade sole: apri un tavolo e passi il codice, oppure ricevi
+     un codice e lo digiti. Niente registrazione, niente password —
+     per provare il gioco in due deve bastare un messaggio su WhatsApp.
+     ============================================================ */
+  :root {
+    --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;
+    --pergamena: #f2e6cc; --tenue: #b7a686; --notte: #0b0810;
+    --verde: #58c48a; --rosso: #f0736b;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+    background:
+      radial-gradient(ellipse at 50% 0%, #2a1d3d 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, #3a2410 0%, transparent 55%),
+      var(--notte);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+    min-height: 100vh; user-select: none;
+  }
+
+  .insegna { text-align: center; }
+  .insegna h1 {
+    margin: 0; font-family: Georgia, serif; font-size: clamp(1.6rem, 5vw, 2.5rem);
+    letter-spacing: 3px; font-weight: 700;
+    background: linear-gradient(180deg, #fff6d8, var(--oro) 45%, var(--oro-scuro) 75%, #ffe9ae);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.7));
+  }
+  .insegna .sotto { font-size: 0.85rem; color: var(--tenue); margin-top: 6px; letter-spacing: 0.6px; }
+
+  .riquadro {
+    width: min(430px, 100%); border-radius: 16px; padding: 20px;
+    border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(52,38,22,0.92), rgba(22,15,9,0.95));
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.18), 0 8px 26px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column; gap: 13px;
+  }
+  .riquadro h2 {
+    margin: 0; font-family: Georgia, serif; font-size: 1rem;
+    letter-spacing: 2.2px; text-transform: uppercase; color: var(--oro);
+  }
+  .riquadro p { margin: 0; font-size: 0.83rem; color: var(--tenue); line-height: 1.55; }
+
+  input {
+    width: 100%; padding: 12px 14px; border-radius: 10px; font-family: inherit;
+    border: 1px solid var(--oro-scuro); background: rgba(0,0,0,0.4); color: var(--pergamena);
+    font-size: 1rem; outline: none;
+  }
+  input:focus { border-color: var(--oro); box-shadow: 0 0 0 3px rgba(232,196,106,0.16); }
+  input.codice {
+    text-transform: uppercase; letter-spacing: 8px; text-align: center;
+    font-size: 1.5rem; font-weight: 800; font-family: Georgia, serif;
+  }
+
+  button {
+    padding: 13px; border-radius: 11px; border: none; cursor: pointer; font-family: inherit;
+    font-size: 0.96rem; font-weight: 800; letter-spacing: 0.7px;
+    background: linear-gradient(180deg, #fff0c2, var(--oro) 55%, #b98d2c); color: #2a1c08;
+    box-shadow: 0 5px 16px rgba(0,0,0,0.5); transition: transform 0.14s, opacity 0.14s;
+  }
+  button:hover:not(:disabled) { transform: translateY(-2px); }
+  button:disabled { opacity: 0.45; cursor: default; transform: none; }
+  button.tenue {
+    background: rgba(255,255,255,0.07); color: var(--pergamena);
+    border: 1px solid var(--oro-scuro); box-shadow: none;
+  }
+
+  .oppure {
+    display: flex; align-items: center; gap: 12px; width: min(430px, 100%);
+    font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase; color: var(--tenue);
+  }
+  .oppure::before, .oppure::after {
+    content: ''; flex: 1; height: 1px; background: rgba(232,196,106,0.22);
+  }
+
+  /* ---------- il codice da passare all'amico ---------- */
+  .vetrina-codice {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 18px; border-radius: 14px; border: 1px dashed var(--oro);
+    background: rgba(232,196,106,0.07);
+  }
+  .vetrina-codice .cifre {
+    font-family: Georgia, serif; font-size: clamp(2rem, 9vw, 3rem); font-weight: 700;
+    letter-spacing: clamp(6px, 3vw, 14px); color: var(--oro-chiaro);
+    text-shadow: 0 0 24px rgba(232,196,106,0.45);
+  }
+  .vetrina-codice .didascalia { font-size: 0.74rem; color: var(--tenue); letter-spacing: 1px; }
+
+  .attesa { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--tenue); }
+  .puntini { display: inline-flex; gap: 4px; }
+  .puntini i {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--oro);
+    animation: respira 1.3s ease-in-out infinite;
+  }
+  .puntini i:nth-child(2) { animation-delay: 0.18s; }
+  .puntini i:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes respira { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+
+  .avviso {
+    font-size: 0.82rem; padding: 10px 13px; border-radius: 10px; line-height: 1.5;
+    border: 1px solid rgba(240,115,107,0.5); background: rgba(90,30,26,0.35); color: #ffc9c4;
+  }
+  .avviso.buono { border-color: rgba(88,196,138,0.5); background: rgba(30,66,48,0.4); color: #b6ffd4; }
+  .nascosto { display: none !important; }
+
+  .torna { position: fixed; top: 16px; left: 16px; font-size: 0.85rem; color: var(--tenue); text-decoration: none; }
+  .torna:hover { color: var(--oro); }
+  .piede { font-size: 0.7rem; color: #8a7e68; text-align: center; max-width: 420px; line-height: 1.6; }
+  .spia-mazzo {
+    margin: 0 0 14px; font-size: 0.85rem; color: #a396c0; text-align: center; line-height: 1.5;
+  }
+  .spia-mazzo b { color: #e8c46a; }
+  .spia-mazzo a { color: #e8c46a; }
+</style>
+</head>
+<body>
+
+<a class="torna" href="home.html">← Home</a>
+
+<div class="insegna">
+  <h1>GIOCA CON UN AMICO</h1>
+<p class="spia-mazzo" id="spiaMazzo"></p>
+  <div class="sotto">Un codice, due tavoli, nessuna registrazione</div>
+</div>
+
+<!-- ---------- scelta ---------- -->
+<div id="scelta">
+  <div class="riquadro">
+    <h2>Come ti chiami</h2>
+    <input id="nome" maxlength="20" placeholder="Il tuo nome" autocomplete="off">
+    <button id="apri">Apri un tavolo</button>
+    <p>Ricevi un codice da mandare al tuo amico.</p>
+  </div>
+
+  <div class="oppure">oppure</div>
+
+  <div class="riquadro">
+    <h2>Hai ricevuto un codice</h2>
+    <input id="codice" class="codice" maxlength="6" placeholder="······" autocomplete="off" spellcheck="false">
+    <button id="entra" disabled>Entra al tavolo</button>
+  </div>
+</div>
+
+<!-- ---------- in attesa dell'amico ---------- -->
+<div id="attesa" class="riquadro nascosto">
+  <h2>Il tuo tavolo è pronto</h2>
+  <div class="vetrina-codice">
+    <span class="cifre" id="codice-mostrato">······</span>
+    <span class="didascalia">manda questo codice al tuo amico</span>
+  </div>
+  <button id="copia" class="tenue">Copia il codice</button>
+  <div class="attesa">
+    <span class="puntini"><i></i><i></i><i></i></span>
+    <span id="chi-manca">Si aspetta che entri…</span>
+  </div>
+  <button id="annulla" class="tenue">Lascia il tavolo</button>
+</div>
+
+<div id="avviso" class="avviso nascosto"></div>
+
+<div class="piede" id="piede"></div>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+// Il segreto è l'identità: chi ce l'ha è quel giocatore. Vive solo qui e
+// nell'indirizzo che passa al tavolo, non si mostra e non si condivide —
+// il codice si passa all'amico, il segreto mai.
+let mio = null;          // { codice, giocatore, segreto }
+let fermo = false;
+
+function dice(testo, buono) {
+  const a = $('avviso');
+  a.textContent = testo;
+  a.className = 'avviso' + (buono ? ' buono' : '');
+}
+function zitto() { $('avviso').className = 'avviso nascosto'; }
+
+async function chiedi(via, corpo) {
+  const risposta = await fetch(via, corpo ? {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo)
+  } : undefined);
+  return risposta.json();
+}
+
+// ------------------------------------------------------------
+// IL MAZZO CHE SI PORTA AL TAVOLO
+//
+// Contro il bot il mazzo lo legge la pagina del tavolo. In rete no: le
+// squadre le distribuisce il server, quindi il mazzo va spedito quando
+// ci si siede. Il server non se ne fida — ricontrolla ogni carta contro
+// il suo catalogo, e le statistiche le prende da li'. Di questo
+// messaggio ascolta solo i NOMI delle carte, mai i loro numeri.
+//
+// Chi non ha mai scelto un mazzo gioca con la squadra predefinita: non
+// si deve essere costretti a passare dalla pagina del mazzo per fare
+// una partita.
+// ------------------------------------------------------------
+function mazzoDaPortare() {
+  try {
+    const salvato = JSON.parse(localStorage.getItem('bb_mazzo') || 'null');
+    if (salvato && salvato.personaggi && Array.isArray(salvato.carteMagiche)) return salvato;
+  } catch (e) {}
+  return undefined;
+}
+
+// A schermo, cosi' si sa con che squadra si sta per giocare invece di
+// scoprirlo a partita iniziata.
+(function diCheMazzoSiGioca() {
+  const spia = $('spiaMazzo');
+  if (!spia) return;
+  const mazzo = mazzoDaPortare();
+  spia.innerHTML = mazzo
+    ? 'Giocherai con <b>il tuo mazzo</b>. <a href="selezione.html">Cambialo</a>'
+    : 'Non hai ancora scelto un mazzo: giocherai con la squadra predefinita. <a href="selezione.html">Scegli il tuo</a>';
+})();
+
+// ------------------------------------------------------------
+// APRIRE UN TAVOLO
+// ------------------------------------------------------------
+$('apri').addEventListener('click', async () => {
+  zitto();
+  $('apri').disabled = true;
+  try {
+    const r = await chiedi('/api/apri', { nome: $('nome').value, mazzo: mazzoDaPortare() });
+    if (!r.ok) { dice(r.motivo || 'Non è stato possibile aprire il tavolo.'); $('apri').disabled = false; return; }
+    mio = r;
+    $('scelta').classList.add('nascosto');
+    $('attesa').classList.remove('nascosto');
+    $('codice-mostrato').textContent = r.codice;
+    aspettaLAmico();
+  } catch (e) {
+    dice('Il server non risponde. È acceso?');
+    $('apri').disabled = false;
+  }
+});
+
+$('copia').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(mio.codice);
+    $('copia').textContent = 'Copiato';
+    setTimeout(() => ($('copia').textContent = 'Copia il codice'), 1600);
+  } catch (e) {
+    dice('Copialo a mano: ' + mio.codice, true);
+  }
+});
+
+$('annulla').addEventListener('click', () => {
+  fermo = true;
+  mio = null;
+  $('attesa').classList.add('nascosto');
+  $('scelta').classList.remove('nascosto');
+  $('apri').disabled = false;
+  zitto();
+});
+
+// ------------------------------------------------------------
+// ENTRARE CON UN CODICE
+// ------------------------------------------------------------
+$('codice').addEventListener('input', (e) => {
+  // solo le lettere che il server usa davvero: chi digita "0" intende "O",
+  // ma "O" non esiste nei codici — meglio non farlo nemmeno scrivere
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/[OIL]/g, '');
+  $('entra').disabled = e.target.value.length !== 6;
+});
+$('codice').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !$('entra').disabled) $('entra').click();
+});
+
+$('entra').addEventListener('click', async () => {
+  zitto();
+  $('entra').disabled = true;
+  try {
+    const r = await chiedi('/api/entra', { codice: $('codice').value, nome: $('nome').value, mazzo: mazzoDaPortare() });
+    if (!r.ok) { dice(r.motivo || 'Questo codice non funziona.'); $('entra').disabled = false; return; }
+    mio = r;
+    vaiAlTavolo();
+  } catch (e) {
+    dice('Il server non risponde. È acceso?');
+    $('entra').disabled = false;
+  }
+});
+
+// ------------------------------------------------------------
+// L'ATTESA
+// Non chiedo in continuazione: faccio una domanda sola e il server la
+// tiene appesa finché l'altro non entra. Se scade, la rifaccio.
+// ------------------------------------------------------------
+async function aspettaLAmico() {
+  let versione = -1;
+  while (!fermo && mio) {
+    let r;
+    try {
+      r = await chiedi('/api/stato?codice=' + encodeURIComponent(mio.codice) +
+                       '&segreto=' + encodeURIComponent(mio.segreto) +
+                       '&da=' + versione);
+    } catch (e) {
+      dice('Collegamento perso. Riprovo…');
+      await new Promise((ok) => setTimeout(ok, 2000));
+      continue;
+    }
+    if (!r.ok) { dice(r.motivo || 'Il tavolo non c\'è più.'); return; }
+    zitto();
+    versione = r.versione;
+    if (!r.inAttesaDelSecondo) {
+      const nome = r.nomi[1] || 'Il tuo avversario';
+      $('chi-manca').textContent = nome + ' è entrato. Si comincia…';
+      setTimeout(vaiAlTavolo, 700);
+      return;
+    }
+  }
+}
+
+function vaiAlTavolo() {
+  // Le credenziali si mettono anche da parte nel browser. Serve per
+  // riaprire il tavolo da soli se la pagina si chiude, la rete cade o
+  // il telefono si spegne: senza, chi cade a metà partita perderebbe
+  // l'indirizzo lungo e non avrebbe modo di rientrare.
+  try {
+    localStorage.setItem('bb_tavolo', JSON.stringify({
+      codice: mio.codice, segreto: mio.segreto, giocatore: mio.giocatore, quando: Date.now()
+    }));
+  } catch (e) {}
+
+  // Nell'indirizzo viaggiano dopo il cancelletto: quella parte il
+  // browser non la manda a nessun server, quindi il segreto non finisce
+  // in nessun registro di accessi.
+  location.href = 'tavolo.html#' + new URLSearchParams({
+    codice: mio.codice, segreto: mio.segreto, giocatore: String(mio.giocatore)
+  }).toString();
+}
+
+// ------------------------------------------------------------
+// Se qualcuno apre questa pagina col doppio clic invece che dal server,
+// niente di tutto questo può funzionare: meglio dirlo subito.
+// ------------------------------------------------------------
+if (location.protocol === 'file:') {
+  dice('Questa pagina va aperta dal server, non con un doppio clic. Avvia "node server/server.js" e vai su http://localhost:8080');
+  $('apri').disabled = true;
+  $('codice').disabled = true;
+} else {
+  $('piede').textContent = 'Il tavolo resta aperto due ore. Chi ha il codice entra, ' +
+    'gli altri no: le carte di ciascuno restano sul server e non passano mai dall\'altro browser.';
+}
+
+window.__prova = { stato: () => mio };
+})();
+</script>
+</body>
+</html>

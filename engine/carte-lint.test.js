@@ -1,0 +1,133 @@
+// ============================================================
+// CONTROLLO DELLE CARTE
+// Legge TUTTE le carte in /cards/data e verifica che il motore sappia
+// leggerle. Va eseguito ogni volta che si aggiunge o si modifica una
+// carta: è la rete che impedisce di pubblicare una carta che "non fa
+// niente" senza che nessuno se ne accorga.
+//
+// Uso: node engine/carte-lint.test.js
+// ============================================================
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import {
+  controllaCartaMagica, controllaCartaPersonaggio,
+  EFFETTI, EFFETTI_DIFFERITI, TRIGGER_TRAPPOLA, LIMITI
+} from './vocabolario.js';
+
+const QUI = path.dirname(fileURLToPath(import.meta.url));
+const RADICE = path.resolve(QUI, '..');
+const DATI = path.join(RADICE, 'cards', 'data');
+const I18N = path.join(RADICE, 'cards', 'i18n');
+
+let failures = 0;
+const check = (l, c, dettaglio) => {
+  console.log((c ? 'OK   ' : 'FAIL ') + l);
+  if (!c) { failures++; if (dettaglio) console.log('       ' + dettaglio); }
+};
+
+const leggi = (f) => JSON.parse(fs.readFileSync(f, 'utf-8'));
+const file = fs.readdirSync(DATI).filter((f) => f.endsWith('.json')).sort();
+const carte = file.map((f) => ({ file: f, dati: leggi(path.join(DATI, f)) }));
+
+check('ci sono carte da controllare', carte.length > 0);
+
+// --- 1. ogni carta è leggibile dal motore ---
+{
+  const problemi = [];
+  for (const { file: f, dati } of carte) {
+    const esito = f.startsWith('personaggio_') ? controllaCartaPersonaggio(dati) : controllaCartaMagica(dati);
+    if (!esito.ok) problemi.push(f + ':\n       - ' + esito.errori.join('\n       - '));
+  }
+  check('tutte le carte usano parole che il motore sa eseguire', problemi.length === 0, problemi.join('\n     '));
+}
+
+// --- 2. il nome del file corrisponde all'id, e nessun id è ripetuto ---
+{
+  const sbagliati = carte.filter(({ file: f, dati }) => dati.id !== f.replace(/\.json$/, ''));
+  check('l\'id di ogni carta corrisponde al nome del file', sbagliati.length === 0,
+    sbagliati.map((c) => c.file + ' contiene id "' + c.dati.id + '"').join(', '));
+
+  const visti = new Set(), doppi = [];
+  for (const { dati } of carte) { if (visti.has(dati.id)) doppi.push(dati.id); visti.add(dati.id); }
+  check('nessun id ripetuto', doppi.length === 0, doppi.join(', '));
+}
+
+// --- 3. ogni carta ha nome e descrizione in tutte e quattro le lingue ---
+{
+  const testi = {};
+  for (const lingua of LIMITI.lingue) {
+    const f = path.join(I18N, lingua + '.json');
+    testi[lingua] = fs.existsSync(f) ? leggi(f) : null;
+    check('esiste il file lingua ' + lingua + '.json', testi[lingua] !== null);
+  }
+  const mancanti = [];
+  for (const { dati } of carte) {
+    for (const lingua of LIMITI.lingue) {
+      const t = testi[lingua] && testi[lingua][dati.id];
+      if (!t) mancanti.push(dati.id + ' non tradotta in ' + lingua);
+      else if (!t.nome || !t.descrizione) mancanti.push(dati.id + ' in ' + lingua + ': nome o descrizione vuoti');
+    }
+  }
+  check('ogni carta ha nome e descrizione nelle 4 lingue', mancanti.length === 0, mancanti.slice(0, 12).join('\n     '));
+}
+
+// --- 4. ogni carta dice quanto costa in punti magia ---
+{
+  const senzaCosto = carte.filter(({ file: f, dati }) =>
+    f.startsWith('personaggio_') ? (dati.abilita && dati.abilita.costo === undefined) : dati.costo === undefined);
+  check('ogni carta dichiara il proprio costo in punti magia', senzaCosto.length === 0,
+    senzaCosto.map((c) => c.file).join(', '));
+}
+
+// --- 5. IL CONTROLLO PIÙ IMPORTANTE ---
+// Ogni parola del vocabolario deve essere eseguita per davvero da qualche
+// parte nel motore. Se qualcuno aggiunge un effetto all'elenco ma non lo
+// implementa, le carte che lo usano non farebbero nulla in silenzio.
+{
+  const sorgente = ['magic-cards.js', 'partita.js', 'core-rules.js', 'character-abilities.js']
+    .map((f) => fs.readFileSync(path.join(QUI, f), 'utf-8')).join('\n');
+
+  const nonEseguiti = Object.keys(EFFETTI).filter((e) => {
+    // un effetto è "eseguito" se compare nel codice fuori dal vocabolario
+    const usi = sorgente.split(e).length - 1;
+    return usi === 0;
+  });
+  check('ogni effetto del vocabolario è eseguito dal motore', nonEseguiti.length === 0,
+    'mai eseguiti: ' + nonEseguiti.join(', '));
+
+  const trigNonChiamati = Object.keys(TRIGGER_TRAPPOLA).filter((t) => !sorgente.includes("'" + t + "'"));
+  check('ogni trigger di Trappola viene fatto scattare dal motore', trigNonChiamati.length === 0,
+    'mai chiamati: ' + trigNonChiamati.join(', ') + ' — una trappola con questo trigger resterebbe armata per sempre');
+
+  // gli effetti differiti devono essere nell'elenco che il motore consulta
+  const fuoriElenco = EFFETTI_DIFFERITI.filter((e) => !sorgente.includes(e));
+  check('ogni effetto differito è previsto dal motore', fuoriElenco.length === 0, fuoriElenco.join(', '));
+}
+
+// --- 6. una carta scritta male viene bocciata (prova del controllo stesso) ---
+{
+  const inventata = controllaCartaMagica({ id: 'x', tipo: 'trappola', effect: 'effetto_che_non_esiste', trigger: 'avversario_pesca', durata_turni: 0 });
+  check('una carta con un effetto inventato viene bocciata', !inventata.ok && /effetto sconosciuto/.test(inventata.errori[0]));
+
+  const trigMorto = controllaCartaMagica({ id: 'x', tipo: 'trappola', effect: 'danno_diretto', parametro: '10', trigger: 'quando_piove', durata_turni: 0 });
+  check('una trappola che aspetta un evento inesistente viene bocciata', !trigMorto.ok && trigMorto.errori.some((e) => /trigger sconosciuto/.test(e)));
+
+  const senzaNumero = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'danno_diretto', parametro: 'tanto', trigger: 'on_activate', durata_turni: 0 });
+  check('un parametro non numerico dove serve un numero viene bocciato', !senzaNumero.ok);
+
+  const enumSbagliato = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'restrict_draw_source', parametro: 'quello_che_voglio', trigger: 'on_activate', durata_turni: 0 });
+  check('un parametro fuori dai valori ammessi viene bocciato', !enumSbagliato.ok);
+
+  const costoAssurdo = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '10', trigger: 'on_activate', durata_turni: 0, costo: 99 });
+  check('un costo fuori scala viene bocciato', !costoAssurdo.ok);
+
+  const buona = controllaCartaMagica({ id: 'x', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '30', trigger: 'on_activate', target: 'avversario', durata_turni: 0, costo: 4 });
+  check('una carta scritta bene passa', buona.ok, buona.errori.join('; '));
+}
+
+console.log('\n' + (failures === 0
+  ? 'Tutte le carte sono leggibili dal motore.'
+  : failures + ' controlli falliti.'));
+process.exit(failures === 0 ? 0 : 1);

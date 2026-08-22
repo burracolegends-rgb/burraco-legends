@@ -1,0 +1,58 @@
+{
+  "personaggio_001": {
+    "nome": "Burning Flame",
+    "descrizione": "A Hearts warrior with a fiery temper, always ready to strike first."
+  },
+  "personaggio_002": {
+    "nome": "Queen of Embers",
+    "descrizione": "Rules the Hearts suit with a fire that never goes out, not even in defeat."
+  },
+  "personaggio_003": {
+    "nome": "Crystal Warden",
+    "descrizione": "Guards the treasures of Diamonds behind a transparent, unbreakable armor."
+  },
+  "personaggio_004": {
+    "nome": "Amber Sovereign",
+    "descrizione": "Their throne is carved from amber: every move is calculated and precious."
+  },
+  "personaggio_005": {
+    "nome": "Forest Guardian",
+    "descrizione": "A silent protector of Clubs, rooted and patient."
+  },
+  "personaggio_006": {
+    "nome": "Spirit of the Ancient Forest",
+    "descrizione": "The rarest form of the Clubs suit: said to be as old as the deck itself."
+  },
+  "personaggio_007": {
+    "nome": "Shadow Blade",
+    "descrizione": "Moves through Spades without a sound, striking before being seen."
+  },
+  "personaggio_008": {
+    "nome": "Mist Assassin",
+    "descrizione": "The deadliest of the Spades characters: no one sees them coming twice."
+  },
+  "sorpresa_001": {
+    "nome": "Sudden Lightning",
+    "descrizione": "A direct damage strike, playable at any point in the match."
+  },
+  "sorpresa_002": {
+    "nome": "Battle Fury",
+    "descrizione": "Temporarily boosts your character's ATT: two turns of pure aggression."
+  },
+  "trappola_001": {
+    "nome": "Shadow Snare",
+    "descrizione": "Stays hidden until the opponent draws: then forces them to discard."
+  },
+  "trappola_002": {
+    "nome": "Mirror of Retribution",
+    "descrizione": "If you take damage while active, half of it is returned to the attacker."
+  },
+  "sorpresa_003": {
+    "nome": "Threefold Blessing",
+    "descrizione": "One gesture, three gifts: it strikes the opponent, heals one of your heroes and grants you an extra card on your next draw."
+  },
+  "trappola_003": {
+    "nome": "Seal of the Desperate",
+    "descrizione": "Can only be deployed when your heroes are down to less than half. If the opponent dares use an ability, it blocks their melding for a turn."
+  }
+}
