@@ -15,6 +15,7 @@ import {
   controllaCartaMagica, controllaCartaPersonaggio,
   EFFETTI, EFFETTI_DIFFERITI, TRIGGER_TRAPPOLA, LIMITI
 } from './vocabolario.js';
+import { infliggiDanno } from './core-rules.js';
 
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const RADICE = path.resolve(QUI, '..');
@@ -79,6 +80,25 @@ check('ci sono carte da controllare', carte.length > 0);
     f.startsWith('personaggio_') ? (dati.abilita && dati.abilita.costo === undefined) : dati.costo === undefined);
   check('ogni carta dichiara il proprio costo in punti magia', senzaCosto.length === 0,
     senzaCosto.map((c) => c.file).join(', '));
+}
+
+// --- 4bis. "difesa" non è cosmetica: riduce il danno per davvero ---
+// La stessa cosa che è mancata per anni a boost_difesa (il flag c'era,
+// nessuno lo leggeva). Qui non basta cercare la parola nel codice: si fa
+// girare `infliggiDanno` per davvero e si controlla il risultato.
+{
+  const bersaglio = { pv: 100, pvMax: 100, difesa: 20 };
+  const nettoRidotto = infliggiDanno(bersaglio, 50);
+  check('20 di difesa riduce 50 di danno a 40', Math.abs(nettoRidotto - 40) < 1e-9);
+  check('e i PV calano di altrettanto', Math.abs(bersaglio.pv - 60) < 1e-9);
+
+  const senzaDifesa = { pv: 100, pvMax: 100 };
+  const nettoPieno = infliggiDanno(senzaDifesa, 50);
+  check('senza "difesa" il danno resta pieno (com\'era prima)', nettoPieno === 50);
+
+  const corazzato = { pv: 100, pvMax: 100, difesa: 95 };
+  const nettoTetto = infliggiDanno(corazzato, 50);
+  check('la difesa non supera mai il tetto massimo (80%): resta almeno il 20% del danno', Math.abs(nettoTetto - 10) < 1e-9);
 }
 
 // --- 5. IL CONTROLLO PIÙ IMPORTANTE ---

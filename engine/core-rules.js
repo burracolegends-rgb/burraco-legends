@@ -318,3 +318,33 @@ export function semeAttaccoMigliore(attackerCharacters) {
     return a > b ? s : best;
   }, SUITS[0]);
 }
+
+// ------------------------------------------------------------
+// DIFESA
+// Stat fissa della carta personaggio (0-100, in genere 0-30): riduce in
+// percentuale QUALSIASI danno in arrivo, da qualunque fonte (calate,
+// abilità speciali, Carte Magiche, danno riflesso) — un punto unico, così
+// non c'è un tipo di colpo che la ignora per dimenticanza.
+// Si somma a `difesaPercent`, il bonus TEMPORANEO che l'effetto
+// `boost_difesa` mette sul personaggio (spec §6): stessa unità, stesso
+// tetto. Superato il tetto un personaggio sarebbe di fatto invulnerabile,
+// il che rompe la partita più di quanto la protegga.
+// ------------------------------------------------------------
+export const DIFESA_RIDUZIONE_MASSIMA = 80; // %
+
+export function riduzioneDifesa(character) {
+  if (!character) return 0;
+  const base = Number(character.difesa) || 0;
+  const bonus = Number(character.difesaPercent) || 0;
+  return Math.min(DIFESA_RIDUZIONE_MASSIMA, Math.max(0, base + bonus)) / 100;
+}
+
+// Applica il danno con la difesa già scontata, aggiorna i PV (mai sotto
+// zero) e ritorna il danno REALMENTE incassato — quello che si racconta
+// al client, non quello lordo calcolato prima della riduzione.
+export function infliggiDanno(character, danno) {
+  if (!character || !(danno > 0)) return 0;
+  const netto = danno * (1 - riduzioneDifesa(character));
+  character.pv = Math.max(0, character.pv - netto);
+  return netto;
+}

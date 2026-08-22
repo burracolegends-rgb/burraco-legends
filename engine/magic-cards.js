@@ -20,7 +20,7 @@
 
 // Se il trigger di una Trappola non si verifica mai, scade dopo N turni.
 // Spec: "da definire tra 3 o 5" — punto ancora aperto, default provvisorio.
-import { interoCasuale } from './core-rules.js';
+import { interoCasuale, infliggiDanno } from './core-rules.js';
 
 export const TRAP_EXPIRY_TURNS_DEFAULT = 3;
 
@@ -157,13 +157,13 @@ export function applyEffect(card, ctx) {
     case 'danno_diretto': {
       const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
       const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
-      for (const s of suits) pool[s].pv = Math.max(0, pool[s].pv - param);
+      for (const s of suits) infliggiDanno(pool[s], param);
       return { ok: true, applied: true, colpiti: suits };
     }
     case 'danno_percentuale': {
       const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
       const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
-      for (const s of suits) pool[s].pv = Math.max(0, pool[s].pv - pool[s].pvMax * (param / 100));
+      for (const s of suits) infliggiDanno(pool[s], pool[s].pvMax * (param / 100));
       return { ok: true, applied: true, colpiti: suits };
     }
     // Danno calcolato sull'ATT di un PROPRIO eroe, non sui PV del bersaglio
@@ -178,7 +178,7 @@ export function applyEffect(card, ctx) {
       const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
       const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
       const danno = attaccante.att * (param / 100);
-      for (const s of suits) pool[s].pv = Math.max(0, pool[s].pv - danno);
+      for (const s of suits) infliggiDanno(pool[s], danno);
       return { ok: true, applied: true, colpiti: suits, danno, semeAttaccante: semeAtt };
     }
     case 'cura_diretta': {

@@ -2485,7 +2485,10 @@ const LIMITI = {
   rarita: [1, 2, 3, 4, 5],
   lingue: ['it', 'en', 'es', 'pt'],
   tipiCarta: ['sorpresa', 'trappola'],
-  semi: ['♥', '♦', '♣', '♠']
+  semi: ['♥', '♦', '♣', '♠'],
+  difesaMin: 0,
+  difesaMax: 60      // oltre non si va: sommata al bonus temporaneo di boost_difesa
+                      // il tetto assoluto è DIFESA_RIDUZIONE_MASSIMA (core-rules.js, 80%)
 };
 
 // ------------------------------------------------------------
@@ -2563,6 +2566,12 @@ function controllaCartaPersonaggio(carta) {
   if (!(carta.att > 0)) errori.push('"att" deve essere un numero maggiore di zero');
   if (carta.rarita !== undefined && !LIMITI.rarita.includes(Number(carta.rarita))) {
     errori.push('"rarita" deve essere da 1 a 5, trovato: ' + carta.rarita);
+  }
+  if (carta.difesa !== undefined) {
+    const d = Number(carta.difesa);
+    if (!Number.isFinite(d) || d < LIMITI.difesaMin || d > LIMITI.difesaMax) {
+      errori.push('"difesa" deve stare fra ' + LIMITI.difesaMin + ' e ' + LIMITI.difesaMax + ' (% di riduzione danno), trovato: ' + carta.difesa);
+    }
   }
 
   const a = carta.abilita;
@@ -2954,7 +2963,37 @@ function semeAttaccoMigliore(attackerCharacters) {
   }, SUITS[0]);
 }
 
-return {SUITS, makeCard, createFullDeck, shuffle, interoCasuale, isWildcard, valueLabel, cardLabel, cardPointValue, meldPointValue, isValidGroup, isValidSequence, validateMeld, DAMAGE_TIERS, meldLengthTier, computeMeldDamage, groupLengthMultiplier, PENALITA_EROE_CADUTO, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore};
+// ------------------------------------------------------------
+// DIFESA
+// Stat fissa della carta personaggio (0-100, in genere 0-30): riduce in
+// percentuale QUALSIASI danno in arrivo, da qualunque fonte (calate,
+// abilità speciali, Carte Magiche, danno riflesso) — un punto unico, così
+// non c'è un tipo di colpo che la ignora per dimenticanza.
+// Si somma a `difesaPercent`, il bonus TEMPORANEO che l'effetto
+// `boost_difesa` mette sul personaggio (spec §6): stessa unità, stesso
+// tetto. Superato il tetto un personaggio sarebbe di fatto invulnerabile,
+// il che rompe la partita più di quanto la protegga.
+// ------------------------------------------------------------
+const DIFESA_RIDUZIONE_MASSIMA = 80; // %
+
+function riduzioneDifesa(character) {
+  if (!character) return 0;
+  const base = Number(character.difesa) || 0;
+  const bonus = Number(character.difesaPercent) || 0;
+  return Math.min(DIFESA_RIDUZIONE_MASSIMA, Math.max(0, base + bonus)) / 100;
+}
+
+// Applica il danno con la difesa già scontata, aggiorna i PV (mai sotto
+// zero) e ritorna il danno REALMENTE incassato — quello che si racconta
+// al client, non quello lordo calcolato prima della riduzione.
+function infliggiDanno(character, danno) {
+  if (!character || !(danno > 0)) return 0;
+  const netto = danno * (1 - riduzioneDifesa(character));
+  character.pv = Math.max(0, character.pv - netto);
+  return netto;
+}
+
+return {SUITS, makeCard, createFullDeck, shuffle, interoCasuale, isWildcard, valueLabel, cardLabel, cardPointValue, meldPointValue, isValidGroup, isValidSequence, validateMeld, DAMAGE_TIERS, meldLengthTier, computeMeldDamage, groupLengthMultiplier, PENALITA_EROE_CADUTO, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, DIFESA_RIDUZIONE_MASSIMA, riduzioneDifesa, infliggiDanno};
 })();
 
 // ===== engine/magic-cards.js (incorporato) =====
@@ -2981,7 +3020,7 @@ const __M_magic_cards = (function(){
 
 // Se il trigger di una Trappola non si verifica mai, scade dopo N turni.
 // Spec: "da definire tra 3 o 5" — punto ancora aperto, default provvisorio.
-const { interoCasuale } = __M_core_rules;
+const { interoCasuale, infliggiDanno } = __M_core_rules;
 const TRAP_EXPIRY_TURNS_DEFAULT = 3;
 
 const EFFECT_CATALOG = {
@@ -3117,13 +3156,13 @@ function applyEffect(card, ctx) {
     case 'danno_diretto': {
       const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
       const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
-      for (const s of suits) pool[s].pv = Math.max(0, pool[s].pv - param);
+      for (const s of suits) infliggiDanno(pool[s], param);
       return { ok: true, applied: true, colpiti: suits };
     }
     case 'danno_percentuale': {
       const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
       const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
-      for (const s of suits) pool[s].pv = Math.max(0, pool[s].pv - pool[s].pvMax * (param / 100));
+      for (const s of suits) infliggiDanno(pool[s], pool[s].pvMax * (param / 100));
       return { ok: true, applied: true, colpiti: suits };
     }
     // Danno calcolato sull'ATT di un PROPRIO eroe, non sui PV del bersaglio
@@ -3138,7 +3177,7 @@ function applyEffect(card, ctx) {
       const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
       const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
       const danno = attaccante.att * (param / 100);
-      for (const s of suits) pool[s].pv = Math.max(0, pool[s].pv - danno);
+      for (const s of suits) infliggiDanno(pool[s], danno);
       return { ok: true, applied: true, colpiti: suits, danno, semeAttaccante: semeAtt };
     }
     case 'cura_diretta': {
@@ -3512,7 +3551,7 @@ const __M_partita = (function(){
 //    stesso principio già usato per i trigger delle Carte Trappola.
 // ============================================================
 
-const { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore } = __M_core_rules;
+const { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno } = __M_core_rules;
 const { attachAbility, tickCharacterAbility, checkAbilityTrigger } = __M_character_abilities;
 const { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect } = __M_magic_cards;
 const { elencoEffetti, CONDIZIONI } = __M_vocabolario;
@@ -3550,7 +3589,7 @@ const SECONDI_DI_STUDIO = 30;
 
 function defaultCharacters() {
   const chars = {};
-  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100 };
+  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100, difesa: 0 };
   return chars;
 }
 
@@ -3810,8 +3849,8 @@ function checkKO(state, defenderIndex) {
 // Serve al tavolo per scrivere "chi ha subito quanto", non solo il totale.
 function applyDamageToSuit(defenderCharacters, suit, damage) {
   const colpo = (s, dmg) => {
-    defenderCharacters[s].pv = Math.max(0, defenderCharacters[s].pv - dmg);
-    return { suit: s, damage: dmg, cardId: defenderCharacters[s].cardId, pvRimasti: defenderCharacters[s].pv };
+    const netto = infliggiDanno(defenderCharacters[s], dmg);
+    return { suit: s, damage: netto, cardId: defenderCharacters[s].cardId, pvRimasti: defenderCharacters[s].pv };
   };
   if (defenderCharacters[suit].pv > 0) return [colpo(suit, damage)];
   const alive = aliveCharacters(defenderCharacters);
@@ -4114,8 +4153,8 @@ function modificaDanno(state, playerIndex, damage, result) {
     const vivi = aliveCharacters(player.characters);
     if (vivi.length > 0) {
       const s = vivi.includes(result.suit) ? result.suit : vivi[0];
-      player.characters[s].pv = Math.max(0, player.characters[s].pv - indietro);
-      result.riflesso = { damage: indietro, suit: s, percentuale: pct };
+      const nettoRiflesso = infliggiDanno(player.characters[s], indietro);
+      result.riflesso = { damage: nettoRiflesso, suit: s, percentuale: pct };
     }
   }
   return damage;
@@ -4159,8 +4198,8 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       let colpi;
       if (DAMAGE_TIERS[tier].target === 'aoe') {
         colpi = SUITS.map((s) => {
-          defender.characters[s].pv = Math.max(0, defender.characters[s].pv - damage);
-          return { suit: s, damage, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv };
+          const netto = infliggiDanno(defender.characters[s], damage);
+          return { suit: s, damage: netto, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv };
         });
       } else {
         // bersaglio singolo: personaggio dello stesso seme della calata (con ridistribuzione se già a 0)
@@ -4172,10 +4211,10 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       if (pct > 0) {
         const ondata = attackerChar.att * pct * fattoreVarianza(state) * penalitaEroe * moltiplicatorePozzetto(player);
         for (const s of SUITS) {
-          defender.characters[s].pv = Math.max(0, defender.characters[s].pv - ondata);
+          const nettoOndata = infliggiDanno(defender.characters[s], ondata);
           const gia = colpi.find((c) => c.suit === s);
-          if (gia) { gia.damage += ondata; gia.pvRimasti = defender.characters[s].pv; }
-          else colpi.push({ suit: s, damage: ondata, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv });
+          if (gia) { gia.damage += nettoOndata; gia.pvRimasti = defender.characters[s].pv; }
+          else colpi.push({ suit: s, damage: nettoOndata, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv });
         }
         result.ondata = ondata;
         result.ondataPercent = pct;
@@ -4241,9 +4280,9 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       const dmg = bySuit[suit];
       totalDamage += dmg;
       if (aliveBefore[suit]) {
-        defender.characters[suit].pv = Math.max(0, defender.characters[suit].pv - dmg);
+        const netto = infliggiDanno(defender.characters[suit], dmg);
         colpiti.add(suit);
-        dannoSubito[suit] = (dannoSubito[suit] || 0) + dmg;
+        dannoSubito[suit] = (dannoSubito[suit] || 0) + netto;
       } else {
         wasted.push(dmg);
       }
@@ -4259,9 +4298,9 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
         if (pool.length === 0) continue;
         const share = dmg / pool.length;
         for (const s of pool) {
-          defender.characters[s].pv = Math.max(0, defender.characters[s].pv - share);
+          const netto = infliggiDanno(defender.characters[s], share);
           colpiti.add(s);
-          dannoSubito[s] = (dannoSubito[s] || 0) + share;
+          dannoSubito[s] = (dannoSubito[s] || 0) + netto;
         }
       }
     }
@@ -4273,11 +4312,11 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       const vivi = aliveCharacters(defender.characters);
       if (vivi.length > 0) {
         const scelto = vivi[interoCasuale(state.rng, vivi.length)] || vivi[0];
-        defender.characters[scelto].pv = Math.max(0, defender.characters[scelto].pv - dannoJolly);
-        dannoSubito[scelto] = (dannoSubito[scelto] || 0) + dannoJolly;
+        const nettoJolly = infliggiDanno(defender.characters[scelto], dannoJolly);
+        dannoSubito[scelto] = (dannoSubito[scelto] || 0) + nettoJolly;
         colpiti.add(scelto);
         totalDamage += dannoJolly;
-        result.jolly = { damage: dannoJolly, suitBersaglio: scelto, semeAttaccante: semeAttaccoMigliore(player.characters) };
+        result.jolly = { damage: nettoJolly, suitBersaglio: scelto, semeAttaccante: semeAttaccoMigliore(player.characters) };
       }
     }
 
@@ -4462,7 +4501,7 @@ function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, n
   let damage = eroe.att * (pct / 100) * fattoreVarianza(state);
   damage = modificaDanno(state, playerIndex, damage, result);
 
-  bersaglio.pv = Math.max(0, bersaglio.pv - damage);
+  infliggiDanno(bersaglio, damage);
   player.puntiMagia -= costoAbilita;
   player.abilitaUsate.push(semeAttaccante);
 
@@ -4894,7 +4933,7 @@ const {botGiocaTurno} = __M_bot;
 // ===== dati carta incorporati da cards/data e cards/i18n =====
 const DATI_CARTE = {
   i18n: {"personaggio_001": {"nome": "Fiamma Ardente", "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo."}, "personaggio_002": {"nome": "Regina di Brace", "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta."}, "personaggio_003": {"nome": "Custode di Cristallo", "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile."}, "personaggio_004": {"nome": "Sovrano d'Ambra", "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa."}, "personaggio_005": {"nome": "Guardiano del Bosco", "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente."}, "personaggio_006": {"nome": "Spirito della Foresta Antica", "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso."}, "personaggio_007": {"nome": "Lama d'Ombra", "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista."}, "personaggio_008": {"nome": "Assassino delle Nebbie", "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte."}, "sorpresa_001": {"nome": "Fulmine Improvviso", "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita."}, "sorpresa_002": {"nome": "Furia di Battaglia", "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività."}, "trappola_001": {"nome": "Insidia nell'Ombra", "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare."}, "trappola_002": {"nome": "Specchio di Ritorsione", "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto."}, "sorpresa_003": {"nome": "Triplice Benedizione", "descrizione": "Un solo gesto e tre doni: colpisce l'avversario, risana un tuo eroe e ti concede una carta in più alla prossima pescata."}, "trappola_003": {"nome": "Sigillo del Disperato", "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."}},
-  personaggi: {"personaggio_001": {"id": "personaggio_001", "seme": "♥", "rarita": 2, "vita": 100, "att": 90, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_002": {"id": "personaggio_002", "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_003": {"id": "personaggio_003", "seme": "♦", "rarita": 2, "vita": 100, "att": 90, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_004": {"id": "personaggio_004", "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_005": {"id": "personaggio_005", "seme": "♣", "rarita": 2, "vita": 100, "att": 90, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_006": {"id": "personaggio_006", "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_007": {"id": "personaggio_007", "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_008": {"id": "personaggio_008", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}},
+  personaggi: {"personaggio_001": {"id": "personaggio_001", "seme": "♥", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_002": {"id": "personaggio_002", "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_003": {"id": "personaggio_003", "seme": "♦", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_004": {"id": "personaggio_004", "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_005": {"id": "personaggio_005", "seme": "♣", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_006": {"id": "personaggio_006", "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "difesa": 18, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_007": {"id": "personaggio_007", "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "difesa": 8, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_008": {"id": "personaggio_008", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}},
   magiche: {"sorpresa_001": {"id": "sorpresa_001", "tipo": "sorpresa", "rarita": 3, "effect": "danno_diretto", "parametro": "30", "trigger": "on_activate", "target": "avversario", "durata_turni": 0, "costo": 4}, "sorpresa_002": {"id": "sorpresa_002", "tipo": "sorpresa", "rarita": 4, "effect": "boost_att", "parametro": "20", "trigger": "on_activate", "target": "se_stesso", "durata_turni": 2, "costo": 4}, "sorpresa_003": {"id": "sorpresa_003", "tipo": "sorpresa", "rarita": 4, "costo": 5, "trigger": "on_activate", "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.", "effetti": [{"effect": "danno_diretto", "parametro": "25", "target": "avversario", "durata_turni": 0}, {"effect": "cura_diretta", "parametro": "15", "target": "se_stesso", "durata_turni": 0}, {"effect": "pesca_extra", "parametro": "1", "target": "se_stesso", "durata_turni": 1}]}, "trappola_001": {"id": "trappola_001", "tipo": "trappola", "rarita": 2, "effect": "scarto_forzato", "parametro": "1", "trigger": "avversario_pesca", "target": "avversario", "durata_turni": 0, "costo": 4}, "trappola_002": {"id": "trappola_002", "tipo": "trappola", "rarita": 5, "effect": "riflette_danno", "parametro": "50", "trigger": "subisco_danno", "target": "se_stesso", "durata_turni": 0, "costo": 4}, "trappola_003": {"id": "trappola_003", "tipo": "trappola", "rarita": 5, "costo": 5, "trigger": "avversario_usa_abilita", "target": "avversario", "effect": "skip_fase_attacco", "parametro": "", "durata_turni": 1, "_nota": "ESEMPIO DI CARTA CON CONDIZIONE: si schiera solo quando sei in difficoltà. Scatta quando l'avversario usa l'abilità di un eroe.", "condizione": {"tipo": "pv_totali_sotto", "parametro": 50, "chi": "io"}}}
 };
 
@@ -4994,7 +5033,7 @@ function squadra(ids) {
   for (const id of ids) {
     const p = dati.personaggi[id];
     characters[p.seme] = {
-      pv: p.vita, pvMax: p.vita, att: p.att, carica: 0, cardId: id, rarita: p.rarita || 1,
+      pv: p.vita, pvMax: p.vita, att: p.att, difesa: p.difesa || 0, carica: 0, cardId: id, rarita: p.rarita || 1,
       turniCarica: p.turniCarica || 4   // quanti turni per riempire la barra dell'abilità
     };
     if (p.abilita) abilities[p.seme] = p.abilita;
@@ -5212,7 +5251,8 @@ function bcardPersonaggio(ch, seme, mio) {
       (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
       ' data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione) + '"' +
       ' data-stelle="' + stelle(ch.rarita) + '"' +
-      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) + '"' +
+      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) +
+        (ch.difesa ? ' · DIF ' + ch.difesa + '%' : '') + '"' +
       ' data-carica="Abilità speciale: costa ' + costoAbilita(ch) + ' punti magia' +
         (giaUsata ? ' · ha già colpito in questo turno' : '') +
         (ch.pv <= 0 ? ' · eroe caduto: i suoi colpi valgono l\'80%' : '') + '">' +

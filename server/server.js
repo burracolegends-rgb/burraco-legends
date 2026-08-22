@@ -70,7 +70,7 @@ function squadra(ids) {
     const p = CARTE[id];
     if (!p) continue;
     characters[p.seme] = {
-      pv: p.vita, pvMax: p.vita, att: p.att, carica: 0, cardId: id,
+      pv: p.vita, pvMax: p.vita, att: p.att, difesa: p.difesa || 0, carica: 0, cardId: id,
       rarita: p.rarita || 1, turniCarica: p.turniCarica || 4
     };
     if (p.abilita) abilities[p.seme] = p.abilita;

@@ -40,7 +40,7 @@
 //    stesso principio già usato per i trigger delle Carte Trappola.
 // ============================================================
 
-import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore } from './core-rules.js';
+import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno } from './core-rules.js';
 import { attachAbility, tickCharacterAbility, checkAbilityTrigger } from './character-abilities.js';
 import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect } from './magic-cards.js';
 import { elencoEffetti, CONDIZIONI } from './vocabolario.js';
@@ -79,7 +79,7 @@ export const SECONDI_DI_STUDIO = 30;
 
 function defaultCharacters() {
   const chars = {};
-  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100 };
+  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100, difesa: 0 };
   return chars;
 }
 
@@ -339,8 +339,8 @@ function checkKO(state, defenderIndex) {
 // Serve al tavolo per scrivere "chi ha subito quanto", non solo il totale.
 function applyDamageToSuit(defenderCharacters, suit, damage) {
   const colpo = (s, dmg) => {
-    defenderCharacters[s].pv = Math.max(0, defenderCharacters[s].pv - dmg);
-    return { suit: s, damage: dmg, cardId: defenderCharacters[s].cardId, pvRimasti: defenderCharacters[s].pv };
+    const netto = infliggiDanno(defenderCharacters[s], dmg);
+    return { suit: s, damage: netto, cardId: defenderCharacters[s].cardId, pvRimasti: defenderCharacters[s].pv };
   };
   if (defenderCharacters[suit].pv > 0) return [colpo(suit, damage)];
   const alive = aliveCharacters(defenderCharacters);
@@ -643,8 +643,8 @@ function modificaDanno(state, playerIndex, damage, result) {
     const vivi = aliveCharacters(player.characters);
     if (vivi.length > 0) {
       const s = vivi.includes(result.suit) ? result.suit : vivi[0];
-      player.characters[s].pv = Math.max(0, player.characters[s].pv - indietro);
-      result.riflesso = { damage: indietro, suit: s, percentuale: pct };
+      const nettoRiflesso = infliggiDanno(player.characters[s], indietro);
+      result.riflesso = { damage: nettoRiflesso, suit: s, percentuale: pct };
     }
   }
   return damage;
@@ -688,8 +688,8 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       let colpi;
       if (DAMAGE_TIERS[tier].target === 'aoe') {
         colpi = SUITS.map((s) => {
-          defender.characters[s].pv = Math.max(0, defender.characters[s].pv - damage);
-          return { suit: s, damage, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv };
+          const netto = infliggiDanno(defender.characters[s], damage);
+          return { suit: s, damage: netto, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv };
         });
       } else {
         // bersaglio singolo: personaggio dello stesso seme della calata (con ridistribuzione se già a 0)
@@ -701,10 +701,10 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       if (pct > 0) {
         const ondata = attackerChar.att * pct * fattoreVarianza(state) * penalitaEroe * moltiplicatorePozzetto(player);
         for (const s of SUITS) {
-          defender.characters[s].pv = Math.max(0, defender.characters[s].pv - ondata);
+          const nettoOndata = infliggiDanno(defender.characters[s], ondata);
           const gia = colpi.find((c) => c.suit === s);
-          if (gia) { gia.damage += ondata; gia.pvRimasti = defender.characters[s].pv; }
-          else colpi.push({ suit: s, damage: ondata, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv });
+          if (gia) { gia.damage += nettoOndata; gia.pvRimasti = defender.characters[s].pv; }
+          else colpi.push({ suit: s, damage: nettoOndata, cardId: defender.characters[s].cardId, pvRimasti: defender.characters[s].pv });
         }
         result.ondata = ondata;
         result.ondataPercent = pct;
@@ -770,9 +770,9 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       const dmg = bySuit[suit];
       totalDamage += dmg;
       if (aliveBefore[suit]) {
-        defender.characters[suit].pv = Math.max(0, defender.characters[suit].pv - dmg);
+        const netto = infliggiDanno(defender.characters[suit], dmg);
         colpiti.add(suit);
-        dannoSubito[suit] = (dannoSubito[suit] || 0) + dmg;
+        dannoSubito[suit] = (dannoSubito[suit] || 0) + netto;
       } else {
         wasted.push(dmg);
       }
@@ -788,9 +788,9 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
         if (pool.length === 0) continue;
         const share = dmg / pool.length;
         for (const s of pool) {
-          defender.characters[s].pv = Math.max(0, defender.characters[s].pv - share);
+          const netto = infliggiDanno(defender.characters[s], share);
           colpiti.add(s);
-          dannoSubito[s] = (dannoSubito[s] || 0) + share;
+          dannoSubito[s] = (dannoSubito[s] || 0) + netto;
         }
       }
     }
@@ -802,11 +802,11 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       const vivi = aliveCharacters(defender.characters);
       if (vivi.length > 0) {
         const scelto = vivi[interoCasuale(state.rng, vivi.length)] || vivi[0];
-        defender.characters[scelto].pv = Math.max(0, defender.characters[scelto].pv - dannoJolly);
-        dannoSubito[scelto] = (dannoSubito[scelto] || 0) + dannoJolly;
+        const nettoJolly = infliggiDanno(defender.characters[scelto], dannoJolly);
+        dannoSubito[scelto] = (dannoSubito[scelto] || 0) + nettoJolly;
         colpiti.add(scelto);
         totalDamage += dannoJolly;
-        result.jolly = { damage: dannoJolly, suitBersaglio: scelto, semeAttaccante: semeAttaccoMigliore(player.characters) };
+        result.jolly = { damage: nettoJolly, suitBersaglio: scelto, semeAttaccante: semeAttaccoMigliore(player.characters) };
       }
     }
 
@@ -991,7 +991,7 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
   let damage = eroe.att * (pct / 100) * fattoreVarianza(state);
   damage = modificaDanno(state, playerIndex, damage, result);
 
-  bersaglio.pv = Math.max(0, bersaglio.pv - damage);
+  infliggiDanno(bersaglio, damage);
   player.puntiMagia -= costoAbilita;
   player.abilitaUsate.push(semeAttaccante);
 

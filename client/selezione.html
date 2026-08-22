@@ -178,14 +178,14 @@
 // snapshot di quei file, non una fonte alternativa.
 // ============================================================
 const PERSONAGGI = [
-  { id: 'personaggio_001', seme: '♥', rarita: 2, vita: 100, att: 90 },
-  { id: 'personaggio_002', seme: '♥', rarita: 4, vita: 140, att: 120 },
-  { id: 'personaggio_003', seme: '♦', rarita: 2, vita: 100, att: 90 },
-  { id: 'personaggio_004', seme: '♦', rarita: 4, vita: 140, att: 120 },
-  { id: 'personaggio_005', seme: '♣', rarita: 2, vita: 100, att: 90 },
-  { id: 'personaggio_006', seme: '♣', rarita: 5, vita: 160, att: 135 },
-  { id: 'personaggio_007', seme: '♠', rarita: 3, vita: 120, att: 105 },
-  { id: 'personaggio_008', seme: '♠', rarita: 4, vita: 140, att: 120 }
+  { id: 'personaggio_001', seme: '♥', rarita: 2, vita: 100, att: 90, difesa: 5 },
+  { id: 'personaggio_002', seme: '♥', rarita: 4, vita: 140, att: 120, difesa: 12 },
+  { id: 'personaggio_003', seme: '♦', rarita: 2, vita: 100, att: 90, difesa: 5 },
+  { id: 'personaggio_004', seme: '♦', rarita: 4, vita: 140, att: 120, difesa: 12 },
+  { id: 'personaggio_005', seme: '♣', rarita: 2, vita: 100, att: 90, difesa: 5 },
+  { id: 'personaggio_006', seme: '♣', rarita: 5, vita: 160, att: 135, difesa: 18 },
+  { id: 'personaggio_007', seme: '♠', rarita: 3, vita: 120, att: 105, difesa: 8 },
+  { id: 'personaggio_008', seme: '♠', rarita: 4, vita: 140, att: 120, difesa: 12 }
 ];
 const MAGICHE = [
   { id: 'sorpresa_001', tipo: 'sorpresa', rarita: 3, effect: 'danno_diretto', parametro: '30' },
@@ -200,7 +200,7 @@ const I18N = {
       sottotitolo: 'Scegli 4 Personaggi (uno per seme) e 3 Carte Magiche: sono quelli con cui scenderai in campo.',
       titoloPersonaggi: 'Personaggi', hintPersonaggi: 'Uno obbligatorio per ciascun seme.',
       titoloMagiche: 'Carte Magiche', hintMagiche: 'Scegline esattamente 3, mix libero fra Sorpresa e Trappola.',
-      scegli: 'Scegli...', vita: 'VITA', att: 'ATT',
+      scegli: 'Scegli...', vita: 'VITA', att: 'ATT', difesa: 'DIF',
       ordinaPer: 'Ordina per:', ordinaPunteggio: 'Punteggio (rarità)', ordinaNome: 'Nome',
       entraBtn: 'Conferma il mazzo', riepilogoTitolo: 'Squadra pronta',
       progresso: (p, m) => `Personaggi: ${p}/4 · Carte Magiche: ${m}/3`
@@ -225,7 +225,7 @@ const I18N = {
       sottotitolo: 'Select 4 Characters (one per suit) and 3 Magic Cards before entering the match list.',
       titoloPersonaggi: 'Characters', hintPersonaggi: 'One required for each suit.',
       titoloMagiche: 'Magic Cards', hintMagiche: 'Pick exactly 3, any mix of Surprise and Trap.',
-      scegli: 'Choose...', vita: 'HP', att: 'ATK',
+      scegli: 'Choose...', vita: 'HP', att: 'ATK', difesa: 'DEF',
       ordinaPer: 'Sort by:', ordinaPunteggio: 'Score (rarity)', ordinaNome: 'Name',
       entraBtn: 'Confirm this deck', riepilogoTitolo: 'Team ready',
       progresso: (p, m) => `Characters: ${p}/4 · Magic Cards: ${m}/3`
@@ -250,7 +250,7 @@ const I18N = {
       sottotitolo: 'Selecciona 4 Personajes (uno por palo) y 3 Cartas Mágicas antes de entrar en la lista de partidas.',
       titoloPersonaggi: 'Personajes', hintPersonaggi: 'Uno obligatorio por cada palo.',
       titoloMagiche: 'Cartas Mágicas', hintMagiche: 'Elige exactamente 3, mezcla libre de Sorpresa y Trampa.',
-      scegli: 'Elegir...', vita: 'VIDA', att: 'ATQ',
+      scegli: 'Elegir...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
       ordinaPer: 'Ordenar por:', ordinaPunteggio: 'Puntuación (rareza)', ordinaNome: 'Nombre',
       entraBtn: 'Confirmar la baraja', riepilogoTitolo: 'Equipo listo',
       progresso: (p, m) => `Personajes: ${p}/4 · Cartas Mágicas: ${m}/3`
@@ -275,7 +275,7 @@ const I18N = {
       sottotitolo: 'Selecione 4 Personagens (um por naipe) e 3 Cartas Mágicas antes de entrar na lista de partidas.',
       titoloPersonaggi: 'Personagens', hintPersonaggi: 'Um obrigatório para cada naipe.',
       titoloMagiche: 'Cartas Mágicas', hintMagiche: 'Escolha exatamente 3, mistura livre de Surpresa e Armadilha.',
-      scegli: 'Escolher...', vita: 'VIDA', att: 'ATQ',
+      scegli: 'Escolher...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
       ordinaPer: 'Ordenar por:', ordinaPunteggio: 'Pontuação (raridade)', ordinaNome: 'Nome',
       entraBtn: 'Confirmar o baralho', riepilogoTitolo: 'Equipe pronta',
       progresso: (p, m) => `Personagens: ${p}/4 · Cartas Mágicas: ${m}/3`
@@ -365,7 +365,7 @@ function renderSuits() {
     if (selected) {
       const txt = cardText(selected.id);
       slot.innerHTML = `<div class="name">${txt.nome}</div>
-        <div class="stats">${t('vita')} ${selected.vita} · ${t('att')} ${selected.att}</div>
+        <div class="stats">${t('vita')} ${selected.vita} · ${t('att')} ${selected.att}${selected.difesa ? ' · ' + t('difesa') + ' ' + selected.difesa + '%' : ''}</div>
         <div class="rarity">${'★'.repeat(selected.rarita)}${'☆'.repeat(5 - selected.rarita)}</div>`;
     } else {
       slot.textContent = t('scegli');
@@ -380,7 +380,7 @@ function renderSuits() {
       const txt = cardText(p.id);
       const item = document.createElement('div');
       item.className = 'picker-item';
-      item.innerHTML = `<span>${txt.nome} ${'★'.repeat(p.rarita)}</span><span class="stats">${t('vita')} ${p.vita} · ${t('att')} ${p.att}</span>`;
+      item.innerHTML = `<span>${txt.nome} ${'★'.repeat(p.rarita)}</span><span class="stats">${t('vita')} ${p.vita} · ${t('att')} ${p.att}${p.difesa ? ' · ' + t('difesa') + ' ' + p.difesa + '%' : ''}</span>`;
       item.onclick = (ev) => {
         ev.stopPropagation();
         state.personaggi[seme] = p;

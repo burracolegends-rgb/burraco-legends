@@ -177,7 +177,10 @@ export const LIMITI = {
   rarita: [1, 2, 3, 4, 5],
   lingue: ['it', 'en', 'es', 'pt'],
   tipiCarta: ['sorpresa', 'trappola'],
-  semi: ['♥', '♦', '♣', '♠']
+  semi: ['♥', '♦', '♣', '♠'],
+  difesaMin: 0,
+  difesaMax: 60      // oltre non si va: sommata al bonus temporaneo di boost_difesa
+                      // il tetto assoluto è DIFESA_RIDUZIONE_MASSIMA (core-rules.js, 80%)
 };
 
 // ------------------------------------------------------------
@@ -255,6 +258,12 @@ export function controllaCartaPersonaggio(carta) {
   if (!(carta.att > 0)) errori.push('"att" deve essere un numero maggiore di zero');
   if (carta.rarita !== undefined && !LIMITI.rarita.includes(Number(carta.rarita))) {
     errori.push('"rarita" deve essere da 1 a 5, trovato: ' + carta.rarita);
+  }
+  if (carta.difesa !== undefined) {
+    const d = Number(carta.difesa);
+    if (!Number.isFinite(d) || d < LIMITI.difesaMin || d > LIMITI.difesaMax) {
+      errori.push('"difesa" deve stare fra ' + LIMITI.difesaMin + ' e ' + LIMITI.difesaMax + ' (% di riduzione danno), trovato: ' + carta.difesa);
+    }
   }
 
   const a = carta.abilita;

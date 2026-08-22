@@ -1140,7 +1140,7 @@ function squadra(ids) {
   for (const id of ids) {
     const p = dati.personaggi[id];
     characters[p.seme] = {
-      pv: p.vita, pvMax: p.vita, att: p.att, carica: 0, cardId: id, rarita: p.rarita || 1,
+      pv: p.vita, pvMax: p.vita, att: p.att, difesa: p.difesa || 0, carica: 0, cardId: id, rarita: p.rarita || 1,
       turniCarica: p.turniCarica || 4   // quanti turni per riempire la barra dell'abilità
     };
     if (p.abilita) abilities[p.seme] = p.abilita;
@@ -1358,7 +1358,8 @@ function bcardPersonaggio(ch, seme, mio) {
       (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
       ' data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione) + '"' +
       ' data-stelle="' + stelle(ch.rarita) + '"' +
-      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) + '"' +
+      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) +
+        (ch.difesa ? ' · DIF ' + ch.difesa + '%' : '') + '"' +
       ' data-carica="Abilità speciale: costa ' + costoAbilita(ch) + ' punti magia' +
         (giaUsata ? ' · ha già colpito in questo turno' : '') +
         (ch.pv <= 0 ? ' · eroe caduto: i suoi colpi valgono l\'80%' : '') + '">' +
