@@ -98,18 +98,28 @@ console.log('\n--- QUELLO CHE SI VEDE DALL\'ESTERNO ---');
 
 function stanzaDi(codice) { return stanze.stanza(codice); }
 
+// CHI COMINCIA LO DECIDE IL MAZZO, non chi ha aperto il tavolo: una
+// pescata a testa, la piu' alta vince. Il seme cambia a ogni tavolo,
+// quindi dare per scontato che muova chi ha aperto rendeva questi
+// controlli veri solo una volta su due.
+const chiMuove = (codice) => stanzaDi(codice).partita.currentPlayerIndex;
+const segretoDiTurno = (codice, uno, due) => [uno.segreto, due.segreto][chiMuove(codice)];
+const segretoFuoriTurno = (codice, uno, due) => [uno.segreto, due.segreto][chiMuove(codice) === 0 ? 1 : 0];
+
 // ============================================================
 console.log('\n--- GIOCARE ---');
 {
-  const fuoriTurno = await posta('/api/mossa', { codice: casa.codice, segreto: ospite.segreto, azione: { tipo: 'pesca' } });
+  const diTurno = chiMuove(casa.codice);
+  const suo = segretoDiTurno(casa.codice, casa, ospite);
+  const fuoriTurno = await posta('/api/mossa', { codice: casa.codice, segreto: segretoFuoriTurno(casa.codice, casa, ospite), azione: { tipo: 'pesca' } });
   check('la mossa fuori turno risponde 200, non è un errore di rete', fuoriTurno.stato === 200);
   check('ma è rifiutata', fuoriTurno.corpo.ok === false && /turno/i.test(fuoriTurno.corpo.motivo));
 
-  const buona = await posta('/api/mossa', { codice: casa.codice, segreto: casa.segreto, azione: { tipo: 'pesca' } });
-  check('chi è di turno pesca', buona.corpo.ok === true);
-  check('e riceve subito la sua vista aggiornata', buona.corpo.vista.giocatori[0].mano.length === 12);   // 11 in mano + 1 pescata
+  const buona = await posta('/api/mossa', { codice: casa.codice, segreto: suo, azione: { tipo: 'pesca' } });
+  check('chi è di turno pesca', buona.corpo.ok === true, buona.corpo.motivo);
+  check('e riceve subito la sua vista aggiornata', buona.corpo.vista.giocatori[diTurno].mano.length === 12);   // 11 in mano + 1 pescata
 
-  const storta = await posta('/api/mossa', { codice: casa.codice, segreto: casa.segreto, azione: { tipo: 'vinci_subito' } });
+  const storta = await posta('/api/mossa', { codice: casa.codice, segreto: suo, azione: { tipo: 'vinci_subito' } });
   check('un\'azione inventata è rifiutata con garbo', storta.corpo.ok === false);
 
   const spazzatura = await posta('/api/mossa', 'questo non è json');
@@ -119,11 +129,18 @@ console.log('\n--- GIOCARE ---');
 // ============================================================
 console.log('\n--- L\'ATTESA SUL FILO ---');
 {
-  const stato = (await chiedi('/api/stato?codice=' + casa.codice + '&segreto=' + ospite.segreto + '&da=-1')).corpo;
+  // chi MUOVE e' quello di turno; ad aspettare si mette l'altro, che e'
+  // il caso che conta: la sua domanda deve svegliarsi appena l'altro gioca
+  const muove = chiMuove(casa.codice);
+  const aspetta = muove === 0 ? 1 : 0;
+  const segretoMuove = [casa.segreto, ospite.segreto][muove];
+  const segretoAspetta = [casa.segreto, ospite.segreto][aspetta];
+
+  const stato = (await chiedi('/api/stato?codice=' + casa.codice + '&segreto=' + segretoAspetta + '&da=-1')).corpo;
   const partenza = Date.now();
   let arrivata = null;
 
-  const appesa = chiedi('/api/stato?codice=' + casa.codice + '&segreto=' + ospite.segreto + '&da=' + stato.versione)
+  const appesa = chiedi('/api/stato?codice=' + casa.codice + '&segreto=' + segretoAspetta + '&da=' + stato.versione)
     .then((r) => { arrivata = { ...r, dopo: Date.now() - partenza }; });
 
   await new Promise((ok) => setTimeout(ok, 120));
@@ -131,8 +148,8 @@ console.log('\n--- L\'ATTESA SUL FILO ---');
 
   const partita = stanzaDi(casa.codice).partita;
   await posta('/api/mossa', {
-    codice: casa.codice, segreto: casa.segreto,
-    azione: { tipo: 'scarta', carta: partita.players[0].hand[0].id }
+    codice: casa.codice, segreto: segretoMuove,
+    azione: { tipo: 'scarta', carta: partita.players[muove].hand[0].id }
   });
   await appesa;
 
@@ -400,9 +417,19 @@ console.log('\n--- UNA CARTA MAGICA GIOCATA SPARISCE DALL\'ALBUM ---');
   check('parte con le copie della dotazione', primaCopie > 0);
 
   const t = (await posta('/api/apri', { nome: 'Spendaccione', mazzo: SUO, gettone: chi.gettone })).corpo;
-  await posta('/api/entra', { codice: t.codice, nome: 'Altro' });
+  const altro = (await posta('/api/entra', { codice: t.codice, nome: 'Altro' })).corpo;
 
-  // tocca a chi ha aperto: gioca la Carta Magica in prima posizione
+  // Chi comincia lo decide il mazzo: se e' toccato all'altro, gli si fa
+  // giocare il suo turno cosi' la mano torna a chi ha le carte vere.
+  if (chiMuove(t.codice) !== 0) {
+    await posta('/api/mossa', { codice: t.codice, segreto: altro.segreto, azione: { tipo: 'pesca' } });
+    await posta('/api/mossa', {
+      codice: t.codice, segreto: altro.segreto,
+      azione: { tipo: 'scarta', carta: stanzaDi(t.codice).partita.players[1].hand[0].id }
+    });
+  }
+
+  // adesso tocca a chi ha aperto: gioca la Carta Magica in prima posizione
   const giocata = (await posta('/api/mossa', {
     codice: t.codice, segreto: t.segreto, azione: { tipo: 'magia', indice: 0 }
   })).corpo;
@@ -430,7 +457,14 @@ console.log('\n--- UNA CARTA MAGICA GIOCATA SPARISCE DALL\'ALBUM ---');
 
   // chi non dice chi e' non puo' consumare niente di nessuno
   const anonimo = (await posta('/api/apri', { nome: 'Anonimo', mazzo: SUO })).corpo;
-  await posta('/api/entra', { codice: anonimo.codice, nome: 'Altro' });
+  const controparte = (await posta('/api/entra', { codice: anonimo.codice, nome: 'Altro' })).corpo;
+  if (chiMuove(anonimo.codice) !== 0) {
+    await posta('/api/mossa', { codice: anonimo.codice, segreto: controparte.segreto, azione: { tipo: 'pesca' } });
+    await posta('/api/mossa', {
+      codice: anonimo.codice, segreto: controparte.segreto,
+      azione: { tipo: 'scarta', carta: stanzaDi(anonimo.codice).partita.players[1].hand[0].id }
+    });
+  }
   const suaMossa = (await posta('/api/mossa', {
     codice: anonimo.codice, segreto: anonimo.segreto, azione: { tipo: 'magia', indice: 0 }
   })).corpo;

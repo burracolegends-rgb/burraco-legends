@@ -20,7 +20,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 1. AoE (7+) porta a KO se i PV avversari sono già bassi ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7, 8, 9]); // 7 carte, punti = 5*5+10+10 = 45
@@ -37,7 +37,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 2. Bersaglio singolo già a 0 PV: il danno si ridistribuisce ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7]); // 5 carte, punti = 25, tier 5, singolo
@@ -55,7 +55,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 2bis. Tris (gruppo): ogni carta colpisce il personaggio del proprio seme ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   // Esempio dalla spec: tris di 3 (cuori, picche, fiori), carte da 5 punti (valore 7, range 3-7)
@@ -73,7 +73,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 2ter. Gruppo che cresce a 5 carte: bonus +10% sul danno per seme ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   // 5 carte di valore 3 (5pt): due di cuori (due copie dello stesso valore/seme, come da mazzo doppio), una per gli altri 3 semi
@@ -92,7 +92,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 2quater. Tris: ridistribuzione se il personaggio del seme è già a 0 PV ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   const tris = [makeCard('♥', 7), makeCard('♠', 7), makeCard('♣', 7)];
@@ -110,7 +110,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // Riproduce il caso segnalato dal committente: una scala da 3 carte non
 // infliggeva nulla, perché la tabella della spec partiva da 5 carte.
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   const sei = makeCard('♦', 6), pinella = makeCard('♣', 2), otto = makeCard('♦', 8);
@@ -129,7 +129,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 3. Chiusura "al volo": pozzetto già preso, calata da 5+ svuota la mano ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   attacker.pozzettoTaken = true; // pozzetto già usato in precedenza
@@ -143,7 +143,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 4. Chiusura normale via scarto (pozzetto preso + burraco già a terra) ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   attacker.pozzettoTaken = true;
@@ -160,7 +160,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // Nel Burraco al pozzetto ci si arriva anche scartando l'ultima carta,
 // non solo svuotando la mano calando. Prima era vietato per errore.
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   const lastCard = makeCard('♣', 9);
@@ -178,7 +178,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 5bis. Con il pozzetto già preso e senza gioco da 5+, lo scarto finale è rifiutato ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   attacker.pozzettoTaken = true;
@@ -193,7 +193,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 6. Timeout di turno: pesca e scarta d'ufficio, passa il turno ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const before = state.moveCounter;
   const scartiPrima = state.scarti.length;
   const res = checkTurnTimeout(state, T0 + (TURN_SECONDS + 5) * 1000);
@@ -207,7 +207,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 {
   // una carta sola in mano, pozzetto già preso, nessun gioco da 5+:
   // lo scarto normale sarebbe illecito, ma il turno non può restare fermo
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const p = state.players[0];
   p.hasDrawnThisTurn = true;
   p.pozzettoTaken = true;
@@ -220,7 +220,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 7. Orologio di partita esaurito: risoluzione per PV totali, non per chi resta senza tempo ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   state.players[0].clockSecondsLeft = 1;
   for (const s of ['♥', '♦', '♣', '♠']) state.players[1].characters[s].pv = 50; // player 1 ha meno PV totali
 
@@ -231,7 +231,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 8. Mazzo esaurito: nessuna pescata possibile, si risolve per PV ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   state.tallone = [];
   state.players[1].characters['♥'].pv = 10; // rende i PV totali asimmetrici, altrimenti è pareggio
   const res = actionDraw(state, 0, T0 + 1000);
@@ -241,7 +241,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 8bis. Mazzo esaurito con PV pari: pareggio, non un vincitore forzato ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   state.tallone = [];
   const res = actionDraw(state, 0, T0 + 1000);
   check('PV pari a mazzo esaurito → pareggio', res.matchEnded === true && state.winReason === 'pareggio' && state.winner === null);
@@ -250,14 +250,14 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // --- 9. Abilità personaggio agganciate al motore: ciclico_buff attivo dall'inizio partita ---
 {
   const abilities = [{ '♥': { trigger: 'ciclico_buff', attivo_turni: 2, pausa_turni: 2, effect: 'boost_att', parametro: '20', target: 'se_stesso' } }, {}];
-  const state = createMatch({ now: T0, abilities, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, abilities, rng: () => 0.5 });
   check('ciclico_buff applicato subito alla creazione della partita (ATT 100→120)', state.players[0].characters['♥'].att === 120);
 }
 
 // --- 10. Abilità on_infliggo_danno agganciata: si attiva quando quel personaggio infligge danno con una calata ---
 {
   const abilities = [{ '♥': { trigger: 'on_infliggo_danno', effect: 'cura_diretta', parametro: '10', target: 'se_stesso' } }, {}];
-  const state = createMatch({ now: T0, abilities, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, abilities, rng: () => 0.5 });
   state.players[0].characters['♥'].pv = 80;
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
@@ -271,7 +271,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // --- 11. Abilità on_subisco_danno agganciata: si attiva quando quel personaggio subisce danno ---
 {
   const abilities = [{}, { '♥': { trigger: 'on_subisco_danno', effect: 'boost_difesa', parametro: '15', target: 'se_stesso', durata_turni: 3 } }];
-  const state = createMatch({ now: T0, abilities, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, abilities, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7]);
@@ -284,39 +284,39 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // --- 12. I PUNTI MAGIA si accumulano giocando i turni ---
 {
   const abilities = [{ '♠': { trigger: 'attivazione_manuale', effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico', costo: 4 } }, {}];
-  const state = createMatch({ now: T0, abilities, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, abilities, rng: () => 0.5 });
   const p0 = state.players[0], p1 = state.players[1];
 
   // Il conteggio dei punti sta in nextTurn, che al primo turno non e'
   // ancora passato: chi apriva giocava con zero punti mentre il secondo
   // ne aveva gia' due. Ora chi inizia riceve subito i suoi.
-  check('chi inizia ha i 2 punti del suo primo turno', p0.puntiMagia === 2);
+  check('chi inizia ha UN punto solo al primo turno: gioca un turno in piu', p0.puntiMagia === 1);
   check('l\'altro ancora no', p1.puntiMagia === 0);
   const subito = usaAbilitaSpeciale(state, 0, '♠', '♦', T0 + 500);
-  check('2 punti non bastano per un\'abilità da 4', subito.ok === false && /Punti magia insufficienti/.test(subito.reason));
+  check('un punto solo non basta per un\'abilità da 4', subito.ok === false && /Punti magia insufficienti/.test(subito.reason));
 
   const giro = (t) => {
     p0.hasDrawnThisTurn = true; actionDiscard(state, 0, p0.hand[0].id, T0 + t);
     p1.hasDrawnThisTurn = true; actionDiscard(state, 1, p1.hand[0].id, T0 + t + 500);
   };
   giro(1000);
-  check('dopo un giro ho 4 punti magia', p0.puntiMagia === 4);
+  check('dopo un giro ho 3 punti magia (1 + 2)', p0.puntiMagia === 3);
   check('nessun avversario è stato colpito: nulla parte da solo',
     ['♥', '♦', '♣', '♠'].every((s) => p1.characters[s].pv === 100));
 
   giro(2000);
-  check('dopo due giri ne ho 6: bastano per l\'abilità da 4', p0.puntiMagia === 6);
+  check('dopo due giri ne ho 5: bastano per l\'abilità da 4', p0.puntiMagia === 5);
 
   const res = usaAbilitaSpeciale(state, 0, '♠', '♦', T0 + 5000);
   check('attivandola colpisce il bersaglio scelto', res.ok === true && p1.characters['♦'].pv < 100);
-  check('la riserva si consuma del costo', p0.puntiMagia === 2 && res.costo === 4);
+  check('la riserva si consuma del costo', p0.puntiMagia === 1 && res.costo === 4);
 }
 
 // --- 12bis. ONDATA D'URTO: le scale lunghe colpiscono anche tutti e 4 ---
 {
   // scala da 5 carte, ATT 100 → ondata = 100 × 10% = 10 su ciascun avversario,
   // in aggiunta ai 25 punti di danno sul personaggio di Cuori
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7]);
@@ -332,7 +332,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 }
 {
   // scala da 6 carte → ondata 20%
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7, 8]);
@@ -343,7 +343,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 }
 {
   // scala da 7 carte → ondata 35%, che si somma all'AoE delle carte
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7, 8, 9]);
@@ -355,7 +355,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 }
 {
   // scala corta: nessuna ondata
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5]);
@@ -367,7 +367,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 {
   // l'ondata passa per la varianza
   const prova = (r) => {
-    const st = createMatch({ now: T0, rng: () => r });
+    const st = createMatch({ chiInizia: 0, now: T0, rng: () => r });
     const a = st.players[0];
     a.hasDrawnThisTurn = true;
     const m = heartsSeq([3, 4, 5, 6, 7]);
@@ -380,7 +380,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 12ter. IL JOLLY in un tris infligge danno (30 punti, ATT dell'eroe più forte) ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   a.characters['♠'].att = 140;   // il mio eroe più forte: è il suo ATT che deve contare
@@ -400,7 +400,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 }
 {
   // senza jolly nel gruppo, nessun colpo "jolly"
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const tris = [makeCard('♥', 9), makeCard('♦', 9), makeCard('♣', 9)];
@@ -413,7 +413,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 {
   // rng = 0 → fattore minimo 0,95; rng = 1 → fattore massimo 1,05
   const prova = (r) => {
-    const state = createMatch({ now: T0, rng: () => r });
+    const state = createMatch({ chiInizia: 0, now: T0, rng: () => r });
     const a = state.players[0];
     a.hasDrawnThisTurn = true;
     const meld = heartsSeq([3, 4, 5, 6, 7]);   // 25 punti, ATT 100, tier 5 → base 25
@@ -428,7 +428,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 14. Il risultato dice CHI ha subito il danno e QUANTO ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7]);
@@ -445,7 +445,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 15. AoE: il resoconto elenca tutti e 4 i bersagli ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7, 8, 9]);
@@ -456,7 +456,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 16. AGGANCIO a un gioco già in tavola (anche UNA carta per volta) ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const scala = heartsSeq([4, 5, 6]);
@@ -477,7 +477,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 17. L'aggancio che porta il gioco a 5 carte scatena l'ondata ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const scala = heartsSeq([4, 5, 6, 7]);         // 4 carte: nessuna ondata
@@ -509,7 +509,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 18. Agganci illeciti rifiutati ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const scala = heartsSeq([4, 5, 6]);
@@ -528,7 +528,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 19. Aggancio a un tris: la carta colpisce il personaggio del PROPRIO seme ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const tris = [makeCard('♥', 7), makeCard('♦', 7), makeCard('♣', 7)];
@@ -545,7 +545,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // --- 20. ABILITÀ SPECIALE: attivazione manuale a barra piena ---
 {
   const abilities = [{ '♠': { trigger: 'attivazione_manuale', effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico' } }, {}];
-  const state = createMatch({ now: T0, abilities, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, abilities, rng: () => 0.5 });
   const eroe = state.players[0].characters['♠'];
   eroe.att = 120;
 
@@ -568,7 +568,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 21. L'abilità non colpisce un personaggio già morto ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const eroe = state.players[0].characters['♠'];
   state.players[0].puntiMagia = 4;
   state.players[1].characters['♥'].pv = 0;
@@ -579,7 +579,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 22. L'abilità può dare il KO ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const eroe = state.players[0].characters['♠'];
   eroe.att = 200; state.players[0].puntiMagia = 4;
   for (const s of ['♥', '♦', '♣']) state.players[1].characters[s].pv = 0;
@@ -590,14 +590,14 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 23. BONUS POZZETTO: chi l'ha preso infligge il 150% ---
 {
-  const senza = createMatch({ now: T0, rng: () => 0.5 });
+  const senza = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a1 = senza.players[0];
   a1.hasDrawnThisTurn = true;
   const m1 = heartsSeq([3, 4, 5]);
   a1.hand = [...m1, ...a1.hand.slice(0, 8)];
   const base = actionLayMeld(senza, 0, m1.map((c) => c.id), T0 + 1000).dannoCarte;
 
-  const con = createMatch({ now: T0, rng: () => 0.5 });
+  const con = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a2 = con.players[0];
   a2.hasDrawnThisTurn = true;
   a2.pozzettoTaken = true;                       // pozzetto già preso
@@ -612,14 +612,14 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 24. EROE CADUTO: i colpi di quel seme valgono l'80% ---
 {
-  const vivo = createMatch({ now: T0, rng: () => 0.5 });
+  const vivo = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a1 = vivo.players[0];
   a1.hasDrawnThisTurn = true;
   const m1 = heartsSeq([3, 4, 5]);
   a1.hand = [...m1, ...a1.hand.slice(0, 8)];
   const base = actionLayMeld(vivo, 0, m1.map((c) => c.id), T0 + 1000).dannoCarte;
 
-  const morto = createMatch({ now: T0, rng: () => 0.5 });
+  const morto = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a2 = morto.players[0];
   a2.hasDrawnThisTurn = true;
   a2.characters['♥'].pv = 0;                     // il MIO eroe di Cuori è caduto
@@ -633,7 +633,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 
 // --- 24bis. La penalità dell'eroe caduto vale anche nei tris, seme per seme ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   a.characters['♠'].pv = 0;                      // solo Picche è caduto
@@ -655,7 +655,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 {
   const abil = { trigger: 'attivazione_manuale', effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico', costo: 4 };
   const abilities = [{ '♥': abil, '♦': abil, '♣': abil, '♠': abil }, {}];
-  const state = createMatch({ now: T0, abilities, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, abilities, rng: () => 0.5 });
   const io = state.players[0], avv = state.players[1];
   io.puntiMagia = 15;
   for (const s of ['♥', '♦', '♣', '♠']) io.characters[s].att = 100;   // 30 danni a colpo
@@ -690,7 +690,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 {
   const SORPRESA = { id: 's', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '10', trigger: 'on_activate', target: 'avversario', durata_turni: 0 };
   const TRAPPOLA = { id: 't', tipo: 'trappola', effect: 'scarto_forzato', parametro: '1', trigger: 'avversario_pesca', target: 'avversario', durata_turni: 0 };
-  const state = createMatch({ now: T0, rng: () => 0.5, magiche: [[SORPRESA, TRAPPOLA], []] });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, magiche: [[SORPRESA, TRAPPOLA], []] });
 
   const uno = giocaCartaMagica(state, 0, 0, T0 + 1000);
   check('la prima Carta Magica del turno si gioca', uno.ok === true);
@@ -704,7 +704,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // --- 27. Il monte tempo è di 6 minuti a testa (era 15: troppi) ---
 {
   check('il monte tempo vale 6 minuti', MATCH_SECONDS === 360);
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   check('ogni giocatore parte con 6 minuti', state.players[0].clockSecondsLeft === 360 && state.players[1].clockSecondsLeft === 360);
 
   // consumo tutto il monte del giocatore di turno
@@ -721,7 +721,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 // fonti di danno: calata, abilità speciale, Carta Magica.
 {
   // 28a. calata (bersaglio singolo)
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const attacker = state.players[0];
   attacker.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7]); // 5 carte, punti = 25, tier 5 → moltiplicatore ×1
@@ -739,7 +739,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 {
   // 28b. abilità speciale
   const abil = { trigger: 'attivazione_manuale', effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico', costo: 4 };
-  const state = createMatch({ now: T0, abilities: [{ '♥': abil }, {}], rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, abilities: [{ '♥': abil }, {}], rng: () => 0.5 });
   state.players[0].puntiMagia = 15;
   state.players[0].characters['♥'].att = 100;         // 30 danni lordi
   state.players[1].characters['♦'].difesa = 50;       // metà danno
@@ -750,7 +750,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
 {
   // 28c. Carta Magica (danno_diretto)
   const SORPRESA = { id: 's', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '40', trigger: 'on_activate', target: 'avversario', durata_turni: 0, costo: 4 };
-  const state = createMatch({ now: T0, rng: () => 0, magiche: [[SORPRESA], []] });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0, magiche: [[SORPRESA], []] });
   state.players[0].puntiMagia = 15;
   for (const s of ['♥', '♦', '♣', '♠']) state.players[1].characters[s].difesa = 25; // -25% ovunque
 

@@ -17,7 +17,7 @@ function rngFisso(seme) {
 }
 
 const T0 = Date.parse('2026-08-14T20:00:00Z');
-const nuova = (seme = 7, extra = {}) => createMatch({ now: T0, rng: rngFisso(seme), ...extra });
+const nuova = (seme = 7, extra = {}) => createMatch({ chiInizia: 0, now: T0, rng: rngFisso(seme), ...extra });
 
 // ============================================================
 // CHI SEI LO DECIDO IO

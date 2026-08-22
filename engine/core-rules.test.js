@@ -3,7 +3,8 @@
 
 import {
   createFullDeck, cardPointValue, isValidGroup, isValidSequence,
-  validateMeld, meldLengthTier, computeMeldDamage, makeCard
+  validateMeld, meldLengthTier, computeMeldDamage, makeCard,
+  confrontaPerSorteggio, sorteggioPrimoTurno, rangoSorteggio
 } from './core-rules.js';
 
 let failures = 0;
@@ -63,6 +64,50 @@ const dannoSette = computeMeldDamage(sette, 150); // ATT 150 di esempio
 // punti: 3-7=5pt x5 + 8=10 + 9=10 = 45; danno = 45 * (150/100) * 1.6 = 108
 check('danno calcolato per calata da 7 con ATT 150 è 108', Math.abs(dannoSette.damage - 108) < 1e-9);
 check('calata da 7 ha bersaglio aoe', dannoSette.target === 'aoe');
+
+// ------------------------------------------------------------
+// IL SORTEGGIO DI CHI COMINCIA
+// Prima cominciava sempre chi apriva il tavolo: un vantaggio regalato
+// a chi mandava per primo il codice all'amico.
+// ------------------------------------------------------------
+{
+  const c = (seme, valore) => makeCard(seme, valore);
+  const jolly = () => makeCard(null, 0, true, 'red');
+
+  check('la carta più alta vince', confrontaPerSorteggio(c('♥', 10), c('♥', 4)) > 0);
+  check('e se è dell\'altro, vince l\'altro', confrontaPerSorteggio(c('♥', 4), c('♥', 10)) < 0);
+
+  // l'Asso è la carta più alta del mazzo, non un 1
+  check('l\'Asso batte il Re', confrontaPerSorteggio(c('♠', 1), c('♥', 13)) > 0);
+  check('l\'Asso batte anche un 2', confrontaPerSorteggio(c('♠', 1), c('♥', 2)) > 0);
+  check('il jolly batte perfino l\'Asso', confrontaPerSorteggio(jolly(), c('♥', 1)) > 0);
+  check('il rango mette il jolly sopra tutti', rangoSorteggio(jolly()) > rangoSorteggio(c('♥', 1)));
+
+  // a parità di valore decide il seme: ♥ > ♦ > ♣ > ♠
+  check('a parità vince Cuori su Quadri', confrontaPerSorteggio(c('♥', 7), c('♦', 7)) > 0);
+  check('a parità vince Quadri su Fiori', confrontaPerSorteggio(c('♦', 7), c('♣', 7)) > 0);
+  check('a parità vince Fiori su Picche', confrontaPerSorteggio(c('♣', 7), c('♠', 7)) > 0);
+  check('a parità Picche perde contro tutti', confrontaPerSorteggio(c('♠', 7), c('♥', 7)) < 0);
+  check('due jolly non si possono decidere', confrontaPerSorteggio(jolly(), jolly()) === 0);
+
+  // il sorteggio guarda il FONDO del mazzo, e non lo tocca
+  const mazzo = [c('♥', 2), c('♦', 3), c('♠', 5), c('♥', 9)];
+  const quante = mazzo.length;
+  const esito = sorteggioPrimoTurno(mazzo);
+  check('sorteggio: vince chi ha il 9 di Cuori contro il 5 di Picche', esito.vincitore === 0);
+  check('e dice quali carte sono uscite', esito.carte.length === 2);
+  check('IL MAZZO NON VIENE TOCCATO: le carte restano dentro', mazzo.length === quante);
+
+  // pareggio irrisolvibile in fondo: si guarda la coppia prima
+  const conPari = [c('♦', 4), c('♥', 8), jolly(), jolly()];
+  const dopoPari = sorteggioPrimoTurno(conPari);
+  check('due jolly in fondo: si passa alla coppia successiva', dopoPari.pareggi.length === 1);
+  check('e quella decide (8 di Cuori batte 4 di Quadri)', dopoPari.vincitore === 0);
+
+  // un mazzo che non decide mai non deve bloccare la partita
+  const impossibile = sorteggioPrimoTurno([jolly(), jolly()]);
+  check('se non si decide mai, la partita comincia lo stesso', impossibile.vincitore === 0);
+}
 
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));
 process.exit(failures === 0 ? 0 : 1);

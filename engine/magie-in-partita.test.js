@@ -24,7 +24,7 @@ const SORPRESA_DOPPIO   = { id: 's_dopp',  tipo: 'sorpresa', effect: 'raddoppia_
 const SORPRESA_DANNO    = { id: 's_danno', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '30', trigger: 'on_activate', target: 'avversario', durata_turni: 0 };
 
 function partita(magiche) {
-  const s = createMatch({ now: T0, rng: () => 0.5, magiche });
+  const s = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, magiche });
   // riserva piena: qui si provano gli EFFETTI, il costo in punti magia ha
   // i suoi controlli dedicati più sotto
   s.players[0].puntiMagia = 15;
@@ -244,10 +244,10 @@ function partita(magiche) {
 // Li costavano; adesso il loro prezzo è la carta stessa, che vale un
 // solo utilizzo. I punti magia restano alle abilità degli eroi.
 {
-  const state = createMatch({ now: T0, rng: () => 0.5, magiche: [[SORPRESA_DANNO], [SORPRESA_DANNO]] });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, magiche: [[SORPRESA_DANNO], [SORPRESA_DANNO]] });
   // chi apre la partita ha gia' i punti del suo primo turno: il primo
   // turno e' un turno come gli altri, non uno a vuoto
-  check('chi inizia parte con i punti del primo turno', state.players[0].puntiMagia === 2);
+  check('chi inizia parte con il punto del primo turno', state.players[0].puntiMagia === 1);
   check('l\'altro parte da zero: il suo turno non e\' ancora cominciato', state.players[1].puntiMagia === 0);
 
   state.players[0].puntiMagia = 0;
@@ -264,7 +264,7 @@ function partita(magiche) {
 {
   const TRAPPOLA = { id: 't_una', tipo: 'trappola', trigger: 'avversario_pesca', durata_turni: 0,
                      effect: 'scarto_forzato', parametro: '1', target: 'avversario' };
-  const state = createMatch({ now: T0, rng: () => 0.5, magiche: [[TRAPPOLA, SORPRESA_DANNO], []] });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, magiche: [[TRAPPOLA, SORPRESA_DANNO], []] });
 
   const prima = giocaCartaMagica(state, 0, 0, T0 + 1000);
   check('la trappola si schiera', prima.ok === true);
@@ -282,18 +282,19 @@ function partita(magiche) {
 
 // --- 13. I punti magia crescono di 2 a turno, fino a 15 ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5, magiche: [[SORPRESA_DANNO], [SORPRESA_DANNO]] });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, magiche: [[SORPRESA_DANNO], [SORPRESA_DANNO]] });
   const a = state.players[0], b = state.players[1];
   const giro = (t) => {
     a.hasDrawnThisTurn = true; actionDiscard(state, 0, a.hand[0].id, T0 + t);
     b.hasDrawnThisTurn = true; actionDiscard(state, 1, b.hand[0].id, T0 + t + 500);
   };
-  // chi apre ha gia' i 2 punti del primo turno: da li' in poi +2 a giro
-  check('chi inizia parte con 2 punti', a.puntiMagia === 2);
+  // chi apre ha UN punto solo al primo turno (gioca un turno in piu'
+  // dell'altro): da li' in poi +2 a giro per tutti e due
+  check('chi inizia parte con un punto solo', a.puntiMagia === 1);
   giro(1000);
-  check('dopo un giro ne ho 4', a.puntiMagia === 4);
+  check('dopo un giro ne ho 3', a.puntiMagia === 3);
   giro(2000);
-  check('dopo due giri ne ho 6', a.puntiMagia === 6);
+  check('dopo due giri ne ho 5', a.puntiMagia === 5);
   for (let i = 0; i < 10; i++) giro(3000 + i * 1000);
   check('la riserva non supera i 15 punti', a.puntiMagia === 15);
 }
@@ -395,7 +396,7 @@ function partita(magiche) {
     effect: 'scarto_forzato', parametro: '1', trigger: 'avversario_usa_abilita', target: 'avversario'
   };
   const abil = { trigger: 'attivazione_manuale', effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico', costo: 4 };
-  const state = createMatch({
+  const state = createMatch({ chiInizia: 0,
     now: T0, rng: () => 0.5,
     magiche: [[SORPRESA_DANNO], [TRAPPOLA_SU_ABILITA]],
     abilities: [{ '♥': abil }, {}]

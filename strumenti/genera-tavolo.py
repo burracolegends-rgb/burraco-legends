@@ -269,6 +269,55 @@ BATTLE_CSS = r'''
       background: repeating-linear-gradient(45deg, #2e2547 0 4px, #241d38 4px 8px);
     }
     .bcard.magica.coperta .sigillo { text-shadow: none; opacity: 0.75; }
+    /* ------------------------------------------------------------
+       IL SORTEGGIO DI CHI COMINCIA
+       Il mazzo pesca una carta a testa e la più alta decide. Prima
+       cominciava sempre chi apriva il tavolo, senza che si vedesse
+       niente: adesso lo si guarda succedere.
+       ------------------------------------------------------------ */
+    #sorteggio {
+      position: fixed; inset: 0; z-index: 60; display: none;
+      background: rgba(6,10,18,0.82); backdrop-filter: blur(3px);
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; text-align: center; cursor: pointer;
+    }
+    #sorteggio.mostra { display: flex; }
+    #sorteggio .titolo {
+      font-size: clamp(18px, 3.4vw, 30px); font-weight: 800; letter-spacing: 0.04em;
+      color: #ffe6a8; text-shadow: 0 3px 18px rgba(0,0,0,0.9);
+    }
+    #sorteggio .coppia { display: flex; gap: clamp(18px, 6vw, 60px); align-items: flex-start; }
+    #sorteggio .posto { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    #sorteggio .chi {
+      font-size: clamp(11px, 1.8vw, 15px); letter-spacing: 0.1em;
+      text-transform: uppercase; color: #b9c6e4;
+    }
+    /* la carta arriva dal mazzo e si gira */
+    #sorteggio .card {
+      transform: rotateY(90deg) translateY(-40px); opacity: 0;
+      animation: sorteggioGira 0.55s cubic-bezier(.2,.8,.3,1.2) forwards;
+    }
+    #sorteggio .posto:nth-child(2) .card { animation-delay: 0.45s; }
+    @keyframes sorteggioGira {
+      60%  { opacity: 1; transform: rotateY(-12deg) translateY(0); }
+      100% { opacity: 1; transform: rotateY(0) translateY(0); }
+    }
+    /* chi ha vinto si accende */
+    #sorteggio .posto.vince .card {
+      box-shadow: 0 0 0 3px #ffcf5c, 0 0 34px rgba(255,207,92,0.9);
+      border-radius: 8px;
+    }
+    #sorteggio .posto.perde { opacity: 0.5; filter: saturate(0.6); }
+    #sorteggio .esito {
+      min-height: 1.4em;
+      font-size: clamp(16px, 3vw, 26px); font-weight: 800; color: #fff;
+      opacity: 0; animation: sorteggioEsito 0.5s ease-out 1.15s forwards;
+    }
+    @keyframes sorteggioEsito { to { opacity: 1; } }
+    #sorteggio .nota { font-size: 12px; color: #8c9ab8; }
+    /* le coppie pari che non hanno deciso (due jolly): si mostrano piccole */
+    #sorteggio .ripescate { display: flex; gap: 10px; opacity: 0.55; transform: scale(0.6); }
+
     /* Le Carte Magiche non costano più punti magia: al posto del vecchio
        gettone col prezzo, una fascia che dice che quella carta è finita.
        Vale un solo utilizzo, e dopo sparisce anche dalla collezione. */
@@ -1002,6 +1051,14 @@ BODY = r'''
     <div class="esito" id="sorpresaEsito"></div>
   </div>
 </div>
+<div id="sorteggio">
+  <div class="titolo">Chi comincia?</div>
+  <div class="ripescate" id="sorteggioPari"></div>
+  <div class="coppia" id="sorteggioCarte"></div>
+  <div class="esito" id="sorteggioEsito"></div>
+  <div class="nota">Le carte tornano nel mazzo · tocca per saltare</div>
+</div>
+
 <div id="studio">
   <div class="numero" id="studioNumero">30</div>
   <div class="dice">Guarda il tavolo</div>
@@ -1794,6 +1851,83 @@ function secondiDiStudioRimasti() {
   return Math.max(0, Math.ceil((inizio - adessoVero()) / 1000));
 }
 
+// ------------------------------------------------------------
+// L'ANIMAZIONE DEL SORTEGGIO
+// Il mazzo pesca una carta per giocatore e la più alta decide chi
+// comincia (a parità decide il seme: ♥ ♦ ♣ ♠). Prima cominciava sempre
+// chi apriva il tavolo e non si vedeva niente: qui lo si guarda.
+//
+// È SOLO UNA MESSA IN SCENA: la decisione l'ha già presa il motore, e
+// le due carte arrivano dalla vista senza il loro identificativo —
+// restano nel mazzo, e farne uscire l'id rivelerebbe un pezzo di
+// tallone. Qui si disegnano e basta.
+// ------------------------------------------------------------
+const SORTEGGIO_MS = 3400;
+let sorteggioMostrato = false;
+
+function cartaSorteggio(c) {
+  if (!c) return '';
+  const cls = c.isJolly ? (c.jollyColor === 'red' ? 'cuori' : 'picche') : SUIT_CLASS[c.suit];
+  const valore = c.isJolly ? '★' : valueLabel(c.value);
+  const seme = c.isJolly ? '★' : c.suit;
+  const stile = stileCarte();
+  return '<div class="card ' + cls + (c.isJolly ? ' jolly' : '') + ' disegnata st-' + stile + '">' +
+           corpoCarta(valore, seme, stile) +
+           (c.isJolly ? '<div class="scritta-jolly">JOLLY</div>' : '') +
+         '</div>';
+}
+
+function chiudiSorteggio() {
+  const box = $('sorteggio');
+  if (box) box.classList.remove('mostra');
+}
+
+function mostraSorteggio() {
+  if (sorteggioMostrato) return;
+  sorteggioMostrato = true;
+
+  const box = $('sorteggio');
+  const s = S && S.sorteggio;
+  // se chi comincia e' stato imposto (o la vista non lo racconta) non
+  // c'e' nessuna pescata da mostrare: si salta e si va allo studio
+  if (!box || !s || !s.carte || s.carte.length !== 2) return;
+
+  // Dentro questo tavolo il giocatore 0 è SEMPRE chi sta guardando —
+  // contro il bot per costruzione, in rete perché statoDaVista ribalta
+  // tutto. Quindi qui non serve chiedersi chi si è: il posto 0 è il mio.
+  const vince = s.vincitore;
+  const posto = (chi) =>
+    '<div class="posto ' + (chi === vince ? 'vince' : 'perde') + '">' +
+      '<div class="chi">' + (chi === 0 ? 'Tu' : 'Avversario') + '</div>' +
+      cartaSorteggio(s.carte[chi]) +
+    '</div>';
+
+  $('sorteggioCarte').innerHTML = posto(0) + posto(1);
+  $('sorteggioPari').innerHTML = (s.pareggi || [])
+    .map((coppia) => coppia.map(cartaSorteggio).join('')).join('');
+  $('sorteggioEsito').textContent = vince === 0 ? 'Cominci tu' : 'Comincia l\'avversario';
+
+  box.classList.add('mostra');
+  box.onclick = chiudiSorteggio;
+  setTimeout(chiudiSorteggio, SORTEGGIO_MS);
+}
+
+// SE IL SORTEGGIO HA DATO IL VIA AL BOT, QUALCUNO DEVE SVEGLIARLO.
+// Il bot parte solo dopo una mossa del giocatore (o dopo un tempo
+// scaduto): finché cominciava sempre il giocatore andava bene. Adesso
+// che chi comincia lo decide il mazzo, una partita su due toccherebbe
+// al bot per primo — e senza questa spinta il tavolo resterebbe fermo,
+// in attesa di un giocatore che non può muovere perché non è il suo
+// turno. Si fa una volta sola, appena finito lo studio.
+let botSvegliato = false;
+function svegliaIlBotSeTocca() {
+  if (botSvegliato || ONLINE) return;            // in rete muove l'altro, non il bot
+  if (!S || S.status !== 'in_progress') return;
+  if (S.currentPlayerIndex !== 1) return;
+  botSvegliato = true;
+  setTimeout(turnoBot, 900);
+}
+
 function aggiornaStudio() {
   const box = $('studio');
   if (!box) return;
@@ -1801,7 +1935,7 @@ function aggiornaStudio() {
   const dentro = restano > 0;
   box.classList.toggle('mostra', dentro);
   document.body.classList.toggle('in-studio', dentro);
-  if (!dentro) return;
+  if (!dentro) { svegliaIlBotSeTocca(); return; }
   const n = $('studioNumero');
   n.textContent = restano;
   n.classList.toggle('poco', restano <= 5);
@@ -2035,6 +2169,17 @@ function statoDaVista(v) {
     // server — quindi il gioco ti bloccava senza mai dirti quanto
     // mancava: il modo peggiore di avere ragione.
     iniziaAlle: v.iniziaAlle || null,
+    // IL SORTEGGIO SI RIBALTA COME IL VINCITORE.
+    // Arriva dal server con gli indici del server; qui dentro 0 vuol
+    // dire sempre "io", quindi vanno girati sia chi ha vinto sia
+    // l'ordine delle due carte — altrimenti i due schermi mostrerebbero
+    // la stessa pescata attribuita alla persona sbagliata.
+    sorteggio: v.sorteggio ? {
+      carte: [v.sorteggio.carte[io], v.sorteggio.carte[avv]],
+      vincitore: v.sorteggio.vincitore === io ? 0 : 1,
+      pareggi: (v.sorteggio.pareggi || []).map((coppia) => [coppia[io], coppia[avv]]),
+      imposto: !!v.sorteggio.imposto
+    } : null,
     turnStartedAt: v.turnoIniziatoAlle,
     lastMoveAt: v.ultimaMossaAlle,
     moveCounter: v.numeroMossa,
@@ -2080,6 +2225,10 @@ function accettaVista(risposta) {
   carteNuove = carteNuove.filter((id) => S.players[0].hand.some((c) => c.id === id));
   selezione.clear();
   disegna();
+  // in rete lo stato arriva dal server: il sorteggio si può mostrare
+  // solo adesso, quando la prima vista è finalmente qui (la funzione si
+  // protegge da sola dal ripetersi a ogni aggiornamento)
+  mostraSorteggio();
   return { primaVolta, turnoPrima };
 }
 
@@ -3051,6 +3200,7 @@ document.addEventListener('keydown', (e) => {
   });
   magie = [S.players[0].magic, S.players[1].magic];
   disegna();
+  mostraSorteggio();          // il mazzo dice chi comincia, e lo si guarda
   agganciaPannello();
   accendiLucciole();
   if (mio) setTimeout(() => avviso('Giochi con il tuo mazzo.'), 400);

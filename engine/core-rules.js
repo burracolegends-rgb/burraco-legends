@@ -320,6 +320,71 @@ export function semeAttaccoMigliore(attackerCharacters) {
 }
 
 // ------------------------------------------------------------
+// CHI COMINCIA — IL SORTEGGIO
+//
+// Prima cominciava sempre chi apriva il tavolo (`currentPlayerIndex: 0`
+// e basta): un vantaggio regalato a chi mandava per primo il codice su
+// WhatsApp. Adesso il mazzo pesca una carta a testa e decide.
+//
+// COME SI DECIDE
+// Vince la carta più alta. L'Asso vale più del Re — è la carta più alta
+// del mazzo, non la più bassa, anche se nelle scale può fare da 1 — e un
+// jolly batte tutto. A parità di valore decide il SEME, nell'ordine
+// stabilito dal committente: ♥ più alto, poi ♦, poi ♣, ♠ più basso.
+// (È esattamente l'ordine in cui SUITS è già scritto qui sopra.)
+//
+// LE CARTE RESTANO NEL MAZZO
+// Non si tolgono e non si scartano: si guardano e basta, prendendole dal
+// FONDO del tallone. Così il sorteggio non consuma carte, non tocca il
+// generatore casuale e non cambia di una virgola la partita che segue —
+// pescare davvero e poi rimettere dentro darebbe lo stesso risultato,
+// con più giri a vuoto.
+//
+// DUE JOLLY INSIEME non si possono confrontare: il jolly non ha seme, e
+// il pareggio resterebbe tale. In quel caso si guarda la coppia
+// successiva, che è il modo in cui a un tavolo vero si ripesca.
+// ------------------------------------------------------------
+
+// Quanto vale una carta SOLO per il sorteggio: jolly sopra tutti, poi
+// l'Asso, poi Re, Donna, Fante e gli altri per numero.
+export function rangoSorteggio(c) {
+  if (!c) return -1;
+  if (c.isJolly) return 15;
+  return c.value === 1 ? 14 : c.value;   // l'Asso è la più alta, non la più bassa
+}
+
+// Positivo se vince a, negativo se vince b, zero se non si può decidere.
+export function confrontaPerSorteggio(a, b) {
+  const differenza = rangoSorteggio(a) - rangoSorteggio(b);
+  if (differenza !== 0) return differenza;
+  // stesso valore: decide il seme. SUITS è già in ordine dal più alto
+  // al più basso, quindi l'indice più BASSO vince.
+  const posA = SUITS.indexOf(a && a.suit);
+  const posB = SUITS.indexOf(b && b.suit);
+  if (posA === -1 || posB === -1) return 0;   // due jolly: non si decide
+  return posB - posA;
+}
+
+export function sorteggioPrimoTurno(tallone) {
+  const scartate = [];   // le coppie che non hanno deciso: servono all'animazione
+  for (let i = tallone.length - 1; i >= 1; i -= 2) {
+    const mia = tallone[i], sua = tallone[i - 1];
+    const esito = confrontaPerSorteggio(mia, sua);
+    if (esito !== 0) {
+      return {
+        carte: [mia, sua],
+        vincitore: esito > 0 ? 0 : 1,
+        pareggi: scartate
+      };
+    }
+    scartate.push([mia, sua]);
+  }
+  // Un mazzo che non decide mai non esiste, ma se esistesse la partita
+  // deve cominciare lo stesso invece di fermarsi qui.
+  return { carte: [], vincitore: 0, pareggi: scartate };
+}
+
+// ------------------------------------------------------------
 // DIFESA
 // Stat fissa della carta personaggio (0-100, in genere 0-30): riduce in
 // percentuale QUALSIASI danno in arrivo, da qualunque fonte (calate,

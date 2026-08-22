@@ -42,6 +42,20 @@ const check = (nome, ok, dettaglio) => {
 };
 const attendi = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// CHI COMINCIA LO DECIDE IL MAZZO, non piu' sempre il giocatore.
+// Se il sorteggio da' il via al bot, il tavolo lo fa giocare da solo:
+// qui si aspetta che il turno torni a noi, invece di dare per scontato
+// che sia nostro fin dal primo istante.
+const aspettaIlMioTurno = async (w, quanto = 6000) => {
+  const fine = Date.now() + quanto;
+  while (Date.now() < fine) {
+    const s = w.__tavolo();
+    if (s && s.status === 'in_progress' && s.currentPlayerIndex === 0) return true;
+    await attendi(80);
+  }
+  return false;
+};
+
 console.log('\n--- IL TAVOLO SI APRE E SI GIOCA? ---\n');
 
 const html = readFileSync(join(QUI, 'tavolo.html'), 'utf8');
@@ -70,6 +84,31 @@ check('la partita viene creata', !!(w.__tavolo && w.__tavolo()));
 check('le carte in mano sono undici', d.querySelectorAll('#handBox .card').length === 11);
 check('gli otto personaggi sono in tavola', d.querySelectorAll('.bcard[data-seme]').length === 8);
 
+// ---------- 1bis. il sorteggio di chi comincia ----------
+// Prima cominciava sempre chi apriva il tavolo, senza che si vedesse
+// niente. Adesso il mazzo pesca una carta a testa davanti a tutti e due.
+{
+  const box = d.getElementById('sorteggio');
+  check('il sorteggio si vede all-apertura', !!box && box.classList.contains('mostra'));
+  check('con una carta per giocatore',
+    d.querySelectorAll('#sorteggioCarte .posto').length === 2 &&
+    d.querySelectorAll('#sorteggioCarte .card').length === 2);
+  check('una delle due e- segnata come vincente',
+    d.querySelectorAll('#sorteggioCarte .posto.vince').length === 1);
+
+  // e chi vince a schermo e- lo stesso che il motore fa muovere per primo
+  const vinceASchermo = [...d.querySelectorAll('#sorteggioCarte .posto')]
+    .findIndex((e) => e.classList.contains('vince'));
+  check('e- lo stesso che comincia davvero',
+    vinceASchermo === w.__tavolo().currentPlayerIndex);
+  check('e lo dice a parole',
+    /cominci tu|comincia l/i.test(d.getElementById('sorteggioEsito').textContent));
+
+  // toccando si salta
+  box.onclick();
+  check('toccando, il sorteggio si chiude', !box.classList.contains('mostra'));
+}
+
 // ---------- 2. i trenta secondi in cui si guarda ----------
 const toast = () => (d.getElementById('toast') || {}).textContent || '';
 const studioVisibile = () => {
@@ -87,11 +126,14 @@ check('infatti in mano ce ne sono ancora undici',
 salto = 35000;
 await attendi(400);
 check('finito lo studio, il conto sparisce', !studioVisibile());
+// se il sorteggio ha dato il via al bot, prima gioca lui
+check('il turno arriva a noi (dopo il bot, se ha cominciato lui)', await aspettaIlMioTurno(w));
+const manoPrima = w.__tavolo().players[0].hand.length;
 w.ui.pesca();
 await attendi(60);
-check('e la pescata funziona', w.__tavolo().players[0].hand.length === 12);
+check('e la pescata funziona', w.__tavolo().players[0].hand.length === manoPrima + 1);
 check('la carta pescata e\' l\'ultima della mano, per riconoscerla',
-  d.querySelectorAll('#handBox .card').length === 12);
+  d.querySelectorAll('#handBox .card').length === manoPrima + 1);
 
 // ---------- 4. si scarta ----------
 {
@@ -100,7 +142,7 @@ check('la carta pescata e\' l\'ultima della mano, per riconoscerla',
   w.ui.clicScarti();
   await attendi(120);
   check('si scarta e la carta finisce sul monte',
-    w.__tavolo().players[0].hand.length === 11 &&
+    w.__tavolo().players[0].hand.length === manoPrima &&
     w.__tavolo().scarti.some((c) => c.id === mano[0].id));
 }
 

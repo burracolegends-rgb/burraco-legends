@@ -40,7 +40,7 @@
 //    stesso principio già usato per i trigger delle Carte Trappola.
 // ============================================================
 
-import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno } from './core-rules.js';
+import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } from './core-rules.js';
 import { attachAbility, tickCharacterAbility, checkAbilityTrigger } from './character-abilities.js';
 import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata } from './magic-cards.js';
 import { elencoEffetti, CONDIZIONI } from './vocabolario.js';
@@ -97,6 +97,14 @@ function defaultCharacters() {
 // ------------------------------------------------------------
 export const PUNTI_MAGIA_MAX = 15;
 export const PUNTI_MAGIA_PER_TURNO = 2;
+
+// IL PRIMISSIMO TURNO NE VALE UNO SOLO.
+// Chi comincia gioca un turno in più di chi risponde: se prendesse due
+// punti come tutti, si porterebbe avanti di due per tutta la partita
+// senza aver fatto niente per meritarseli. Un punto invece di due
+// all'apertura pareggia il conto, e da lì in poi valgono due per tutti a
+// ogni turno.
+export const PUNTI_MAGIA_PRIMO_TURNO = 1;
 export const COSTO_MAGIA_DEFAULT = 4;   // provvisorio, uguale per tutte per le prove
 
 // Quanto costa in punti magia l'abilità speciale di un eroe.
@@ -189,7 +197,11 @@ function fattoreVarianza(state) {
 // rng: sorgente casuale iniettabile — i test passano una funzione fissa per
 //      avere danni prevedibili; in partita vale Math.random.
 // magiche: [ [3 definizioni carta per il giocatore 0], [3 per il giocatore 1] ]
-export function createMatch({ now = Date.now(), characters = null, abilities = null, rng = null, magiche = null, studioSecondi = 0 } = {}) {
+// `chiInizia` serve per FORZARE chi comincia, saltando il sorteggio.
+// Non lo usa il gioco: lo usano i controlli automatici, che devono poter
+// dire "adesso muove il giocatore 0" invece di dover indovinare come è
+// andata la pescata. In partita vera resta sempre il mazzo a decidere.
+export function createMatch({ now = Date.now(), characters = null, abilities = null, rng = null, magiche = null, studioSecondi = 0, chiInizia = null } = {}) {
   // Il generatore si sceglie PRIMA di mescolare: se lo si prendeva
   // dopo, il mazzo usciva da Math.random e la partita non era
   // ripetibile nemmeno passando un seme.
@@ -220,19 +232,34 @@ export function createMatch({ now = Date.now(), characters = null, abilities = n
     players[1].magic = makeMagicState(magiche[1] || []);
   }
   const scarti = deck.length ? [deck.splice(0, 1)[0]] : [];
+
+  // CHI COMINCIA LO DECIDE IL MAZZO, non chi ha aperto il tavolo.
+  // Una carta a testa, la più alta vince (vedi sorteggioPrimoTurno in
+  // core-rules.js). Le carte restano dove sono: si guardano dal fondo
+  // del tallone, non si tolgono. Il risultato viaggia nello stato
+  // perché i due schermi devono poter mostrare la STESSA pescata — e
+  // perché una partita rigiocata dal registro deve ricominciare dallo
+  // stesso giocatore.
+  const sorteggio = chiInizia === null || chiInizia === undefined
+    ? sorteggioPrimoTurno(deck)
+    : { carte: [], vincitore: chiInizia === 1 ? 1 : 0, pareggi: [], imposto: true };
+  const primo = sorteggio.vincitore;
+
   // il gioco comincia dopo lo studio: da quell'istante partono tutti e
   // due gli orologi
   const inizio = now + Math.max(0, Number(studioSecondi) || 0) * 1000;
   const iso = new Date(inizio).toISOString();
-  // chi apre la partita riceve subito i punti del suo primo turno
-  players[0].puntiMagia = PUNTI_MAGIA_PER_TURNO;
+  // chi comincia riceve subito il punto del suo primo turno: uno solo,
+  // perché gioca un turno in più dell'altro (vedi PUNTI_MAGIA_PRIMO_TURNO)
+  players[primo].puntiMagia = PUNTI_MAGIA_PRIMO_TURNO;
   return {
     status: 'in_progress',
     rng: caso,
     tallone: deck,
     scarti,
     players,
-    currentPlayerIndex: 0,
+    sorteggio,
+    currentPlayerIndex: primo,
     // I punti magia crescono all'INIZIO di ogni proprio turno, e quel
     // conteggio sta in nextTurn(): che però al primo turno non è ancora
     // passato di lì. Chi apriva la partita giocava con zero punti,

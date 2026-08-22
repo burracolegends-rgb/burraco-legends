@@ -22,6 +22,14 @@ const saltaLoStudio = () => avanti(SECONDI_DI_STUDIO * 1000);
 const guarda = (r, codice, segreto, da) =>
   new Promise((ok) => r.guarda(codice, segreto, da, ok));
 
+// CHI COMINCIA NON E' PIU' SEMPRE IL PRIMO.
+// Lo decide il mazzo con una pescata (sorteggioPrimoTurno in
+// core-rules.js), e il seme della stanza cambia a ogni tavolo: dare per
+// scontato che muova "a" rendeva questi controlli veri solo una volta
+// su due. Questi aiuti chiedono chi e' di turno DAVVERO.
+const chiMuove = (r, codice) => r.stanza(codice).partita.currentPlayerIndex;
+const segretoDiTurno = (r, codice, a, b) => [a.segreto, b.segreto][chiMuove(r, codice)];
+
 // ============================================================
 // APRIRE E ENTRARE
 // ============================================================
@@ -81,11 +89,18 @@ console.log('\n--- CHI SEI ---');
   check('il segreto non compare mai nelle viste',
     !JSON.stringify(va).includes(a.segreto) && !JSON.stringify(va).includes(b.segreto));
 
-  // e adesso il tentativo che conta: giocare al posto dell'altro
-  const furbo = r.muovi(a.codice, b.segreto, { tipo: 'pesca', giocatore: 0 });
+  // e adesso il tentativo che conta: giocare al posto dell'altro.
+  // Chi comincia lo decide il mazzo con una pescata, non piu' chi ha
+  // aperto il tavolo: quindi qui si guarda CHI e' di turno davvero,
+  // invece di dare per scontato che sia il primo.
+  const diTurno = r.stanza(a.codice).partita.currentPlayerIndex;
+  const segreti = [a.segreto, b.segreto];
+  const suo = segreti[diTurno], altrui = segreti[diTurno === 0 ? 1 : 0];
+
+  const furbo = r.muovi(a.codice, altrui, { tipo: 'pesca', giocatore: diTurno });
   check('col mio segreto non gioco il turno dell\'altro', furbo.ok === false);
   check('e il motivo lo dice', /turno/i.test(furbo.motivo));
-  const buono = r.muovi(a.codice, a.segreto, { tipo: 'pesca' });
+  const buono = r.muovi(a.codice, suo, { tipo: 'pesca' });
   check('chi è di turno gioca', buono.ok === true);
 
   const finto = r.muovi(a.codice, 'segreto-che-mi-invento', { tipo: 'pesca' });
@@ -111,13 +126,17 @@ console.log('\n--- L\'ATTESA ---');
   await new Promise((ok) => setTimeout(ok, 40));
   check('finché non succede niente, la domanda resta appesa', arrivato === null);
 
-  // A gioca
-  r.muovi(a.codice, a.segreto, { tipo: 'pesca' });
+  // gioca chi e' di turno: una mossa rifiutata non sveglierebbe nessuno
+  const haPescato = chiMuove(r, a.codice);
+  r.muovi(a.codice, segretoDiTurno(r, a.codice, a, b), { tipo: 'pesca' });
   await appesa;
   check('appena l\'altro muove, la risposta arriva', arrivato !== null);
   check('e porta una versione più alta', arrivato.versione > partenza);
-  check('B vede che A ha pescato',
-    arrivato.vista.giocatori[0].manoQuante > 11);
+  // chi ha pescato puo' essere l'uno o l'altro: se e' B stesso, nella
+  // sua vista la mano si conta con `mano`, non con `manoQuante`
+  const chiHaMosso = arrivato.vista.giocatori[haPescato];
+  check('si vede che chi era di turno ha pescato',
+    (chiHaMosso.manoQuante ?? chiHaMosso.mano.length) > 11);
   check('ma continua a non vedere le sue carte',
     arrivato.vista.giocatori[0].mano === undefined);
 
@@ -135,7 +154,8 @@ console.log('\n--- IL TEMPO ---');
   const a = r.apri('A');
   const b = r.entra(a.codice, 'B');
   saltaLoStudio();
-  r.muovi(a.codice, a.segreto, { tipo: 'pesca' });
+  const partito = chiMuove(r, a.codice);
+  r.muovi(a.codice, segretoDiTurno(r, a.codice, a, b), { tipo: 'pesca' });
   const prima = (await guarda(r, a.codice, b.segreto, -1)).versione;
 
   check('senza tempo scaduto il battito non cambia niente',
@@ -147,7 +167,7 @@ console.log('\n--- IL TEMPO ---');
 
   const dopo = await guarda(r, a.codice, b.segreto, -1);
   check('e la versione è salita, quindi i tavoli si aggiornano', dopo.versione > prima);
-  check('il turno è passato all\'altro', dopo.vista.diChiEIlTurno === 1);
+  check('il turno è passato all\'altro', dopo.vista.diChiEIlTurno === (partito === 0 ? 1 : 0));
   check('nel registro resta scritto che è scaduto',
     r.registroDi(a.codice).mosse.some((m) => m.tipo === 'tempo_scaduto'));
 }
@@ -173,10 +193,13 @@ console.log('\n--- IL REGISTRO ---');
   const b = r.entra(a.codice, 'B');
   saltaLoStudio();
 
-  r.muovi(a.codice, a.segreto, { tipo: 'pesca' });
-  r.muovi(a.codice, b.segreto, { tipo: 'pesca' });            // fuori turno: rifiutata
+  const chi = chiMuove(r, a.codice);
+  const suo = segretoDiTurno(r, a.codice, a, b);
+  const altrui = [a.segreto, b.segreto][chi === 0 ? 1 : 0];
+  r.muovi(a.codice, suo, { tipo: 'pesca' });
+  r.muovi(a.codice, altrui, { tipo: 'pesca' });               // fuori turno: rifiutata
   const partita = r.stanza(a.codice).partita;
-  r.muovi(a.codice, a.segreto, { tipo: 'scarta', carta: partita.players[0].hand[0].id });
+  r.muovi(a.codice, suo, { tipo: 'scarta', carta: partita.players[chi].hand[0].id });
 
   const reg = r.registroDi(a.codice);
   check('il registro parte dall\'inizio partita', reg.mosse[0].tipo === 'inizio');
@@ -430,16 +453,23 @@ console.log('\n--- I TRENTA SECONDI PRIMA DI COMINCIARE ---');
   check('e sono trenta secondi dopo la distribuzione',
     Math.round((Date.parse(v0.iniziaAlle) - apertura) / 1000) === SECONDI_DI_STUDIO);
 
-  const subito = r.muovi(a.codice, a.segreto, { tipo: 'pesca' });
+  // chi comincia lo decide il mazzo, non chi ha aperto: qui serve il
+  // segreto di chi e' di turno davvero, altrimenti il controllo
+  // fallirebbe per il motivo sbagliato ("non e' il tuo turno") e non
+  // proverebbe piu' niente sullo studio
+  const diTurno = r.stanza(a.codice).partita.currentPlayerIndex;
+  const suo = [a.segreto, b.segreto][diTurno];
+
+  const subito = r.muovi(a.codice, suo, { tipo: 'pesca' });
   check('chi prova a giocare subito viene fermato', subito.ok === false);
   check('e gli si dice quanto manca', /si comincia fra \d+ second/i.test(subito.motivo || ''));
 
   avanti(10000);
-  check('a dieci secondi ancora no', r.muovi(a.codice, a.segreto, { tipo: 'pesca' }).ok === false);
+  check('a dieci secondi ancora no', r.muovi(a.codice, suo, { tipo: 'pesca' }).ok === false);
 
   // esattamente allo scoccare: si gioca
   ORA = apertura + SECONDI_DI_STUDIO * 1000;
-  const via = r.muovi(a.codice, a.segreto, { tipo: 'pesca' });
+  const via = r.muovi(a.codice, suo, { tipo: 'pesca' });
   check('allo scoccare dei trenta secondi si gioca', via.ok === true, via.motivo);
 
   const v = (await guarda(r, a.codice, a.segreto, -1)).vista;

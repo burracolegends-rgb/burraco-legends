@@ -89,6 +89,28 @@ function magiaVisibile(magic, proprio) {
   };
 }
 
+// La pescata che ha deciso chi comincia, senza gli identificativi.
+// Del sorteggio serve sapere COSA è uscito e a chi, non QUALI carte del
+// mazzo sono: quelle restano nel tallone, e farne uscire l'id
+// significherebbe rivelare un pezzo di mazzo. Basta la faccia — seme e
+// valore — che è tutto quello che serve per disegnarle a schermo.
+function faccia(c) {
+  if (!c) return null;
+  return { suit: c.suit, value: c.value, isJolly: !!c.isJolly, jollyColor: c.jollyColor || null };
+}
+
+function sorteggioVisibile(s) {
+  if (!s) return null;
+  return {
+    carte: (s.carte || []).map(faccia),
+    vincitore: s.vincitore,
+    // quante volte è uscito un pareggio impossibile da sciogliere (due
+    // jolly): serve al tavolo per mostrare le ripescate
+    pareggi: (s.pareggi || []).map((coppia) => coppia.map(faccia)),
+    imposto: !!s.imposto
+  };
+}
+
 function giocatoreVisibile(p, proprio) {
   const fuori = {
     manoQuante: conta(p.hand),
@@ -124,6 +146,15 @@ export function vistaPer(stato, io, adesso = Date.now()) {
     diChiEIlTurno: stato.currentPlayerIndex,
     eIlMioTurno: stato.currentPlayerIndex === io,
     iniziaAlle: stato.iniziaAlle || null,   // prima di allora si guarda e basta
+    // IL SORTEGGIO DI CHI COMINCIA.
+    // Esce uguale per tutti e due: è il momento in cui il mazzo decide
+    // davanti a entrambi, e i due schermi devono mostrare la STESSA
+    // pescata. Ma esce solo la FACCIA delle carte, mai il loro
+    // identificativo: quelle carte restano nel tallone, e un id del
+    // tallone che viaggia sul filo è comunque un pezzo di mazzo
+    // rivelato — c'è un controllo automatico che lo vieta, ed è giusto
+    // che valga anche qui.
+    sorteggio: sorteggioVisibile(stato.sorteggio),
     turnoIniziatoAlle: stato.turnStartedAt,
     ultimaMossaAlle: stato.lastMoveAt,
     numeroMossa: stato.moveCounter,

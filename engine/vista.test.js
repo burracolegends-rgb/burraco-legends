@@ -24,7 +24,7 @@ function rngFisso(seme) {
 // ============================================================
 console.log('--- LA DISTRIBUZIONE ---');
 {
-  const s = createMatch({ rng: rngFisso(7) });
+  const s = createMatch({ chiInizia: 0, rng: rngFisso(7) });
   const v0 = vistaPer(s, 0);
   const v1 = vistaPer(s, 1);
 
@@ -61,7 +61,7 @@ console.log('--- LA DISTRIBUZIONE ---');
 // ============================================================
 console.log('\n--- QUELLO CHE SI VEDE ---');
 {
-  const s = createMatch({ rng: rngFisso(11) });
+  const s = createMatch({ chiInizia: 0, rng: rngFisso(11) });
   s.players[1].characters[CUORI].pv = 42;
   s.players[1].puntiMagia = 9;
   const v = vistaPer(s, 0);
@@ -90,7 +90,7 @@ console.log('\n--- LE CARTE MAGICHE ---');
      { id: 'trappola_001', tipo: 'trappola', trigger: 'avversario_pesca', effetti: [{ effect: 'danno_diretto', parametro: 20 }] }],
     [{ id: 'sorpresa_002', tipo: 'sorpresa', effetti: [{ effect: 'cura', parametro: 25 }] }]
   ];
-  const s = createMatch({ rng: rngFisso(3), magiche: magie });
+  const s = createMatch({ chiInizia: 0, rng: rngFisso(3), magiche: magie });
   const mio = vistaPer(s, 0).giocatori[0].magia;
   const suo = vistaPer(s, 0).giocatori[1].magia;
 
@@ -123,7 +123,7 @@ console.log('\n--- LE ABILITÀ ---');
     abilita[s] = { id: 'colpo_' + s, nome: 'Colpo', trigger: 'attivazione_manuale',
                    effect: 'danno_da_attacco', percentuale: 30, costo: 4 };
   }
-  const s = createMatch({ rng: rngFisso(5), abilities: [abilita, abilita] });
+  const s = createMatch({ chiInizia: 0, rng: rngFisso(5), abilities: [abilita, abilita] });
   const mia = vistaPer(s, 0).giocatori[0].personaggi[PICCHE].abilita;
   const sua = vistaPer(s, 0).giocatori[1].personaggi[PICCHE].abilita;
 
@@ -145,7 +145,7 @@ console.log('\n--- UNA PARTITA INTERA ---');
   let orologio = Date.parse('2026-08-14T20:00:00Z');
   const adesso = () => (orologio += 4000);
 
-  const s = createMatch({ now: orologio, rng: rngFisso(23) });
+  const s = createMatch({ chiInizia: 0, now: orologio, rng: rngFisso(23) });
   let fughe = 0, mosse = 0, momentiControllati = 0;
   const guarda = (quando) => {
     momentiControllati++;
@@ -203,7 +203,7 @@ console.log('\n--- UNA PARTITA INTERA ---');
 // ============================================================
 console.log('\n--- IL CONTROLLO FUNZIONA? ---');
 {
-  const s = createMatch({ rng: rngFisso(31) });
+  const s = createMatch({ chiInizia: 0, rng: rngFisso(31) });
   // metto di proposito una carta della mano avversaria fra gli scarti
   // pubblici: è esattamente il tipo di svista che vogliamo intercettare
   const rubata = s.players[1].hand[0];
@@ -212,6 +212,37 @@ console.log('\n--- IL CONTROLLO FUNZIONA? ---');
   check('una carta avversaria finita nel pubblico viene beccata',
     trapelate.includes(rubata.id));
   check('e viene segnalata una volta sola', trapelate.length === 1);
+}
+
+// ------------------------------------------------------------
+// IL SORTEGGIO SI VEDE, MA NON RIVELA IL MAZZO
+// Le due carte pescate restano nel tallone: se ne uscisse anche l'id,
+// il sorteggio diventerebbe una finestra su due carte del mazzo.
+// ------------------------------------------------------------
+{
+  const s = createMatch({ rng: rngFisso(11) });
+  const v0 = vistaPer(s, 0), v1 = vistaPer(s, 1);
+
+  check('la vista racconta il sorteggio', !!v0.sorteggio);
+  check('con le due carte pescate', v0.sorteggio.carte.length === 2);
+  check('e dice chi ha vinto', v0.sorteggio.vincitore === s.currentPlayerIndex);
+  check('i due schermi vedono la STESSA pescata',
+    JSON.stringify(v0.sorteggio) === JSON.stringify(v1.sorteggio));
+  check('delle carte si vede la faccia',
+    v0.sorteggio.carte.every((c) => c.suit !== undefined && c.value !== undefined));
+  check('ma NON il loro identificativo',
+    v0.sorteggio.carte.every((c) => c.id === undefined));
+
+  // e la prova che conta: nessun id del tallone nel testo che viaggia
+  const filo = JSON.stringify(v0);
+  const trapelate = s.tallone.map((c) => c.id).filter((id) => filo.includes('"' + id + '"'));
+  check('nessuna carta del mazzo trapela attraverso il sorteggio', trapelate.length === 0,
+    trapelate.slice(0, 4).join(', '));
+
+  // chi comincia si puo' forzare, e allora non c'e' nessuna pescata
+  const forzata = vistaPer(createMatch({ rng: rngFisso(11), chiInizia: 1 }), 0);
+  check('forzando chi inizia, il sorteggio lo dice', forzata.sorteggio.imposto === true);
+  check('e non mostra nessuna carta', forzata.sorteggio.carte.length === 0);
 }
 
 console.log('\n' + (ko === 0 ? 'Tutti i controlli passati.' : ko + ' controlli falliti.'));

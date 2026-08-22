@@ -12,7 +12,7 @@ const T0 = Date.parse('2026-08-04T10:00:00.000Z');
 
 // --- un turno singolo: pesca e scarta, e il turno passa ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const mosse = botGiocaTurno(state, 0, T0 + 1000);
   check('il bot gioca almeno pesca + scarto', mosse.length >= 2);
   check('la prima mossa è una pescata (mazzo o monte)', ['pesca', 'monte'].includes(mosse[0].tipo));
@@ -23,14 +23,14 @@ const T0 = Date.parse('2026-08-04T10:00:00.000Z');
 
 // --- non gioca fuori dal proprio turno ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const mosse = botGiocaTurno(state, 1, T0 + 1000);   // tocca al giocatore 0
   check('il bot non muove se non è il suo turno', mosse.length === 0);
 }
 
 // --- cala quando ha una combinazione in mano ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   // gli metto in mano una scala sicura
   state.players[0].hand = [
     makeCard('♥', 4), makeCard('♥', 5), makeCard('♥', 6),
@@ -44,7 +44,7 @@ const T0 = Date.parse('2026-08-04T10:00:00.000Z');
 
 // --- non spreca la matta in un tris da tre a inizio partita ---
 {
-  const state = createMatch({ now: T0, rng: () => 0.5 });
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   state.players[0].hand = [
     makeCard('♥', 9), makeCard('♠', 9), makeCard(null, 0, true),   // coppia + jolly
     makeCard('♣', 3), makeCard('♦', 5), makeCard('♠', 7), makeCard('♥', 13),
@@ -63,7 +63,7 @@ const T0 = Date.parse('2026-08-04T10:00:00.000Z');
   let bloccate = 0, errori = 0, finite = 0, turniTot = 0;
   const esiti = {};
   for (let p = 0; p < 60; p++) {
-    const state = createMatch({ now: T0 });
+    const state = createMatch({ chiInizia: 0, now: T0 });
     let turni = 0;
     try {
       while (state.status === 'in_progress' && turni < 400) {
@@ -95,7 +95,7 @@ const T0 = Date.parse('2026-08-04T10:00:00.000Z');
   let dannoTot = 0, calateTot = 0, agganciTot = 0, pvResiduiTot = 0, partite = 30;
   const lunghezze = {};
   for (let p = 0; p < partite; p++) {
-    const state = createMatch({ now: T0 });
+    const state = createMatch({ chiInizia: 0, now: T0 });
     let turni = 0;
     while (state.status === 'in_progress' && turni < 400) {
       const chi = state.currentPlayerIndex;
