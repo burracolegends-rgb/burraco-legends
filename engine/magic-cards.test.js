@@ -146,5 +146,29 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
   check('brucia_carta rimuove l\'ultima carta scartata', scarti.length === 1 && rb.applied === true);
 }
 
+// --- distruggi_trappole: colpisce SEMPRE l'avversario, mai le proprie ---
+{
+  const distruggi = { effect: 'distruggi_trappole', target: 'avversario', durata_turni: 0 };
+
+  const magicStateOpponent = { trappoleArmate: [
+    { cardId: 't1', effect: 'scarto_forzato', trigger: 'avversario_pesca', turniRimasti: 3 },
+    { cardId: 't2', effect: 'riflette_danno', trigger: 'subisco_danno', turniRimasti: 3 }
+  ] };
+  const magicStateCaster = { trappoleArmate: [
+    { cardId: 't3', effect: 'blocca_monte_scarti', trigger: 'avversario_pesca', turniRimasti: 3 }
+  ] };
+
+  const r = applyEffect(distruggi, { magicStateCaster, magicStateOpponent });
+  check('distrugge davvero le trappole avversarie', magicStateOpponent.trappoleArmate.length === 0);
+  check('dice quante ne ha distrutte', r.applied === true && r.distrutte === 2);
+  check('NON tocca le proprie', magicStateCaster.trappoleArmate.length === 1);
+
+  const senzaNiente = applyEffect(distruggi, { magicStateCaster, magicStateOpponent });
+  check('senza trappole da distruggere, applied è false (non un errore)', senzaNiente.ok === true && senzaNiente.applied === false);
+
+  const senzaContesto = applyEffect(distruggi, {});
+  check('senza magicStateOpponent nel contesto non esplode', senzaContesto.ok === true && senzaContesto.applied === false);
+}
+
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));
 process.exit(failures === 0 ? 0 : 1);

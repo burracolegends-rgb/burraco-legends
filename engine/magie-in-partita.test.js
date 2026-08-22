@@ -421,5 +421,59 @@ function partita(magiche) {
   check('la trappola si consuma', state.players[1].magic.trappoleArmate.length === 0);
 }
 
+// --- 18. UN'ABILITÀ CON DUE EFFETTI INSIEME (Papa Figo: distrugge le
+// trappole avversarie E infligge danno, nello stesso "Attacco notturno") ---
+// Prima usaAbilitaSpeciale sapeva fare SOLO danno_da_attacco: era scritta
+// per quell'unico caso. Con più effetti nella stessa abilità, quelli
+// senza bersaglio a scelta (qui distruggi_trappole) devono applicarsi da
+// soli, mentre il colpo resta l'unico a chiedere un bersaglio.
+{
+  const NOTTURNO = {
+    trigger: 'attivazione_manuale',
+    effetti: [
+      { effect: 'distruggi_trappole', target: 'avversario', durata_turni: 0 },
+      { effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico', durata_turni: 0 }
+    ],
+    costo: 5
+  };
+  // due trappole armate su un trigger che QUI non c'entra niente
+  // (avversario_pesca): se sopravvivono, non è merito del trap-scatter
+  // sull'uso dell'abilità — è la prova che serve un effetto dedicato.
+  const TRAPPOLA = { id: 't_x', tipo: 'trappola', effect: 'scarto_forzato', parametro: '1', trigger: 'avversario_pesca', target: 'avversario', durata_turni: 0 };
+  const state = createMatch({
+    chiInizia: 0, now: T0, rng: () => 0.5,
+    magiche: [[], [TRAPPOLA, { ...TRAPPOLA, id: 't_y' }]],
+    abilities: [{ '♦': NOTTURNO }, {}]
+  });
+  state.players[0].puntiMagia = 15;
+  state.players[1].puntiMagia = 15;
+  state.players[0].characters['♦'].att = 100;    // 30 danni netti al bersaglio
+
+  // il giocatore 1 schiera le sue due trappole (una per turno: due turni)
+  state.currentPlayerIndex = 1;
+  giocaCartaMagica(state, 1, 0, T0 + 1000);
+  resetTurnoMagie(state.players[1].magic);
+  giocaCartaMagica(state, 1, 1, T0 + 2000);
+  check('entrambe le trappole sono armate', state.players[1].magic.trappoleArmate.length === 2);
+
+  state.currentPlayerIndex = 0;
+  const r = usaAbilitaSpeciale(state, 0, '♦', '♣', T0 + 3000);
+  check('l\'abilità multi-effetto va a segno', r.ok === true, r.reason);
+  check('LE TRAPPOLE AVVERSARIE SONO DISTRUTTE', state.players[1].magic.trappoleArmate.length === 0);
+  check('il resoconto racconta anche questo effetto', r.effettiAbilita && r.effettiAbilita[0].effect === 'distruggi_trappole' && r.effettiAbilita[0].distrutte === 2);
+  check('E il colpo parte lo stesso (30% di 100 = 30)', Math.abs(r.damage - 30) < 1e-9);
+  check('il bersaglio scelto ha incassato', Math.abs(state.players[1].characters['♣'].pv - 70) < 1e-9);
+
+  // e le otto carte d'esempio (un solo "effect" in cima, forma vecchia)
+  // continuano a funzionare esattamente come prima: nessun effettiAbilita
+  const VECCHIA = { trigger: 'attivazione_manuale', effect: 'danno_da_attacco', parametro: '30', target: 'personaggio_specifico', costo: 4 };
+  const s2 = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, abilities: [{ '♠': VECCHIA }, {}] });
+  s2.players[0].puntiMagia = 15;
+  s2.players[0].characters['♠'].att = 100;
+  const r2 = usaAbilitaSpeciale(s2, 0, '♠', '♥', T0 + 1000);
+  check('la forma vecchia (un solo effect) resta identica a prima', r2.ok === true && Math.abs(r2.damage - 30) < 1e-9);
+  check('e non racconta nessun "effettiAbilita" (non ne ha)', r2.effettiAbilita === undefined);
+}
+
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));
 process.exit(failures === 0 ? 0 : 1);

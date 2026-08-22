@@ -76,7 +76,14 @@ export const EFFETTI = {
   // --- personaggi (immediati, con durata) ---
   boost_att:            { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Aumenta l\'ATT di un personaggio per qualche turno' },
   boost_difesa:         { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Riduce il danno subito per qualche turno' },
-  ricarica_sorpresa:    { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Rende di nuovo giocabile la Carta Sorpresa' }
+  ricarica_sorpresa:    { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' },
+
+  // --- trappole (immediato) ---
+  // Prima carta a chiederlo (Papa Figo, "Attacco notturno"): distrugge le
+  // Trappole armate dell'avversario, sempre — non serve un "target" a
+  // scelta, come ricarica_sorpresa non lo serve per la Sorpresa di chi
+  // la gioca. Sempre l'avversario, mai le proprie.
+  distruggi_trappole:   { categoria: 'trappole', momento: 'immediato', parametro: 'nessuno', descrizione: 'Distrugge tutte le Trappole armate dell\'avversario' }
 };
 
 // Ricavato da EFFETTI: il motore non tiene un secondo elenco a mano, così

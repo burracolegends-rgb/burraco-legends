@@ -259,6 +259,18 @@ export function applyEffect(card, ctx) {
       }
       return { ok: true, applied: true, recuperata };
     }
+    // DISTRUGGE LE TRAPPOLE AVVERSARIE.
+    // Sempre l'avversario: ctx.magicStateOpponent (non magicStateCaster).
+    // Se non arriva — un punto vecchio che ancora non passa questo campo
+    // nel contesto — l'effetto non esplode, dice solo che non ha trovato
+    // niente da distruggere: meglio un "applied:false" onesto che un
+    // errore a runtime in mezzo a un colpo.
+    case 'distruggi_trappole': {
+      const ms = ctx.magicStateOpponent;
+      const quante = ms ? ms.trappoleArmate.length : 0;
+      if (ms && quante > 0) ms.trappoleArmate = [];
+      return { ok: true, applied: quante > 0, distrutte: quante };
+    }
     // Effetti che modificano il FLUSSO di gioco: qui vengono "armati" come
     // effetto attivo con la sua durata, ma serve un aggancio nel motore di
     // partita per essere davvero rispettati (vedi note in fondo al file).
