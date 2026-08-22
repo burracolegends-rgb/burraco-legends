@@ -96,6 +96,22 @@ export const EFFETTI = {
   riduci_difesa:        { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Abbassa la difesa per qualche turno: si incassa più danno' },
   pulisci_malus_difesa: { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Toglie i malus di difesa da chi lo subisce' },
 
+  // Un bonus al danno che dura nel tempo, non un raddoppio secco da usare
+  // una volta: vale su tutti i colpi (calate e abilità) finché non scade.
+  boost_danno:          { categoria: 'danno_cura', momento: 'differito', agisce: 'calcolo_danno', parametro: 'numero', conDurata: true, descrizione: 'Aumenta di una % il danno inflitto, per qualche turno' },
+
+  // Il colpo del Boitata': il nemico colpito si porta dietro per SEMPRE
+  // un sovrapprezzo sulla propria abilita'. Non e' un malus a tempo, e'
+  // una cicatrice: resta fino a fine partita.
+  costo_abilita_extra:  { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', descrizione: 'Rende per sempre piu cara l abilita del personaggio colpito' },
+
+  // LA CONVERSIONE: ribalta l'ultimo intervento sulle difese.
+  // Un bonus che l'avversario si era dato passa a me; un malus che aveva
+  // messo a me torna a lui. Va insieme al trigger
+  // `avversario_tocca_difesa`, che e' l'unico a portarsi dietro i
+  // dettagli di cosa e' appena successo.
+  converti_difesa:      { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Ruba il bonus di difesa avversario, o rispedisce al mittente il malus' },
+
   // --- trappole (immediato) ---
   // Prima carta a chiederlo (Papa Figo, "Attacco notturno"): distrugge le
   // Trappole armate dell'avversario, sempre — non serve un "target" a
@@ -123,7 +139,12 @@ export const TRIGGER_TRAPPOLA = {
   avversario_pesca:      'l\'avversario pesca dal mazzo o raccoglie il monte',
   subisco_danno:         'un mio personaggio incassa danno da una calata',
   avversario_cala_7piu:  'l\'avversario cala un gioco da 7 carte o più',
-  avversario_usa_abilita:'l\'avversario attiva l\'abilità speciale di un suo eroe'
+  avversario_usa_abilita:'l\'avversario attiva l\'abilità speciale di un suo eroe',
+  // La Conversione aspetta proprio questo: che l'altro metta mano alle
+  // difese, in bene o in male. E' l'unico trigger che porta con se' anche
+  // i dettagli di quello che e' successo, perche' la risposta e' fatta di
+  // quei numeri (vedi `converti_difesa`).
+  avversario_tocca_difesa: "l'avversario applica un bonus o un malus di difesa"
 };
 
 // Le abilità dei personaggi (spec §7).

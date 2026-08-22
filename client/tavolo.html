@@ -2460,6 +2460,22 @@ const EFFETTI = {
   riduci_difesa:        { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Abbassa la difesa per qualche turno: si incassa più danno' },
   pulisci_malus_difesa: { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Toglie i malus di difesa da chi lo subisce' },
 
+  // Un bonus al danno che dura nel tempo, non un raddoppio secco da usare
+  // una volta: vale su tutti i colpi (calate e abilità) finché non scade.
+  boost_danno:          { categoria: 'danno_cura', momento: 'differito', agisce: 'calcolo_danno', parametro: 'numero', conDurata: true, descrizione: 'Aumenta di una % il danno inflitto, per qualche turno' },
+
+  // Il colpo del Boitata': il nemico colpito si porta dietro per SEMPRE
+  // un sovrapprezzo sulla propria abilita'. Non e' un malus a tempo, e'
+  // una cicatrice: resta fino a fine partita.
+  costo_abilita_extra:  { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', descrizione: 'Rende per sempre piu cara l abilita del personaggio colpito' },
+
+  // LA CONVERSIONE: ribalta l'ultimo intervento sulle difese.
+  // Un bonus che l'avversario si era dato passa a me; un malus che aveva
+  // messo a me torna a lui. Va insieme al trigger
+  // `avversario_tocca_difesa`, che e' l'unico a portarsi dietro i
+  // dettagli di cosa e' appena successo.
+  converti_difesa:      { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Ruba il bonus di difesa avversario, o rispedisce al mittente il malus' },
+
   // --- trappole (immediato) ---
   // Prima carta a chiederlo (Papa Figo, "Attacco notturno"): distrugge le
   // Trappole armate dell'avversario, sempre — non serve un "target" a
@@ -2487,7 +2503,12 @@ const TRIGGER_TRAPPOLA = {
   avversario_pesca:      'l\'avversario pesca dal mazzo o raccoglie il monte',
   subisco_danno:         'un mio personaggio incassa danno da una calata',
   avversario_cala_7piu:  'l\'avversario cala un gioco da 7 carte o più',
-  avversario_usa_abilita:'l\'avversario attiva l\'abilità speciale di un suo eroe'
+  avversario_usa_abilita:'l\'avversario attiva l\'abilità speciale di un suo eroe',
+  // La Conversione aspetta proprio questo: che l'altro metta mano alle
+  // difese, in bene o in male. E' l'unico trigger che porta con se' anche
+  // i dettagli di quello che e' successo, perche' la risposta e' fatta di
+  // quei numeri (vedi `converti_difesa`).
+  avversario_tocca_difesa: "l'avversario applica un bonus o un malus di difesa"
 };
 
 // Le abilità dei personaggi (spec §7).
@@ -3554,6 +3575,52 @@ function applyEffect(card, ctx) {
       }
       return { ok: true, applied: puliti > 0, colpiti: suits, puliti };
     }
+    // UNA CICATRICE, NON UN MALUS A TEMPO.
+    // Il morso del Boitata' rende piu' cara per sempre l'abilita' del
+    // personaggio colpito. Il tetto ("fino a un massimo di 7 pm") non si
+    // applica qui ma dove il costo viene letto: qui si accumula soltanto
+    // il sovrapprezzo, cosi' due morsi non si perdono per strada anche
+    // se il tetto e' gia' stato raggiunto.
+    case 'costo_abilita_extra': {
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      for (const s of suits) pool[s].costoExtra = (pool[s].costoExtra || 0) + param;
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
+    }
+    // LA CONVERSIONE: ribalta l'ultimo intervento sulle difese.
+    // Arriva sempre da una trappola, quindi qui "caster" e' chi ha
+    // armato la carta e "opponent" e' chi ha appena toccato le difese.
+    // Due casi, e sono simmetrici:
+    //   - si e' dato un BONUS  -> glielo tolgo e me lo prendo
+    //   - mi ha messo un MALUS -> me lo tolgo e glielo rimando
+    // In tutti e due i casi il totale sul tavolo non cambia: si sposta
+    // di lato. Non e' una copia — moltiplicare gli effetti sarebbe un
+    // altro gioco.
+    case 'converti_difesa': {
+      const ev = ctx.dettagliEvento;
+      if (!ev || !ev.colpiti || !ev.colpiti.length) {
+        return { ok: true, applied: false, note: 'nessun intervento sulle difese da convertire' };
+      }
+      const quanto = Number(ev.parametro) || 0;
+      if (!quanto) return { ok: true, applied: false, note: 'intervento di valore nullo' };
+
+      const miei = ctx.casterCharacters, suoi = ctx.opponentCharacters;
+      // il segno con cui l'effetto era stato applicato: un bonus alza la
+      // difesa, un malus la abbassa
+      const segno = ev.effect === 'riduci_difesa' ? -1 : 1;
+
+      for (const s of ev.colpiti) {
+        if (ev.suProprietario) {
+          // era addosso a ME (tipicamente un malus): me lo tolgo e va a lui
+          if (miei[s]) miei[s].difesaPercent = (miei[s].difesaPercent || 0) - segno * quanto;
+          if (suoi[s]) suoi[s].difesaPercent = (suoi[s].difesaPercent || 0) + segno * quanto;
+        } else {
+          // era addosso a LUI (tipicamente un bonus che si era dato): glielo rubo
+          if (suoi[s]) suoi[s].difesaPercent = (suoi[s].difesaPercent || 0) - segno * quanto;
+          if (miei[s]) miei[s].difesaPercent = (miei[s].difesaPercent || 0) + segno * quanto;
+        }
+      }
+      return { ok: true, applied: true, convertiti: ev.colpiti, quanto, era: ev.effect };
+    }
     // DISTRUGGE LE TRAPPOLE AVVERSARIE.
     // Sempre l'avversario: ctx.magicStateOpponent (non magicStateCaster).
     // Se non arriva — un punto vecchio che ancora non passa questo campo
@@ -3911,7 +3978,7 @@ const __M_partita = (function(){
 const { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } = __M_core_rules;
 const { attachAbility, tickCharacterAbility, checkAbilityTrigger } = __M_character_abilities;
 const { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata } = __M_magic_cards;
-const { elencoEffetti, CONDIZIONI } = __M_vocabolario;
+const { elencoEffetti, CONDIZIONI, EFFETTI_DIFFERITI } = __M_vocabolario;
 const TURN_SECONDS = 60;      // spec §2: 1 minuto per turno a giocatore
 // Monte tempo dell'intera partita, per giocatore. Era 15 minuti: troppi,
 // una partita non ci arriva mai e l'orologio non conta niente. Con 6
@@ -3973,6 +4040,20 @@ const PUNTI_MAGIA_PER_TURNO = 2;
 // ogni turno.
 const PUNTI_MAGIA_PRIMO_TURNO = 1;
 const COSTO_MAGIA_DEFAULT = 4;   // provvisorio, uguale per tutte per le prove
+
+// PIU' CARA PER SEMPRE (il morso del Boitatà).
+// Un personaggio colpito da `costo_abilita_extra` si porta dietro un
+// sovrapprezzo sulla propria abilità per tutto il resto della partita.
+// Il tetto sta qui e non dove il sovrapprezzo si accumula: così due
+// morsi si sommano davvero nel conto, e il limite lo mette solo chi
+// paga — "fino a un massimo di 7 punti magia", come dice la carta.
+const COSTO_ABILITA_MASSIMO = 7;
+
+function costoAbilitaDi(character) {
+  const base = costoDiCarta(character && character._ability);
+  const extra = (character && character.costoExtra) || 0;
+  return Math.min(COSTO_ABILITA_MASSIMO, base + extra);
+}
 
 // Quanto costa in punti magia l'abilità speciale di un eroe.
 function costoDiCarta(abilita) {
@@ -4259,7 +4340,14 @@ function applyDamageToSuit(defenderCharacters, suit, damage) {
 //
 // proprietario = chi ha armato la trappola. L'evento lo provoca l'altro.
 // ------------------------------------------------------------
-function scattaTrappole(state, proprietarioIndex, evento) {
+// `dettagli` serve a un solo tipo di trappola, ma cambia la natura di
+// questo meccanismo: fino a ieri a una trappola bastava sapere CHE cosa
+// era successo ("l'avversario ha pescato"), e reagiva sempre allo stesso
+// modo. La Conversione invece deve sapere anche COME: quale bonus o
+// malus di difesa è stato appena messo, di quanto, e su chi — perché la
+// sua risposta è fatta di quei numeri lì. Chi non lo usa non se ne
+// accorge: il campo resta vuoto.
+function scattaTrappole(state, proprietarioIndex, evento, dettagli = null) {
   const proprietario = state.players[proprietarioIndex];
   const ms = proprietario && proprietario.magic;
   if (!ms || !ms.trappoleArmate || ms.trappoleArmate.length === 0) return [];
@@ -4281,6 +4369,7 @@ function scattaTrappole(state, proprietarioIndex, evento) {
       magicStateOpponent: vittima.magic,
       casterPlayer: proprietario, opponentPlayer: vittima,
       puntiMagiaMax: PUNTI_MAGIA_MAX,
+      dettagliEvento: dettagli,
       rng: state.rng          // il caso della partita, non quello del processo
     };
     const esito = checkTrapTrigger(ms, evento, null, ctx);
@@ -4341,11 +4430,16 @@ function descriviCondizione(cond, def) {
 
 // Effetti che non si applicano subito ma condizionano una fase futura:
 // vengono depositati sul giocatore e letti al momento giusto.
-const EFFETTI_DI_FLUSSO = [
-  'restrict_draw_source', 'pesca_ridotta', 'pesca_extra', 'blocca_monte_scarti',
-  'skip_fase_attacco', 'skip_turno_intero', 'turno_extra',
-  'raddoppia_danno', 'riflette_danno', 'annulla_danno'
-];
+//
+// L'ELENCO NON SI SCRIVE PIU' A MANO.
+// Qui c'era una copia scritta a mano di quello che il vocabolario
+// dichiara gia': due fonti per la stessa verita', ed erano gia' andate
+// fuori sincrono — boost_danno era nel vocabolario e mancava qui, cioe'
+// la carta che lo usa (Cao-do-Mato, "Ricerca del bersaglio") si sarebbe
+// giocata senza che succedesse niente. E' esattamente il guasto che
+// vocabolario.js esiste per impedire, ricomparso a un piano piu' sotto.
+// Adesso l'elenco lo si chiede a chi lo sa.
+const EFFETTI_DI_FLUSSO = EFFETTI_DIFFERITI;
 
 // Fa scattare un'abilità a evento su ciascuno dei 4 personaggi del
 // proprietario (spec §7: agganciata a trigger del game loop già esistenti).
@@ -4543,6 +4637,18 @@ function modificaDanno(state, playerIndex, damage, result) {
   if (consumaEffetto(player, 'raddoppia_danno')) {
     damage *= 2;
     result.dannoRaddoppiato = true;
+  }
+
+  // BONUS AL DANNO CHE DURA NEL TEMPO (Cão-do-Mato, "Ricerca del
+  // bersaglio": +25% al danno di calate e abilità).
+  // Non si consuma come raddoppia_danno: vale per tutti i colpi finché
+  // non scade da sola, e invecchia col passare dei turni come gli altri
+  // effetti addosso a un giocatore.
+  const potenziato = haEffetto(player, 'boost_danno');
+  if (potenziato) {
+    const pct = Number(potenziato.parametro) || 0;
+    damage *= (1 + pct / 100);
+    result.dannoPotenziato = pct;
   }
   if (consumaEffetto(defender, 'annulla_danno')) {
     result.dannoAnnullato = true;
@@ -4869,7 +4975,7 @@ function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, n
     return { ok: false, reason: 'Questo eroe ha già usato la sua abilità in questo turno.' };
   }
 
-  const costoAbilita = costoDiCarta(eroe._ability);
+  const costoAbilita = costoAbilitaDi(eroe);
   if ((player.puntiMagia || 0) < costoAbilita) {
     return { ok: false, reason: 'Punti magia insufficienti: servono ' + costoAbilita + ', ne hai ' + (player.puntiMagia || 0) + '.' };
   }
@@ -4887,10 +4993,19 @@ function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, n
   // La forma vecchia con un solo "effect" in cima resta identica: è
   // esattamente quello che leggevano già le otto carte d'esempio, e
   // qui sotto produce lo stesso identico risultato di prima.
+  //
+  // PIU' DI UN COLPO: se l'abilità elenca DUE effetti con bersaglio a
+  // scelta, sono due colpi sullo stesso bersaglio — è la Queixada della
+  // Caipora, "colpisce con due cariche da 20% di danno ognuna". Prima ne
+  // veniva letto uno solo e il secondo spariva in silenzio.
   const effetti = elencoEffetti(eroe._ability);
-  const effettoColpo = effetti.find((e) => e.target === 'personaggio_specifico') || null;
-  const altriEffetti = effetti.filter((e) => e !== effettoColpo);
-  const pct = Number((effettoColpo && effettoColpo.parametro) || ABILITA_PERCENT_DEFAULT);
+  const effettiColpo = effetti.filter((e) => e.target === 'personaggio_specifico');
+  const altriEffetti = effetti.filter((e) => e.target !== 'personaggio_specifico');
+  // niente colpo dichiarato: vale la percentuale di riferimento, come da sempre
+  const cariche = effettiColpo.length
+    ? effettiColpo.map((e) => Number(e.parametro) || ABILITA_PERCENT_DEFAULT)
+    : [ABILITA_PERCENT_DEFAULT];
+  const pct = cariche[0];
 
   const result = {
     ok: true, abilita: true, percentuale: pct,
@@ -4922,25 +5037,36 @@ function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, n
       puntiMagiaMax: PUNTI_MAGIA_MAX,
       suit: semeAttaccante, rng: state.rng
     };
-    result.effettiAbilita = altriEffetti.map((e) => ({ effect: e.effect, ...applyEffect(e, ctxEffetti) }));
+    result.effettiAbilita = altriEffetti.map((e) => {
+      const res = applyEffect(e, ctxEffetti);
+      const reazioni = avvisaChiGuardaLeDifese(state, playerIndex, e, { ...res, lato: res.effettoAttivo && res.effettoAttivo.pool });
+      return { effect: e.effect, ...res, ...(reazioni.length ? { trappoleScattate: reazioni } : {}) };
+    });
   }
 
   // L'abilità non passava affatto dagli effetti sul danno: raddoppia,
   // annulla e riflette valevano sulle calate e non sui colpi speciali.
   // (Il bonus del pozzetto lo mette modificaDanno: qui lo si toglie,
   // altrimenti verrebbe contato due volte.)
-  let damage = eroe.att * (pct / 100) * fattoreVarianza(state);
-  damage = modificaDanno(state, playerIndex, damage, result);
-
-  infliggiDanno(bersaglio, damage);
+  // Ogni carica passa per conto suo dagli effetti sul danno: raddoppia,
+  // annulla e riflette valgono "sul prossimo colpo", e con due cariche
+  // il prossimo è la prima. È la stessa regola che vale fra due calate.
+  let damage = 0;
+  const colpi = [];
+  for (const carica of cariche) {
+    let questo = eroe.att * (carica / 100) * fattoreVarianza(state);
+    questo = modificaDanno(state, playerIndex, questo, result);
+    const netto = infliggiDanno(bersaglio, questo);
+    damage += netto;
+    if (netto > 0) colpi.push({ suit: semeBersaglio, damage: netto, cardId: bersaglio.cardId, pvRimasti: bersaglio.pv });
+  }
   player.puntiMagia -= costoAbilita;
   player.abilitaUsate.push(semeAttaccante);
 
   result.damage = damage;
+  result.cariche = cariche.length;
   result.puntiRimasti = player.puntiMagia;
-  result.colpi = damage > 0
-    ? [{ suit: semeBersaglio, damage, cardId: bersaglio.cardId, pvRimasti: bersaglio.pv }]
-    : [];
+  result.colpi = colpi;
 
   checkAbilityTrigger(bersaglio, semeBersaglio, 'on_subisco_danno', { casterCharacters: defender.characters, opponentCharacters: player.characters });
 
@@ -4994,6 +5120,10 @@ function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.now()) {
     const r = activateSorpresa(ms, carta, ctx);
     if (!r.ok) return r;
     ms.consumate.push(indiceCarta);
+    // il PRIMO effetto l'ha già applicato activateSorpresa: se toccava le
+    // difese, la Conversione va avvisata anche per quello
+    const primo = elencoEffetti(carta)[0];
+    if (primo) avvisaChiGuardaLeDifese(state, playerIndex, primo, { ...r, lato: r.effettoAttivo && r.effettoAttivo.pool });
     // UNA CARTA PUÒ FARE PIÙ COSE: si scorrono tutti i suoi effetti
     const esiti = applicaEffettiCarta(state, playerIndex, carta, ctx);
     if (checkKO(state, opponentIndex(playerIndex))) r.matchEnded = true;
@@ -5015,6 +5145,27 @@ function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.now()) {
 // (Il primo effetto lo ha già applicato activateSorpresa: qui si parte
 // dal secondo, per non farlo due volte.)
 // ------------------------------------------------------------
+// CHI TOCCA LE DIFESE SI FA SENTIRE DALL'ALTRA PARTE.
+// La Conversione aspetta esattamente questo momento. Va chiamata DOPO
+// che l'effetto e' stato applicato, perche' quello che la trappola
+// ribalta e' un bonus (o un malus) che sul tavolo c'e' gia': se
+// scattasse prima non ci sarebbe ancora niente da spostare.
+const EFFETTI_DIFESA = ['boost_difesa', 'riduci_difesa'];
+
+function avvisaChiGuardaLeDifese(state, playerIndex, effetto, esito) {
+  if (!EFFETTI_DIFESA.includes(effetto.effect)) return [];
+  if (!esito || !esito.colpiti || !esito.colpiti.length) return [];
+  const altro = opponentIndex(playerIndex);
+  return scattaTrappole(state, altro, 'avversario_tocca_difesa', {
+    effect: effetto.effect,
+    parametro: effetto.parametro,
+    colpiti: esito.colpiti,
+    // dal punto di vista di chi ha armato la trappola: quel bonus/malus
+    // e' finito sui SUOI personaggi, o su quelli di chi l'ha giocato?
+    suProprietario: esito.lato === 'opponent' || esito.pool === 'opponent'
+  });
+}
+
 function applicaEffettiCarta(state, playerIndex, carta, ctx, dalPrimo = false) {
   const player = state.players[playerIndex];
   const avversario = state.players[opponentIndex(playerIndex)];
@@ -5031,6 +5182,8 @@ function applicaEffettiCarta(state, playerIndex, carta, ctx, dalPrimo = false) {
     if (i === 0 && !dalPrimo) { esiti.push({ effect: e.effect, giaApplicato: true }); return; }
     const res = applyEffect(e, ctx);
     esiti.push({ effect: e.effect, ...res });
+    const reazioni = avvisaChiGuardaLeDifese(state, playerIndex, e, { ...res, lato: res.effettoAttivo && res.effettoAttivo.pool });
+    if (reazioni.length) esiti.push({ effect: e.effect, trappoleScattate: reazioni });
   });
   return esiti;
 }
@@ -5130,7 +5283,7 @@ function checkVictory(state) {
   return { winner: state.winner, reason: state.winReason };
 }
 
-return {TURN_SECONDS, MATCH_SECONDS, HAND_SIZE, POZZETTO_SIZE, CARTE_PER_PESCATA, SECONDI_DI_STUDIO, PUNTI_MAGIA_MAX, PUNTI_MAGIA_PER_TURNO, PUNTI_MAGIA_PRIMO_TURNO, COSTO_MAGIA_DEFAULT, costoDiCarta, MOLTIPLICATORE_POZZETTO, PENALITA_EROE_CADUTO, haEffetto, imponiEffetto, VARIANZA_MIN, VARIANZA_MAX, createMatch, chargeElapsedTime, abbandona, condizioneSoddisfatta, actionDraw, actionTakeDiscardPile, actionLayMeld, actionAttachToMeld, ABILITA_PERCENT_DEFAULT, usaAbilitaSpeciale, giocaCartaMagica, actionDiscard, checkTurnTimeout, checkVictory};
+return {TURN_SECONDS, MATCH_SECONDS, HAND_SIZE, POZZETTO_SIZE, CARTE_PER_PESCATA, SECONDI_DI_STUDIO, PUNTI_MAGIA_MAX, PUNTI_MAGIA_PER_TURNO, PUNTI_MAGIA_PRIMO_TURNO, COSTO_MAGIA_DEFAULT, COSTO_ABILITA_MASSIMO, costoAbilitaDi, costoDiCarta, MOLTIPLICATORE_POZZETTO, PENALITA_EROE_CADUTO, haEffetto, imponiEffetto, VARIANZA_MIN, VARIANZA_MAX, createMatch, chargeElapsedTime, abbandona, condizioneSoddisfatta, actionDraw, actionTakeDiscardPile, actionLayMeld, actionAttachToMeld, ABILITA_PERCENT_DEFAULT, usaAbilitaSpeciale, giocaCartaMagica, actionDiscard, checkTurnTimeout, checkVictory};
 })();
 
 // ===== engine/bot.js (incorporato) =====

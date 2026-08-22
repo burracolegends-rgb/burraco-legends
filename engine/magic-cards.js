@@ -380,6 +380,52 @@ export function applyEffect(card, ctx) {
       }
       return { ok: true, applied: puliti > 0, colpiti: suits, puliti };
     }
+    // UNA CICATRICE, NON UN MALUS A TEMPO.
+    // Il morso del Boitata' rende piu' cara per sempre l'abilita' del
+    // personaggio colpito. Il tetto ("fino a un massimo di 7 pm") non si
+    // applica qui ma dove il costo viene letto: qui si accumula soltanto
+    // il sovrapprezzo, cosi' due morsi non si perdono per strada anche
+    // se il tetto e' gia' stato raggiunto.
+    case 'costo_abilita_extra': {
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      for (const s of suits) pool[s].costoExtra = (pool[s].costoExtra || 0) + param;
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
+    }
+    // LA CONVERSIONE: ribalta l'ultimo intervento sulle difese.
+    // Arriva sempre da una trappola, quindi qui "caster" e' chi ha
+    // armato la carta e "opponent" e' chi ha appena toccato le difese.
+    // Due casi, e sono simmetrici:
+    //   - si e' dato un BONUS  -> glielo tolgo e me lo prendo
+    //   - mi ha messo un MALUS -> me lo tolgo e glielo rimando
+    // In tutti e due i casi il totale sul tavolo non cambia: si sposta
+    // di lato. Non e' una copia — moltiplicare gli effetti sarebbe un
+    // altro gioco.
+    case 'converti_difesa': {
+      const ev = ctx.dettagliEvento;
+      if (!ev || !ev.colpiti || !ev.colpiti.length) {
+        return { ok: true, applied: false, note: 'nessun intervento sulle difese da convertire' };
+      }
+      const quanto = Number(ev.parametro) || 0;
+      if (!quanto) return { ok: true, applied: false, note: 'intervento di valore nullo' };
+
+      const miei = ctx.casterCharacters, suoi = ctx.opponentCharacters;
+      // il segno con cui l'effetto era stato applicato: un bonus alza la
+      // difesa, un malus la abbassa
+      const segno = ev.effect === 'riduci_difesa' ? -1 : 1;
+
+      for (const s of ev.colpiti) {
+        if (ev.suProprietario) {
+          // era addosso a ME (tipicamente un malus): me lo tolgo e va a lui
+          if (miei[s]) miei[s].difesaPercent = (miei[s].difesaPercent || 0) - segno * quanto;
+          if (suoi[s]) suoi[s].difesaPercent = (suoi[s].difesaPercent || 0) + segno * quanto;
+        } else {
+          // era addosso a LUI (tipicamente un bonus che si era dato): glielo rubo
+          if (suoi[s]) suoi[s].difesaPercent = (suoi[s].difesaPercent || 0) - segno * quanto;
+          if (miei[s]) miei[s].difesaPercent = (miei[s].difesaPercent || 0) + segno * quanto;
+        }
+      }
+      return { ok: true, applied: true, convertiti: ev.colpiti, quanto, era: ev.effect };
+    }
     // DISTRUGGE LE TRAPPOLE AVVERSARIE.
     // Sempre l'avversario: ctx.magicStateOpponent (non magicStateCaster).
     // Se non arriva — un punto vecchio che ancora non passa questo campo

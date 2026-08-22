@@ -475,5 +475,63 @@ function partita(magiche) {
   check('e non racconta nessun "effettiAbilita" (non ne ha)', r2.effettiAbilita === undefined);
 }
 
+// --- 19. LA CONVERSIONE: ruba i bonus, rispedisce i malus ---
+// La carta piu' complicata del roster (S05). Aspetta coperta che
+// l'avversario metta mano alle difese e ribalta quello che ha fatto.
+// E' l'unica trappola che ha bisogno di sapere non solo CHE cosa e'
+// successo, ma COME: quanto, e su chi.
+{
+  const CONVERSIONE = {
+    id: 't_conv', tipo: 'trappola', durata_turni: 0,
+    effect: 'converti_difesa', trigger: 'avversario_tocca_difesa', target: 'se_stesso'
+  };
+  // caso A: l'avversario si DA' un bonus di difesa -> glielo rubo
+  {
+    const SI_DIFENDE = { id: 's_dif', tipo: 'sorpresa', trigger: 'on_activate',
+      effect: 'boost_difesa', parametro: '30', target: 'tutti_alleati', durata_turni: 3 };
+    const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5,
+      magiche: [[SI_DIFENDE], [CONVERSIONE]] });
+
+    // il giocatore 1 arma la Conversione
+    state.currentPlayerIndex = 1;
+    giocaCartaMagica(state, 1, 0, T0 + 1000);
+    check('la Conversione si arma coperta', state.players[1].magic.trappoleArmate.length === 1);
+
+    // il giocatore 0 si da' un bonus di difesa
+    state.currentPlayerIndex = 0;
+    giocaCartaMagica(state, 0, 0, T0 + 2000);
+
+    check('IL BONUS GLI E STATO RUBATO', state.players[0].characters['♥'].difesaPercent === 0);
+    check('ed e passato a chi aveva la Conversione', state.players[1].characters['♥'].difesaPercent === 30);
+    check('la trappola si e consumata', state.players[1].magic.trappoleArmate.length === 0);
+  }
+
+  // caso B: l'avversario mi mette un MALUS -> glielo rimando indietro
+  {
+    const MI_INDEBOLISCE = { id: 's_mal', tipo: 'sorpresa', trigger: 'on_activate',
+      effect: 'riduci_difesa', parametro: '25', target: 'tutti_avversari', durata_turni: 2 };
+    const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5,
+      magiche: [[MI_INDEBOLISCE], [CONVERSIONE]] });
+
+    state.currentPlayerIndex = 1;
+    giocaCartaMagica(state, 1, 0, T0 + 1000);
+    state.currentPlayerIndex = 0;
+    giocaCartaMagica(state, 0, 0, T0 + 2000);
+
+    check('IL MALUS E TORNATO AL MITTENTE', state.players[0].characters['♥'].difesaPercent === -25);
+    check('e chi doveva subirlo e pulito', state.players[1].characters['♥'].difesaPercent === 0);
+  }
+
+  // caso C: senza Conversione armata, il bonus resta dov'e'
+  {
+    const SI_DIFENDE = { id: 's_dif2', tipo: 'sorpresa', trigger: 'on_activate',
+      effect: 'boost_difesa', parametro: '30', target: 'tutti_alleati', durata_turni: 3 };
+    const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, magiche: [[SI_DIFENDE], []] });
+    giocaCartaMagica(state, 0, 0, T0 + 1000);
+    check('senza Conversione il bonus resta a chi se lo e dato',
+      state.players[0].characters['♥'].difesaPercent === 30);
+  }
+}
+
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));
 process.exit(failures === 0 ? 0 : 1);
