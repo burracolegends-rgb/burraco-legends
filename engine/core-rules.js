@@ -386,14 +386,21 @@ export function sorteggioPrimoTurno(tallone) {
 
 // ------------------------------------------------------------
 // DIFESA
-// Stat fissa della carta personaggio (0-100, in genere 0-30): riduce in
-// percentuale QUALSIASI danno in arrivo, da qualunque fonte (calate,
-// abilità speciali, Carte Magiche, danno riflesso) — un punto unico, così
-// non c'è un tipo di colpo che la ignora per dimenticanza.
-// Si somma a `difesaPercent`, il bonus TEMPORANEO che l'effetto
-// `boost_difesa` mette sul personaggio (spec §6): stessa unità, stesso
-// tetto. Superato il tetto un personaggio sarebbe di fatto invulnerabile,
-// il che rompe la partita più di quanto la protegga.
+// Stat fissa della carta personaggio, CENTRATA SU 1: Difesa 1 è la base
+// neutra — il danno arriva così com'è, tolto dalla vita punto per punto
+// ("i punti spada"). Sopra 1 si incassa meno, sotto 1 si incassa di più.
+// Difesa 0,75 vuol dire il 25% di danno IN PIÙ rispetto alla base; Difesa
+// 1,25 vuol dire il 25% in meno. Non è una percentuale di riduzione
+// diretta: è un moltiplicatore travestito da voto, dove 1 è la
+// sufficienza.
+//
+// Vale su QUALSIASI danno in arrivo, da qualunque fonte (calate, abilità
+// speciali, Carte Magiche, danno riflesso) — un punto unico, così non
+// c'è un tipo di colpo che la ignora per dimenticanza.
+// Si somma a `difesaPercent`, il bonus TEMPORANEO che gli effetti
+// boost_difesa/riduci_difesa mettono sul personaggio: quello resta
+// espresso in punti percentuali (25 vuol dire 25, non 0,25), la stessa
+// unità con cui le carte scrivono i loro parametri.
 // ------------------------------------------------------------
 export const DIFESA_RIDUZIONE_MASSIMA = 80; // %
 
@@ -413,7 +420,12 @@ export const DIFESA_AMPLIFICAZIONE_MASSIMA = 100; // %, cioè danno al massimo r
 
 export function riduzioneDifesa(character) {
   if (!character) return 0;
-  const base = Number(character.difesa) || 0;
+  // Difesa 1 (o non impostata) è la base neutra: zero deviazione. Il
+  // valore della carta si converte subito in punti percentuali di
+  // scarto dalla base, così il resto della formula (e il tetto sotto)
+  // resta lo stesso, in una sola unità di misura.
+  const grezza = Number(character.difesa);
+  const base = (Number.isFinite(grezza) ? grezza - 1 : 0) * 100;
   const bonus = Number(character.difesaPercent) || 0;
   const somma = base + bonus;
   if (somma >= 0) return Math.min(DIFESA_RIDUZIONE_MASSIMA, somma) / 100;

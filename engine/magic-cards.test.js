@@ -219,19 +219,21 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
 }
 
 // --- LA DIFESA ABBASSATA FA INCASSARE DI PIU' ---
-// Prima la difesa si fermava a zero: "riduci del 25% la difesa" su un
-// personaggio con difesa 1 lo portava da 1% a 0%, cioe' un punto
-// percentuale di danno in piu'. Sei carte del roster non facevano
-// praticamente niente.
+// Prima la difesa si fermava a zero: "riduci del 25% la difesa" non
+// riusciva mai a far incassare più del normale. Sei carte del roster non
+// facevano praticamente niente.
+// Difesa è centrata su 1 (base neutra, danno pieno): il committente l'ha
+// chiarito dopo — 1 non è "il massimo che blocca tutto", è "nessuna
+// riduzione né amplificazione". Sotto 1 si incassa di più, sopra 1 di meno.
 {
   const miei = freshCharacters(), suoi = freshCharacters();
-  for (const s of SEMI) suoi[s].difesa = 1;              // come le carte vere
+  for (const s of SEMI) suoi[s].difesa = 1;              // come le carte vere: base neutra
   const ctx = { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 };
 
   applyEffect({ effect: 'riduci_difesa', parametro: '25', target: 'tutti_avversari', durata_turni: 2 }, ctx);
-  check('riduci_difesa porta la difesa sotto zero', suoi[SEMI[0]].difesaPercent === -25);
+  check('riduci_difesa mette un malus del 25%', suoi[SEMI[0]].difesaPercent === -25);
 
-  // 100 di danno su difesa 1-25 = -24 → si incassa il 24% in piu'.
+  // base neutra (0%) meno 25% = -25% → si incassa il 25% in piu'.
   // Serve un bersaglio con PV a sufficienza: con 100 PV il colpo lo
   // stenderebbe e la differenza si fermerebbe a 100, misurando il
   // pavimento dei PV invece dell'effetto della difesa.
@@ -239,11 +241,11 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
   const prima = suoi[SEMI[0]].pv;
   const netto = infliggiDanno(suoi[SEMI[0]], 100);
   check('e chi la subisce incassa PIU danno del normale', netto > 100);
-  check('esattamente il 24% in piu (difesa 1 meno 25)', Math.abs(netto - 124) < 1e-9);
-  check('e i PV calano di altrettanto', Math.abs((prima - suoi[SEMI[0]].pv) - 124) < 1e-9);
+  check('esattamente il 25% in piu (base neutra meno 25%)', Math.abs(netto - 125) < 1e-9);
+  check('e i PV calano di altrettanto', Math.abs((prima - suoi[SEMI[0]].pv) - 125) < 1e-9);
 
-  // ma non si va oltre il raddoppio
-  const corazzato = { pv: 1000, pvMax: 1000, difesa: 0, difesaPercent: -500 };
+  // ma non si va oltre il raddoppio, anche con un malus enorme sulla base neutra
+  const corazzato = { pv: 1000, pvMax: 1000, difesa: 1, difesaPercent: -500 };
   const p2 = corazzato.pv;
   infliggiDanno(corazzato, 100);
   check('il danno non puo comunque piu che raddoppiare', Math.abs((p2 - corazzato.pv) - 200) < 1e-9);

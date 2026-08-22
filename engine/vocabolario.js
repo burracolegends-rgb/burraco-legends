@@ -234,9 +234,13 @@ export const LIMITI = {
   lingue: ['it', 'en', 'es', 'pt'],
   tipiCarta: ['sorpresa', 'trappola'],
   semi: ['♥', '♦', '♣', '♠'],
+  // Difesa è centrata su 1 (la base neutra), non su 0: 1 vuol dire
+  // "danno pieno", sopra 1 se ne incassa meno, sotto 1 di più. Il tetto
+  // sta un po' più largo di 1,60 perché ci somma anche il bonus
+  // temporaneo di boost_difesa; il tetto assoluto (danno mai ridotto
+  // oltre l'80%, mai amplificato oltre il doppio) è in core-rules.js.
   difesaMin: 0,
-  difesaMax: 60      // oltre non si va: sommata al bonus temporaneo di boost_difesa
-                      // il tetto assoluto è DIFESA_RIDUZIONE_MASSIMA (core-rules.js, 80%)
+  difesaMax: 2
 };
 
 // ------------------------------------------------------------
@@ -321,7 +325,7 @@ export function controllaCartaPersonaggio(carta) {
   if (carta.difesa !== undefined) {
     const d = Number(carta.difesa);
     if (!Number.isFinite(d) || d < LIMITI.difesaMin || d > LIMITI.difesaMax) {
-      errori.push('"difesa" deve stare fra ' + LIMITI.difesaMin + ' e ' + LIMITI.difesaMax + ' (% di riduzione danno), trovato: ' + carta.difesa);
+      errori.push('"difesa" deve stare fra ' + LIMITI.difesaMin + ' e ' + LIMITI.difesaMax + ' (1 = base neutra, danno pieno), trovato: ' + carta.difesa);
     }
   }
 

@@ -4,7 +4,7 @@
   "rarita": 3,
   "vita": 120,
   "att": 105,
-  "difesa": 8,
+  "difesa": 1.08,
   "abilita": {
     "trigger": "attivazione_manuale",
     "effect": "danno_da_attacco",

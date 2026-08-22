@@ -1196,7 +1196,9 @@ function squadra(ids) {
   for (const id of ids) {
     const p = dati.personaggi[id];
     characters[p.seme] = {
-      pv: p.vita, pvMax: p.vita, att: p.att, difesa: p.difesa || 0, carica: 0, cardId: id, rarita: p.rarita || 1,
+      // Difesa è centrata su 1: senza il campo sulla carta, è la base
+      // neutra (danno pieno), non uno zero che amplificherebbe il danno.
+      pv: p.vita, pvMax: p.vita, att: p.att, difesa: p.difesa || 1, carica: 0, cardId: id, rarita: p.rarita || 1,
       turniCarica: p.turniCarica || 4   // quanti turni per riempire la barra dell'abilità
     };
     if (p.abilita) abilities[p.seme] = p.abilita;
@@ -1414,8 +1416,10 @@ function bcardPersonaggio(ch, seme, mio) {
       (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
       ' data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione) + '"' +
       ' data-stelle="' + stelle(ch.rarita) + '"' +
-      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) +
-        (ch.difesa ? ' · DIF ' + ch.difesa + '%' : '') + '"' +
+      // La Difesa non si mostra a schermo (richiesta del committente):
+      // conta lo stesso nel motore, ma con lo stesso valore su ogni
+      // carta di questo roster non c'e' niente da leggere confrontandola.
+      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) + '"' +
       ' data-carica="Abilità speciale: costa ' + costoAbilita(ch) + ' punti magia' +
         (giaUsata ? ' · ha già colpito in questo turno' : '') +
         (ch.pv <= 0 ? ' · eroe caduto: i suoi colpi valgono l\'80%' : '') + '">' +

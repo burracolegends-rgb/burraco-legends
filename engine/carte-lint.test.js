@@ -94,18 +94,25 @@ check('ci sono carte da controllare', carte.length > 0);
 // nessuno lo leggeva). Qui non basta cercare la parola nel codice: si fa
 // girare `infliggiDanno` per davvero e si controlla il risultato.
 {
-  const bersaglio = { pv: 100, pvMax: 100, difesa: 20 };
+  // Difesa è centrata su 1 (base neutra, danno pieno): 1,20 vuol dire il
+  // 20% di riduzione, non "20 punti" come nella vecchia unità di misura.
+  const bersaglio = { pv: 100, pvMax: 100, difesa: 1.20 };
   const nettoRidotto = infliggiDanno(bersaglio, 50);
-  check('20 di difesa riduce 50 di danno a 40', Math.abs(nettoRidotto - 40) < 1e-9);
+  check('difesa 1,20 riduce 50 di danno a 40', Math.abs(nettoRidotto - 40) < 1e-9);
   check('e i PV calano di altrettanto', Math.abs(bersaglio.pv - 60) < 1e-9);
 
   const senzaDifesa = { pv: 100, pvMax: 100 };
   const nettoPieno = infliggiDanno(senzaDifesa, 50);
-  check('senza "difesa" il danno resta pieno (com\'era prima)', nettoPieno === 50);
+  check('senza "difesa" il danno resta pieno (base neutra)', nettoPieno === 50);
 
-  const corazzato = { pv: 100, pvMax: 100, difesa: 95 };
+  const corazzato = { pv: 100, pvMax: 100, difesa: 1.95 };
   const nettoTetto = infliggiDanno(corazzato, 50);
   check('la difesa non supera mai il tetto massimo (80%): resta almeno il 20% del danno', Math.abs(nettoTetto - 10) < 1e-9);
+
+  // e sotto la base neutra si incassa di più, non di meno
+  const fragile = { pv: 1000, pvMax: 1000, difesa: 0.75 };
+  const nettoAmplificato = infliggiDanno(fragile, 100);
+  check('difesa 0,75 (sotto la base) fa incassare il 25% in più', Math.abs(nettoAmplificato - 125) < 1e-9);
 }
 
 // --- 4ter. LA DOTAZIONE INIZIALE REGALA CARTE CHE ESISTONO DAVVERO ---

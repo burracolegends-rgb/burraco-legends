@@ -385,7 +385,8 @@ function figurina(c) {
     '<span class="simbolo" style="color:' + st.colore + '">' + simboloDi(c) + '</span>' +
     '<span class="nome">' + t.nome + '</span>' +
     '<span class="stelle">' + stelle(r) + '</span>' +
-    '<span class="stat">' + (c.seme ? c.vita + ' PV · ' + c.att + ' ATT' + (c.difesa ? ' · ' + c.difesa + '% DIF' : '') : (c.tipo === 'trappola' ? 'Trappola' : 'Sorpresa')) + '</span>' +
+    // Difesa non si mostra (richiesta del committente): conta nel motore, non a schermo.
+    '<span class="stat">' + (c.seme ? c.vita + ' PV · ' + c.att + ' ATT' : (c.tipo === 'trappola' ? 'Trappola' : 'Sorpresa')) + '</span>' +
   '</div>';
 }
 
@@ -464,8 +465,7 @@ function ingrandisci(id) {
       '<span class="nome">' + t.nome + '</span>' +
       '<span class="stelle">' + stelle(r) + '</span>' +
       (t.desc ? '<span class="desc">' + t.desc + '</span>' : '') +
-      (c.seme ? '<span class="numeri"><span><b>' + c.vita + '</b> PV</span><span><b>' + c.att + '</b> ATT</span>' +
-        (c.difesa ? '<span><b>' + c.difesa + '%</b> DIF</span>' : '') + '</span>' : '') +
+      (c.seme ? '<span class="numeri"><span><b>' + c.vita + '</b> PV</span><span><b>' + c.att + '</b> ATT</span></span>' : '') +
       (n > 1 ? '<span class="quante">Ne hai ' + n + ' copie</span>' : '<span class="quante">La tua unica copia</span>')
     : '<span class="simbolo" style="color:rgba(255,255,255,0.16)">' + simboloDi(c) + '</span>' +
       '<span class="nome" style="color:rgba(255,255,255,0.3)">? ? ?</span>' +

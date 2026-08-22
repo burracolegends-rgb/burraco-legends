@@ -733,7 +733,7 @@ function mostraCarta(i) {
   // prepara il fronte, ancora nascosto
   const simbolo = c.carta.seme || (c.carta.tipo === 'sorpresa' ? '✦' : '⚡');
   const stat = c.carta.vita
-    ? 'VITA ' + c.carta.vita + ' · ATT ' + c.carta.att + (c.carta.difesa ? ' · DIF ' + c.carta.difesa + '%' : '')
+    ? 'VITA ' + c.carta.vita + ' · ATT ' + c.carta.att
     : 'Costa ' + (c.carta.costo != null ? c.carta.costo : 4) + ' punti magia';
 
   $('fronte').style.setProperty('--bordo', st.colore);

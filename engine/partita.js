@@ -79,7 +79,8 @@ export const SECONDI_DI_STUDIO = 30;
 
 function defaultCharacters() {
   const chars = {};
-  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100, difesa: 0 };
+  // Difesa è centrata su 1: è la base neutra (danno pieno), non uno zero.
+  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100, difesa: 1 };
   return chars;
 }
 

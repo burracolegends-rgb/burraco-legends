@@ -2598,9 +2598,13 @@ const LIMITI = {
   lingue: ['it', 'en', 'es', 'pt'],
   tipiCarta: ['sorpresa', 'trappola'],
   semi: ['♥', '♦', '♣', '♠'],
+  // Difesa è centrata su 1 (la base neutra), non su 0: 1 vuol dire
+  // "danno pieno", sopra 1 se ne incassa meno, sotto 1 di più. Il tetto
+  // sta un po' più largo di 1,60 perché ci somma anche il bonus
+  // temporaneo di boost_difesa; il tetto assoluto (danno mai ridotto
+  // oltre l'80%, mai amplificato oltre il doppio) è in core-rules.js.
   difesaMin: 0,
-  difesaMax: 60      // oltre non si va: sommata al bonus temporaneo di boost_difesa
-                      // il tetto assoluto è DIFESA_RIDUZIONE_MASSIMA (core-rules.js, 80%)
+  difesaMax: 2
 };
 
 // ------------------------------------------------------------
@@ -2685,7 +2689,7 @@ function controllaCartaPersonaggio(carta) {
   if (carta.difesa !== undefined) {
     const d = Number(carta.difesa);
     if (!Number.isFinite(d) || d < LIMITI.difesaMin || d > LIMITI.difesaMax) {
-      errori.push('"difesa" deve stare fra ' + LIMITI.difesaMin + ' e ' + LIMITI.difesaMax + ' (% di riduzione danno), trovato: ' + carta.difesa);
+      errori.push('"difesa" deve stare fra ' + LIMITI.difesaMin + ' e ' + LIMITI.difesaMax + ' (1 = base neutra, danno pieno), trovato: ' + carta.difesa);
     }
   }
 
@@ -3145,14 +3149,21 @@ function sorteggioPrimoTurno(tallone) {
 
 // ------------------------------------------------------------
 // DIFESA
-// Stat fissa della carta personaggio (0-100, in genere 0-30): riduce in
-// percentuale QUALSIASI danno in arrivo, da qualunque fonte (calate,
-// abilità speciali, Carte Magiche, danno riflesso) — un punto unico, così
-// non c'è un tipo di colpo che la ignora per dimenticanza.
-// Si somma a `difesaPercent`, il bonus TEMPORANEO che l'effetto
-// `boost_difesa` mette sul personaggio (spec §6): stessa unità, stesso
-// tetto. Superato il tetto un personaggio sarebbe di fatto invulnerabile,
-// il che rompe la partita più di quanto la protegga.
+// Stat fissa della carta personaggio, CENTRATA SU 1: Difesa 1 è la base
+// neutra — il danno arriva così com'è, tolto dalla vita punto per punto
+// ("i punti spada"). Sopra 1 si incassa meno, sotto 1 si incassa di più.
+// Difesa 0,75 vuol dire il 25% di danno IN PIÙ rispetto alla base; Difesa
+// 1,25 vuol dire il 25% in meno. Non è una percentuale di riduzione
+// diretta: è un moltiplicatore travestito da voto, dove 1 è la
+// sufficienza.
+//
+// Vale su QUALSIASI danno in arrivo, da qualunque fonte (calate, abilità
+// speciali, Carte Magiche, danno riflesso) — un punto unico, così non
+// c'è un tipo di colpo che la ignora per dimenticanza.
+// Si somma a `difesaPercent`, il bonus TEMPORANEO che gli effetti
+// boost_difesa/riduci_difesa mettono sul personaggio: quello resta
+// espresso in punti percentuali (25 vuol dire 25, non 0,25), la stessa
+// unità con cui le carte scrivono i loro parametri.
 // ------------------------------------------------------------
 const DIFESA_RIDUZIONE_MASSIMA = 80; // %
 
@@ -3172,7 +3183,12 @@ const DIFESA_AMPLIFICAZIONE_MASSIMA = 100; // %, cioè danno al massimo raddoppi
 
 function riduzioneDifesa(character) {
   if (!character) return 0;
-  const base = Number(character.difesa) || 0;
+  // Difesa 1 (o non impostata) è la base neutra: zero deviazione. Il
+  // valore della carta si converte subito in punti percentuali di
+  // scarto dalla base, così il resto della formula (e il tetto sotto)
+  // resta lo stesso, in una sola unità di misura.
+  const grezza = Number(character.difesa);
+  const base = (Number.isFinite(grezza) ? grezza - 1 : 0) * 100;
   const bonus = Number(character.difesaPercent) || 0;
   const somma = base + bonus;
   if (somma >= 0) return Math.min(DIFESA_RIDUZIONE_MASSIMA, somma) / 100;
@@ -4013,7 +4029,8 @@ const SECONDI_DI_STUDIO = 30;
 
 function defaultCharacters() {
   const chars = {};
-  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100, difesa: 0 };
+  // Difesa è centrata su 1: è la base neutra (danno pieno), non uno zero.
+  for (const s of SUITS) chars[s] = { pv: 100, pvMax: 100, att: 100, difesa: 1 };
   return chars;
 }
 
@@ -5531,7 +5548,7 @@ const {botGiocaTurno} = __M_bot;
 // ===== dati carta incorporati da cards/data e cards/i18n =====
 const DATI_CARTE = {
   i18n: {"personaggio_001": {"nome": "Fiamma Ardente", "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo."}, "personaggio_002": {"nome": "Regina di Brace", "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta."}, "personaggio_003": {"nome": "Custode di Cristallo", "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile."}, "personaggio_004": {"nome": "Sovrano d'Ambra", "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa."}, "personaggio_005": {"nome": "Guardiano del Bosco", "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente."}, "personaggio_006": {"nome": "Spirito della Foresta Antica", "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso."}, "personaggio_007": {"nome": "Lama d'Ombra", "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista."}, "personaggio_008": {"nome": "Assassino delle Nebbie", "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte."}, "sorpresa_001": {"nome": "Fulmine Improvviso", "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita."}, "sorpresa_002": {"nome": "Furia di Battaglia", "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività."}, "trappola_001": {"nome": "Insidia nell'Ombra", "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare."}, "trappola_002": {"nome": "Specchio di Ritorsione", "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto."}, "sorpresa_003": {"nome": "Triplice Benedizione", "descrizione": "Un solo gesto e tre doni: colpisce l'avversario, risana un tuo eroe e ti concede una carta in più alla prossima pescata."}, "trappola_003": {"nome": "Sigillo del Disperato", "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."}},
-  personaggi: {"personaggio_001": {"id": "personaggio_001", "seme": "♥", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_002": {"id": "personaggio_002", "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_003": {"id": "personaggio_003", "seme": "♦", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_004": {"id": "personaggio_004", "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_005": {"id": "personaggio_005", "seme": "♣", "rarita": 2, "vita": 100, "att": 90, "difesa": 5, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_006": {"id": "personaggio_006", "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "difesa": 18, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_007": {"id": "personaggio_007", "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "difesa": 8, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_008": {"id": "personaggio_008", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}},
+  personaggi: {"personaggio_001": {"id": "personaggio_001", "seme": "♥", "rarita": 2, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_002": {"id": "personaggio_002", "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_003": {"id": "personaggio_003", "seme": "♦", "rarita": 2, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_004": {"id": "personaggio_004", "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_005": {"id": "personaggio_005", "seme": "♣", "rarita": 2, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_006": {"id": "personaggio_006", "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "difesa": 1.18, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_007": {"id": "personaggio_007", "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "difesa": 1.08, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_008": {"id": "personaggio_008", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}},
   magiche: {"sorpresa_001": {"id": "sorpresa_001", "tipo": "sorpresa", "rarita": 3, "effect": "danno_diretto", "parametro": "30", "trigger": "on_activate", "target": "avversario", "durata_turni": 0}, "sorpresa_002": {"id": "sorpresa_002", "tipo": "sorpresa", "rarita": 4, "effect": "boost_att", "parametro": "20", "trigger": "on_activate", "target": "se_stesso", "durata_turni": 2}, "sorpresa_003": {"id": "sorpresa_003", "tipo": "sorpresa", "rarita": 4, "trigger": "on_activate", "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.", "effetti": [{"effect": "danno_diretto", "parametro": "25", "target": "avversario", "durata_turni": 0}, {"effect": "cura_diretta", "parametro": "15", "target": "se_stesso", "durata_turni": 0}, {"effect": "pesca_extra", "parametro": "1", "target": "se_stesso", "durata_turni": 1}]}, "trappola_001": {"id": "trappola_001", "tipo": "trappola", "rarita": 2, "effect": "scarto_forzato", "parametro": "1", "trigger": "avversario_pesca", "target": "avversario", "durata_turni": 0}, "trappola_002": {"id": "trappola_002", "tipo": "trappola", "rarita": 5, "effect": "riflette_danno", "parametro": "50", "trigger": "subisco_danno", "target": "se_stesso", "durata_turni": 0}, "trappola_003": {"id": "trappola_003", "tipo": "trappola", "rarita": 5, "trigger": "avversario_usa_abilita", "target": "avversario", "effect": "skip_fase_attacco", "parametro": "", "durata_turni": 1, "_nota": "ESEMPIO DI CARTA CON CONDIZIONE: si schiera solo quando sei in difficoltà. Scatta quando l'avversario usa l'abilità di un eroe.", "condizione": {"tipo": "pv_totali_sotto", "parametro": 50, "chi": "io"}}}
 };
 
@@ -5631,7 +5648,9 @@ function squadra(ids) {
   for (const id of ids) {
     const p = dati.personaggi[id];
     characters[p.seme] = {
-      pv: p.vita, pvMax: p.vita, att: p.att, difesa: p.difesa || 0, carica: 0, cardId: id, rarita: p.rarita || 1,
+      // Difesa è centrata su 1: senza il campo sulla carta, è la base
+      // neutra (danno pieno), non uno zero che amplificherebbe il danno.
+      pv: p.vita, pvMax: p.vita, att: p.att, difesa: p.difesa || 1, carica: 0, cardId: id, rarita: p.rarita || 1,
       turniCarica: p.turniCarica || 4   // quanti turni per riempire la barra dell'abilità
     };
     if (p.abilita) abilities[p.seme] = p.abilita;
@@ -5849,8 +5868,10 @@ function bcardPersonaggio(ch, seme, mio) {
       (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
       ' data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione) + '"' +
       ' data-stelle="' + stelle(ch.rarita) + '"' +
-      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) +
-        (ch.difesa ? ' · DIF ' + ch.difesa + '%' : '') + '"' +
+      // La Difesa non si mostra a schermo (richiesta del committente):
+      // conta lo stesso nel motore, ma con lo stesso valore su ogni
+      // carta di questo roster non c'e' niente da leggere confrontandola.
+      ' data-stat="VITA ' + Math.round(ch.pv) + '/' + ch.pvMax + ' · ATT ' + Math.round(ch.att) + '"' +
       ' data-carica="Abilità speciale: costa ' + costoAbilita(ch) + ' punti magia' +
         (giaUsata ? ' · ha già colpito in questo turno' : '') +
         (ch.pv <= 0 ? ' · eroe caduto: i suoi colpi valgono l\'80%' : '') + '">' +

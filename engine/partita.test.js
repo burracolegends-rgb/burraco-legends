@@ -726,7 +726,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   attacker.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7]); // 5 carte, punti = 25, tier 5 → moltiplicatore ×1
   attacker.hand = [...meld, ...attacker.hand.slice(0, 6)];
-  state.players[1].characters['♥'].difesa = 20; // 20% di riduzione
+  state.players[1].characters['♥'].difesa = 1.20; // 20% di riduzione (1 = base neutra)
 
   const res = actionLayMeld(state, 0, meld.map((c) => c.id), T0 + 1000);
   check('il danno lordo delle carte resta 25 (la formula non cambia)', Math.abs(res.dannoCarte - 25) < 1e-9);
@@ -742,7 +742,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   const state = createMatch({ chiInizia: 0, now: T0, abilities: [{ '♥': abil }, {}], rng: () => 0.5 });
   state.players[0].puntiMagia = 15;
   state.players[0].characters['♥'].att = 100;         // 30 danni lordi
-  state.players[1].characters['♦'].difesa = 50;       // metà danno
+  state.players[1].characters['♦'].difesa = 1.50;     // metà danno
 
   const res = usaAbilitaSpeciale(state, 0, '♥', '♦', T0 + 1000);
   check('l\'abilità speciale rispetta la difesa del bersaglio (30 → 15)', Math.abs(state.players[1].characters['♦'].pv - 85) < 1e-9);
@@ -752,7 +752,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   const SORPRESA = { id: 's', tipo: 'sorpresa', effect: 'danno_diretto', parametro: '40', trigger: 'on_activate', target: 'avversario', durata_turni: 0, costo: 4 };
   const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0, magiche: [[SORPRESA], []] });
   state.players[0].puntiMagia = 15;
-  for (const s of ['♥', '♦', '♣', '♠']) state.players[1].characters[s].difesa = 25; // -25% ovunque
+  for (const s of ['♥', '♦', '♣', '♠']) state.players[1].characters[s].difesa = 1.25; // -25% ovunque
 
   giocaCartaMagica(state, 0, 0, T0 + 1000);
   const colpito = Object.values(state.players[1].characters).find((c) => c.pv < 100);
