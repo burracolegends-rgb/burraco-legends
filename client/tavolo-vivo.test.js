@@ -193,6 +193,38 @@ if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 &&
     ', punti ' + (prima && prima.players[0].puntiMagia));
 }
 
+// ---------- 5ter. LO SCUDO SI VEDE ----------
+// La Difesa era l'unica statistica invisibile: una carta che la
+// abbassava non mostrava niente nell'istante del colpo. Adesso c'e' uno
+// scudo su ogni personaggio, pieno al 100% quando la difesa e' quella
+// di base.
+{
+  const scudi = d.querySelectorAll('.bcard[data-seme] .scudo');
+  check('ogni personaggio ha il suo scudo (4 miei + 4 suoi)', scudi.length === 8,
+    'trovati ' + scudi.length);
+
+  // Le carte segnaposto di oggi hanno difese diverse fra loro (1,05-1,18),
+  // quindi i loro scudi stanno sopra il 100%: e' proprio quello che
+  // devono mostrare. Quando arriveranno le carte vere, tutte a difesa 1,
+  // saranno tutti pieni.
+  const pieni = [...scudi].filter((e) => e.classList.contains('intero'));
+  const diversi = [...scudi].filter((e) => !e.classList.contains('intero'));
+  check('ogni scudo e o pieno o diverso, mai un terzo stato',
+    pieni.length + diversi.length === scudi.length);
+
+  // la regola che conta: il numero compare SOLO quando c'e' qualcosa di
+  // diverso da raccontare
+  check('a scudo pieno il numero non compare',
+    pieni.every((e) => !e.querySelector('.valore')));
+  check('e quando NON e pieno il numero c e',
+    diversi.every((e) => !!e.querySelector('.valore')));
+
+  // il titolo dice sempre la percentuale, anche quando il numero non si vede
+  const titolo = scudi[0] && scudi[0].getAttribute('title');
+  check('lo scudo dice comunque quanto vale', /Scudo \d+%/.test(titolo || ''),
+    'titolo: ' + titolo);
+}
+
 // ---------- 5bis. l'abilita' che NON chiede di mirare ----------
 // NON COPERTO QUI, e vale la pena dire perche'.
 // Nessuna carta del roster vero dice "a scelta": il bersaglio lo decide

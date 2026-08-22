@@ -196,6 +196,41 @@ BATTLE_CSS = r'''
     .bcard .barra.carica.piena { box-shadow: 0 0 10px var(--charge); animation: caricaPiena 1s ease-in-out infinite; }
     @keyframes caricaPiena { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
 
+    /* ------------------------------------------------------------
+       LO SCUDO
+       La Difesa era l'unica statistica che non si vedeva mai. Risultato:
+       una carta che toglie il 25% di difesa non mostrava NIENTE nel
+       momento in cui colpiva — niente numero, niente barra, niente. Chi
+       la subiva se ne accorgeva solo al colpo dopo, che faceva più male
+       senza una ragione visibile.
+       Adesso c'è uno scudo, pieno al 100% quando la Difesa è quella di
+       base. Scende se qualcuno indebolisce le difese, sale se qualcuno
+       le rinforza — e in tutti e due i casi si vede succedere.
+       ------------------------------------------------------------ */
+    .bcard .scudo {
+      position: absolute; top: 2px; left: 2px; z-index: 3;
+      width: calc(var(--battle-w) * 0.30); height: calc(var(--battle-w) * 0.30);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.5s;
+    }
+    .bcard .scudo svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    /* il riempimento sale e scende: è il pieno dello scudo */
+    .bcard .scudo .riempi { transition: transform 0.8s cubic-bezier(0.22,0.61,0.36,1); transform-origin: 50% 100%; }
+    /* a scudo pieno il numero non serve: si vede solo l'icona, pulita.
+       Compare quando c'è qualcosa di diverso da raccontare — che è
+       esattamente il momento in cui deve attirare l'occhio. */
+    .bcard .scudo .valore {
+      position: absolute; font-size: calc(var(--battle-w) * 0.135); font-weight: 900;
+      color: #fff; text-shadow: 0 1px 2px #000, 0 0 4px #000; letter-spacing: -0.3px;
+    }
+    .bcard .scudo.intero { opacity: 0.55; }              /* pieno: presente ma discreto */
+    .bcard .scudo.rotto  { animation: scudoColpito 0.6s ease-out; }
+    @keyframes scudoColpito {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+
     /* La carta con l'abilità pronta si accende e diventa cliccabile */
     .bcard.pronta {
       cursor: pointer; border-color: var(--charge);
@@ -1427,8 +1462,47 @@ function bcardPersonaggio(ch, seme, mio) {
       '<div class="seme ' + (rosso ? 'rosso' : 'nero') + '">' + seme + '</div>' +
       '<div class="nome">' + t.nome + '</div>' +
       '<div class="stelle">' + stelle(ch.rarita) + '</div>' +
+      scudoHtml(ch) +
       '<div class="barra vita"><i style="width:' + pct + '%"></i></div>' +
     '</div>';
+}
+
+// LO SCUDO DI UN PERSONAGGIO.
+// La Difesa vive centrata su 1: 1 e' lo scudo pieno (danno pieno, nessuno
+// sconto), sotto si incassa di piu', sopra di meno. Qui si traduce quel
+// numero in qualcosa che si guarda: 1 -> 100%, 0,75 -> 75%, 1,25 -> 125%.
+// Ci si mette dentro anche il bonus/malus temporaneo (difesaPercent), che
+// e' proprio quello che le carte muovono: senza, lo scudo resterebbe
+// fermo mentre la partita cambia sotto.
+function scudoPercento(ch) {
+  const base = Number(ch.difesa);
+  const centro = Number.isFinite(base) ? base : 1;
+  const bonus = (Number(ch.difesaPercent) || 0) / 100;
+  return Math.round((centro + bonus) * 100);
+}
+
+function scudoHtml(ch) {
+  const v = scudoPercento(ch);
+  const pieno = v === 100;
+  // quanto e' "riempito" lo scudo: oltre il 100% resta pieno e a dirlo e'
+  // il numero, non si puo' riempire piu' del pieno
+  const quota = Math.max(0, Math.min(1, v / 100));
+  const colore = v > 100 ? '#8ad6ff' : (v < 100 ? '#ff9db0' : '#cbd6f5');
+  return '<div class="scudo ' + (pieno ? 'intero' : 'rotto') + '" ' +
+           'title="Scudo ' + v + '%">' +
+         '<svg viewBox="0 0 24 26" aria-hidden="true">' +
+           '<defs><clipPath id="sc' + (ch.cardId || '') + '">' +
+             '<path d="M12 1 L22 5 V13 C22 19 17 23 12 25 C7 23 2 19 2 13 V5 Z"/>' +
+           '</clipPath></defs>' +
+           '<path d="M12 1 L22 5 V13 C22 19 17 23 12 25 C7 23 2 19 2 13 V5 Z" ' +
+                 'fill="rgba(0,0,0,0.55)" stroke="' + colore + '" stroke-width="1.4"/>' +
+           '<g clip-path="url(#sc' + (ch.cardId || '') + ')">' +
+             '<rect class="riempi" x="0" y="0" width="24" height="26" fill="' + colore + '" ' +
+                   'opacity="0.45" style="transform:scaleY(' + quota + ')"/>' +
+           '</g>' +
+         '</svg>' +
+         (pieno ? '' : '<span class="valore">' + v + '%</span>') +
+       '</div>';
 }
 
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
