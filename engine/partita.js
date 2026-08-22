@@ -412,6 +412,8 @@ function scattaTrappole(state, proprietarioIndex, evento) {
       tallone: state.tallone,
       magicStateCaster: ms,
       magicStateOpponent: vittima.magic,
+      casterPlayer: proprietario, opponentPlayer: vittima,
+      puntiMagiaMax: PUNTI_MAGIA_MAX,
       rng: state.rng          // il caso della partita, non quello del processo
     };
     const esito = checkTrapTrigger(ms, evento, null, ctx);
@@ -480,10 +482,12 @@ const EFFETTI_DI_FLUSSO = [
 
 // Fa scattare un'abilità a evento su ciascuno dei 4 personaggi del
 // proprietario (spec §7: agganciata a trigger del game loop già esistenti).
-function fireAbilityEvent(ownerCharacters, otherCharacters, eventName, ownerMagic, otherMagic) {
+function fireAbilityEvent(ownerCharacters, otherCharacters, eventName, ownerMagic, otherMagic, ownerPlayer, otherPlayer) {
   const ctx = {
     casterCharacters: ownerCharacters, opponentCharacters: otherCharacters,
-    magicStateCaster: ownerMagic, magicStateOpponent: otherMagic
+    magicStateCaster: ownerMagic, magicStateOpponent: otherMagic,
+    casterPlayer: ownerPlayer, opponentPlayer: otherPlayer,
+    puntiMagiaMax: PUNTI_MAGIA_MAX
   };
   for (const s of SUITS) checkAbilityTrigger(ownerCharacters[s], s, eventName, ctx);
 }
@@ -530,7 +534,9 @@ function nextTurn(state, nowMs) {
   // all'inizio del proprio turno (spec §7: cicliche a turni fissi).
   const ctx = {
     casterCharacters: player.characters, opponentCharacters: opponent.characters,
-    magicStateCaster: player.magic, magicStateOpponent: opponent.magic
+    magicStateCaster: player.magic, magicStateOpponent: opponent.magic,
+    casterPlayer: player, opponentPlayer: opponent,
+    puntiMagiaMax: PUNTI_MAGIA_MAX
   };
   for (const s of SUITS) tickCharacterAbility(player.characters[s], s, ctx);
 }
@@ -880,7 +886,7 @@ function concludiCalata(state, playerIndex, result) {
       player.pozzetto = [];
       player.pozzettoTaken = true;
       result.pozzettoPreso = true;
-      fireAbilityEvent(player.characters, defender.characters, 'on_pozzetto', player.magic, defender.magic);
+      fireAbilityEvent(player.characters, defender.characters, 'on_pozzetto', player.magic, defender.magic, player, defender);
     } else if (player.pozzettoTaken) {
       // seconda volta a zero carte, dopo aver già usato il pozzetto: chiusura
       if (hasQualifyingMeld(player)) {
@@ -889,7 +895,7 @@ function concludiCalata(state, playerIndex, result) {
         state.winReason = 'chiusura_al_volo';
         result.matchEnded = true;
         result.winReason = 'chiusura_al_volo';
-        fireAbilityEvent(player.characters, defender.characters, 'on_chiusura', player.magic, defender.magic);
+        fireAbilityEvent(player.characters, defender.characters, 'on_chiusura', player.magic, defender.magic, player, defender);
       }
       // se non ha ancora un burraco da 5+, resta a mani vuote: dovrà scartare
       // dell'ultima carta pescata al turno successivo — caso limite, non
@@ -1045,6 +1051,8 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
     const ctxEffetti = {
       casterCharacters: player.characters, opponentCharacters: defender.characters,
       magicStateCaster: player.magic, magicStateOpponent: defender.magic,
+      casterPlayer: player, opponentPlayer: defender,
+      puntiMagiaMax: PUNTI_MAGIA_MAX,
       suit: semeAttaccante, rng: state.rng
     };
     result.effettiAbilita = altriEffetti.map((e) => ({ effect: e.effect, ...applyEffect(e, ctxEffetti) }));
@@ -1108,6 +1116,10 @@ export function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.n
     casterHand: player.hand, opponentHand: avversario.hand,
     scarti: state.scarti, tallone: state.tallone, magicStateCaster: ms,
     magicStateOpponent: avversario.magic,   // serve a chi distrugge le Trappole altrui
+    // I GIOCATORI, non solo i loro personaggi: i punti magia sono una
+    // riserva unica del giocatore, non stanno su una carta.
+    casterPlayer: player, opponentPlayer: avversario,
+    puntiMagiaMax: PUNTI_MAGIA_MAX,
     rng: state.rng            // il caso della partita, non quello del processo
   };
 
@@ -1189,7 +1201,8 @@ export function actionDiscard(state, playerIndex, cardId, nowMs) {
     player.pozzetto = [];
     player.pozzettoTaken = true;
     fireAbilityEvent(player.characters, state.players[opponentIndex(playerIndex)].characters, 'on_pozzetto',
-      player.magic, state.players[opponentIndex(playerIndex)].magic);
+      player.magic, state.players[opponentIndex(playerIndex)].magic,
+      player, state.players[opponentIndex(playerIndex)]);
     nextTurn(state, nowMs);
     return { ok: true, pozzettoPreso: true };
   }
@@ -1199,7 +1212,8 @@ export function actionDiscard(state, playerIndex, cardId, nowMs) {
     state.winner = playerIndex;
     state.winReason = 'chiusura';
     fireAbilityEvent(player.characters, state.players[opponentIndex(playerIndex)].characters, 'on_chiusura',
-      player.magic, state.players[opponentIndex(playerIndex)].magic);
+      player.magic, state.players[opponentIndex(playerIndex)].magic,
+      player, state.players[opponentIndex(playerIndex)]);
     return { ok: true, matchEnded: true, winReason: 'chiusura' };
   }
 

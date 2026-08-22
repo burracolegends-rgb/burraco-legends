@@ -397,11 +397,27 @@ export function sorteggioPrimoTurno(tallone) {
 // ------------------------------------------------------------
 export const DIFESA_RIDUZIONE_MASSIMA = 80; // %
 
+// E QUANDO LA DIFESA VA SOTTO ZERO?
+// Prima si fermava a zero: una difesa "ridotta" non poteva fare altro
+// che annullare quella che c'era. Con le carte vere quel pavimento
+// rendeva senza effetto sei abilità in un colpo solo — "riduce del 25%
+// la difesa di tutti gli avversari" su un personaggio con difesa 1
+// voleva dire portarlo da 1% a 0%, cioè un punto percentuale di danno
+// in più. Una carta che non fa niente.
+//
+// Quindi la difesa negativa vale davvero: si incassa PIÙ danno, tanto
+// quanto dice il segno meno. È anche la lettura naturale di "ti abbasso
+// le difese". Il limite dall'altra parte esiste lo stesso: al massimo
+// si arriva a incassare il doppio, non di più.
+export const DIFESA_AMPLIFICAZIONE_MASSIMA = 100; // %, cioè danno al massimo raddoppiato
+
 export function riduzioneDifesa(character) {
   if (!character) return 0;
   const base = Number(character.difesa) || 0;
   const bonus = Number(character.difesaPercent) || 0;
-  return Math.min(DIFESA_RIDUZIONE_MASSIMA, Math.max(0, base + bonus)) / 100;
+  const somma = base + bonus;
+  if (somma >= 0) return Math.min(DIFESA_RIDUZIONE_MASSIMA, somma) / 100;
+  return Math.max(-DIFESA_AMPLIFICAZIONE_MASSIMA, somma) / 100;
 }
 
 // Applica il danno con la difesa già scontata, aggiorna i PV (mai sotto

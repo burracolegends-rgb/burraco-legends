@@ -1,6 +1,6 @@
 // Verifica del motore Carte Magiche. Uso: node engine/magic-cards.test.js
 
-import { makeCard } from './core-rules.js';
+import { makeCard, infliggiDanno } from './core-rules.js';
 import {
   validateSelection, makeMagicState, activateSorpresa, armTrappola,
   tickTrapExpiry, checkTrapTrigger, tickActiveEffects, applyEffect, resetTurnoMagie
@@ -216,6 +216,120 @@ const trappolaScarto = { id: 't1', tipo: 'trappola', effect: 'scarto_forzato', p
     { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 });
   check('una cura ad area NON riporta in vita chi e caduto', miei[SEMI[0]].pv === 0);
   check('mentre gli altri restano curati', miei[SEMI[1]].pv === 100);
+}
+
+// --- LA DIFESA ABBASSATA FA INCASSARE DI PIU' ---
+// Prima la difesa si fermava a zero: "riduci del 25% la difesa" su un
+// personaggio con difesa 1 lo portava da 1% a 0%, cioe' un punto
+// percentuale di danno in piu'. Sei carte del roster non facevano
+// praticamente niente.
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  for (const s of SEMI) suoi[s].difesa = 1;              // come le carte vere
+  const ctx = { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 };
+
+  applyEffect({ effect: 'riduci_difesa', parametro: '25', target: 'tutti_avversari', durata_turni: 2 }, ctx);
+  check('riduci_difesa porta la difesa sotto zero', suoi[SEMI[0]].difesaPercent === -25);
+
+  // 100 di danno su difesa 1-25 = -24 → si incassa il 24% in piu'.
+  // Serve un bersaglio con PV a sufficienza: con 100 PV il colpo lo
+  // stenderebbe e la differenza si fermerebbe a 100, misurando il
+  // pavimento dei PV invece dell'effetto della difesa.
+  suoi[SEMI[0]].pvMax = 1000; suoi[SEMI[0]].pv = 1000;
+  const prima = suoi[SEMI[0]].pv;
+  const netto = infliggiDanno(suoi[SEMI[0]], 100);
+  check('e chi la subisce incassa PIU danno del normale', netto > 100);
+  check('esattamente il 24% in piu (difesa 1 meno 25)', Math.abs(netto - 124) < 1e-9);
+  check('e i PV calano di altrettanto', Math.abs((prima - suoi[SEMI[0]].pv) - 124) < 1e-9);
+
+  // ma non si va oltre il raddoppio
+  const corazzato = { pv: 1000, pvMax: 1000, difesa: 0, difesaPercent: -500 };
+  const p2 = corazzato.pv;
+  infliggiDanno(corazzato, 100);
+  check('il danno non puo comunque piu che raddoppiare', Math.abs((p2 - corazzato.pv) - 200) < 1e-9);
+}
+
+// --- riduci_difesa scade e restituisce la difesa ---
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  const ms = makeMagicState([]);
+  const ctx = { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 };
+  const r = applyEffect({ effect: 'riduci_difesa', parametro: '30', target: 'tutti_avversari', durata_turni: 2 }, ctx);
+  ms.effettiAttivi.push(r.effettoAttivo);
+
+  tickActiveEffects(ms, miei, suoi);
+  check('dopo un turno il malus di difesa e ancora addosso', suoi[SEMI[0]].difesaPercent === -30);
+  tickActiveEffects(ms, miei, suoi);
+  check('scaduto, la difesa torna com era', suoi[SEMI[0]].difesaPercent === 0);
+}
+
+// --- boost_att_percentuale: ricorda QUANTO aveva aggiunto ---
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  miei[SEMI[0]].att = 180;                     // un eroe forte
+  miei[SEMI[1]].att = 80;                      // e uno debole
+  const ms = makeMagicState([]);
+  const r = applyEffect({ effect: 'boost_att_percentuale', parametro: '50', target: 'tutti_alleati', durata_turni: 2 },
+    { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 });
+  ms.effettiAttivi.push(r.effettoAttivo);
+  check('il forte guadagna il 50% del SUO attacco (180 -> 270)', miei[SEMI[0]].att === 270);
+  check('il debole il 50% del suo (80 -> 120)', miei[SEMI[1]].att === 120);
+
+  // nel frattempo l ATT cambia per altre ragioni: la scadenza non deve
+  // ricalcolare, deve togliere quello che aveva aggiunto allora
+  miei[SEMI[0]].att += 100;
+  tickActiveEffects(ms, miei, suoi);
+  tickActiveEffects(ms, miei, suoi);
+  check('scaduto, toglie ESATTAMENTE quanto aveva aggiunto', miei[SEMI[0]].att === 280);
+  check('e anche sul debole il conto torna', miei[SEMI[1]].att === 80);
+}
+
+// --- cura_percentuale ---
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  miei[SEMI[0]].pvMax = 200; miei[SEMI[0]].pv = 50;
+  applyEffect({ effect: 'cura_percentuale', parametro: '20', target: 'tutti_alleati', durata_turni: 0 },
+    { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 });
+  check('cura_percentuale guarda i PV MASSIMI di ciascuno (20% di 200 = 40)', miei[SEMI[0]].pv === 90);
+  check('e non supera mai il massimo', miei[SEMI[1]].pv === 100);
+}
+
+// --- pulisci_malus_difesa: toglie i malus, lascia i bonus ---
+{
+  const miei = freshCharacters(), suoi = freshCharacters();
+  miei[SEMI[0]].difesaPercent = -30;           // un malus subito
+  miei[SEMI[1]].difesaPercent = 20;            // un bonus in corso
+  const r = applyEffect({ effect: 'pulisci_malus_difesa', target: 'tutti_alleati', durata_turni: 0 },
+    { casterCharacters: miei, opponentCharacters: suoi, rng: () => 0 });
+  check('il malus di difesa viene tolto', miei[SEMI[0]].difesaPercent === 0);
+  check('ma un BONUS in corso non si perde', miei[SEMI[1]].difesaPercent === 20);
+  check('e dice quanti ne ha puliti', r.puliti === 1);
+}
+
+// --- punti magia: si tolgono e si danno, con pavimento e tetto ---
+{
+  const io = { puntiMagia: 3 }, lui = { puntiMagia: 10 };
+  const ctx = { casterCharacters: freshCharacters(), opponentCharacters: freshCharacters(),
+                casterPlayer: io, opponentPlayer: lui, puntiMagiaMax: 15, rng: () => 0 };
+
+  const r = applyEffect({ effect: 'riduci_punti_magia', parametro: '3', target: 'avversario', durata_turni: 0 }, ctx);
+  check('riduci_punti_magia toglie i punti allavversario', lui.puntiMagia === 7 && r.tolti === 3);
+  check('e non tocca i miei', io.puntiMagia === 3);
+
+  lui.puntiMagia = 1;
+  applyEffect({ effect: 'riduci_punti_magia', parametro: '5', target: 'avversario', durata_turni: 0 }, ctx);
+  check('non si scende mai sotto zero', lui.puntiMagia === 0);
+
+  applyEffect({ effect: 'aumenta_punti_magia', parametro: '2', target: 'se_stesso', durata_turni: 0 }, ctx);
+  check('aumenta_punti_magia da punti a ME', io.puntiMagia === 5);
+
+  io.puntiMagia = 14;
+  applyEffect({ effect: 'aumenta_punti_magia', parametro: '5', target: 'se_stesso', durata_turni: 0 }, ctx);
+  check('e non si supera il tetto del gioco', io.puntiMagia === 15);
+
+  const senzaGiocatori = applyEffect({ effect: 'riduci_punti_magia', parametro: '1', target: 'avversario', durata_turni: 0 },
+    { casterCharacters: freshCharacters(), opponentCharacters: freshCharacters() });
+  check('senza giocatori nel contesto non esplode', senzaGiocatori.ok === true && senzaGiocatori.applied === false);
 }
 
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));

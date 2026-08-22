@@ -78,6 +78,24 @@ export const EFFETTI = {
   boost_difesa:         { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Riduce il danno subito per qualche turno' },
   ricarica_sorpresa:    { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' },
 
+  // --- punti magia (immediati) ---
+  // I punti magia sono la benzina delle abilità: toglierli è un modo di
+  // colpire che non passa dai PV. Sette carte del roster lo fanno.
+  riduci_punti_magia:   { categoria: 'punti_magia', momento: 'immediato', parametro: 'numero', descrizione: 'Toglie punti magia (mai sotto zero)' },
+  aumenta_punti_magia:  { categoria: 'punti_magia', momento: 'immediato', parametro: 'numero', descrizione: 'Restituisce punti magia, senza superare il tetto' },
+
+  // --- cura e potenziamenti in PERCENTUALE ---
+  // Le carte vere parlano quasi sempre in percentuale ("cura del 20%",
+  // "aumenta l'attacco del 30%"), mentre gli effetti che c'erano
+  // lavoravano solo a numeri fissi. Sono effetti distinti e non una
+  // variante degli altri, perché quando scadono vanno tolti in modo
+  // diverso: di un aumento percentuale bisogna ricordare QUANTO era
+  // stato aggiunto, o togliendolo si sbaglierebbe il conto.
+  cura_percentuale:     { categoria: 'danno_cura', momento: 'immediato', parametro: 'numero', descrizione: 'Restituisce una % dei PV massimi' },
+  boost_att_percentuale:{ categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Aumenta l\'ATT di una % per qualche turno' },
+  riduci_difesa:        { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Abbassa la difesa per qualche turno: si incassa più danno' },
+  pulisci_malus_difesa: { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Toglie i malus di difesa da chi lo subisce' },
+
   // --- trappole (immediato) ---
   // Prima carta a chiederlo (Papa Figo, "Attacco notturno"): distrugge le
   // Trappole armate dell'avversario, sempre — non serve un "target" a

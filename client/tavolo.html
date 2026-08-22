@@ -2442,6 +2442,24 @@ const EFFETTI = {
   boost_difesa:         { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Riduce il danno subito per qualche turno' },
   ricarica_sorpresa:    { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' },
 
+  // --- punti magia (immediati) ---
+  // I punti magia sono la benzina delle abilità: toglierli è un modo di
+  // colpire che non passa dai PV. Sette carte del roster lo fanno.
+  riduci_punti_magia:   { categoria: 'punti_magia', momento: 'immediato', parametro: 'numero', descrizione: 'Toglie punti magia (mai sotto zero)' },
+  aumenta_punti_magia:  { categoria: 'punti_magia', momento: 'immediato', parametro: 'numero', descrizione: 'Restituisce punti magia, senza superare il tetto' },
+
+  // --- cura e potenziamenti in PERCENTUALE ---
+  // Le carte vere parlano quasi sempre in percentuale ("cura del 20%",
+  // "aumenta l'attacco del 30%"), mentre gli effetti che c'erano
+  // lavoravano solo a numeri fissi. Sono effetti distinti e non una
+  // variante degli altri, perché quando scadono vanno tolti in modo
+  // diverso: di un aumento percentuale bisogna ricordare QUANTO era
+  // stato aggiunto, o togliendolo si sbaglierebbe il conto.
+  cura_percentuale:     { categoria: 'danno_cura', momento: 'immediato', parametro: 'numero', descrizione: 'Restituisce una % dei PV massimi' },
+  boost_att_percentuale:{ categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Aumenta l\'ATT di una % per qualche turno' },
+  riduci_difesa:        { categoria: 'personaggi', momento: 'immediato', parametro: 'numero', conDurata: true, descrizione: 'Abbassa la difesa per qualche turno: si incassa più danno' },
+  pulisci_malus_difesa: { categoria: 'personaggi', momento: 'immediato', parametro: 'nessuno', descrizione: 'Toglie i malus di difesa da chi lo subisce' },
+
   // --- trappole (immediato) ---
   // Prima carta a chiederlo (Papa Figo, "Attacco notturno"): distrugge le
   // Trappole armate dell'avversario, sempre — non serve un "target" a
@@ -2491,13 +2509,23 @@ const TRIGGER_ABILITA = {
 // carta diventerebbe un'altra decisione da prendere e il turno si
 // allungherebbe. `personaggio_specifico` è quindi riservato alle abilità.
 // ------------------------------------------------------------
+// Un bersaglio dice due cose insieme: da CHE PARTE del tavolo (i miei o
+// i suoi) e QUANTI. La vecchia parola "tutti" ne diceva solo una, e
+// l'altra la indovinava l'effetto: "tutti" voleva dire "tutti i nemici"
+// su un danno e "tutti i miei" su una cura. Nessuna carta l'ha mai usata
+// — per fortuna, perché rendeva inesprimibile "riduci la difesa di tutti
+// gli avversari". Al suo posto ci sono due parole che non si possono
+// fraintendere. I personaggi a zero PV non contano mai: né da colpire
+// (danno sprecato) né da curare (sarebbe una resurrezione).
 const BERSAGLI = {
-  avversario:            'un personaggio avversario (a caso fra quelli vivi)',
-  se_stesso:             'un proprio personaggio',
-  personaggio_specifico: 'un personaggio scelto dal giocatore — SOLO nelle abilità speciali',
-  tutti:                 'tutti e quattro i personaggi'
+  avversario:            'un personaggio avversario, a caso fra quelli vivi',
+  tutti_avversari:       'tutti i personaggi avversari ancora vivi',
+  se_stesso:             'il personaggio che agisce (o tutti i propri, se nessuno agisce)',
+  alleato_casuale:       'un proprio personaggio, a caso fra quelli vivi',
+  tutti_alleati:         'tutti i propri personaggi ancora vivi',
+  personaggio_specifico: 'un personaggio scelto dal giocatore — SOLO nelle abilità speciali'
 };
-const BERSAGLI_CARTE_MAGICHE = ['avversario', 'se_stesso', 'tutti'];
+const BERSAGLI_CARTE_MAGICHE = ['avversario', 'tutti_avversari', 'se_stesso', 'alleato_casuale', 'tutti_alleati'];
 
 // ------------------------------------------------------------
 // CONDIZIONI
@@ -3107,11 +3135,27 @@ function sorteggioPrimoTurno(tallone) {
 // ------------------------------------------------------------
 const DIFESA_RIDUZIONE_MASSIMA = 80; // %
 
+// E QUANDO LA DIFESA VA SOTTO ZERO?
+// Prima si fermava a zero: una difesa "ridotta" non poteva fare altro
+// che annullare quella che c'era. Con le carte vere quel pavimento
+// rendeva senza effetto sei abilità in un colpo solo — "riduce del 25%
+// la difesa di tutti gli avversari" su un personaggio con difesa 1
+// voleva dire portarlo da 1% a 0%, cioè un punto percentuale di danno
+// in più. Una carta che non fa niente.
+//
+// Quindi la difesa negativa vale davvero: si incassa PIÙ danno, tanto
+// quanto dice il segno meno. È anche la lettura naturale di "ti abbasso
+// le difese". Il limite dall'altra parte esiste lo stesso: al massimo
+// si arriva a incassare il doppio, non di più.
+const DIFESA_AMPLIFICAZIONE_MASSIMA = 100; // %, cioè danno al massimo raddoppiato
+
 function riduzioneDifesa(character) {
   if (!character) return 0;
   const base = Number(character.difesa) || 0;
   const bonus = Number(character.difesaPercent) || 0;
-  return Math.min(DIFESA_RIDUZIONE_MASSIMA, Math.max(0, base + bonus)) / 100;
+  const somma = base + bonus;
+  if (somma >= 0) return Math.min(DIFESA_RIDUZIONE_MASSIMA, somma) / 100;
+  return Math.max(-DIFESA_AMPLIFICAZIONE_MASSIMA, somma) / 100;
 }
 
 // Applica il danno con la difesa già scontata, aggiorna i PV (mai sotto
@@ -3124,7 +3168,7 @@ function infliggiDanno(character, danno) {
   return netto;
 }
 
-return {SUITS, makeCard, createFullDeck, shuffle, interoCasuale, isWildcard, valueLabel, cardLabel, cardPointValue, meldPointValue, isValidGroup, isValidSequence, validateMeld, DAMAGE_TIERS, meldLengthTier, computeMeldDamage, groupLengthMultiplier, PENALITA_EROE_CADUTO, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, rangoSorteggio, confrontaPerSorteggio, sorteggioPrimoTurno, DIFESA_RIDUZIONE_MASSIMA, riduzioneDifesa, infliggiDanno};
+return {SUITS, makeCard, createFullDeck, shuffle, interoCasuale, isWildcard, valueLabel, cardLabel, cardPointValue, meldPointValue, isValidGroup, isValidSequence, validateMeld, DAMAGE_TIERS, meldLengthTier, computeMeldDamage, groupLengthMultiplier, PENALITA_EROE_CADUTO, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, rangoSorteggio, confrontaPerSorteggio, sorteggioPrimoTurno, DIFESA_RIDUZIONE_MASSIMA, DIFESA_AMPLIFICAZIONE_MASSIMA, riduzioneDifesa, infliggiDanno};
 })();
 
 // ===== engine/magic-cards.js (incorporato) =====
@@ -3154,6 +3198,11 @@ const __M_magic_cards = (function(){
 const { interoCasuale, infliggiDanno } = __M_core_rules;
 const TRAP_EXPIRY_TURNS_DEFAULT = 3;
 
+// Il tetto vero dei punti magia lo decide il motore di partita e arriva
+// nel contesto; questo serve solo quando un effetto viene provato da
+// solo, fuori da una partita.
+const PUNTI_MAGIA_MAX_PREDEFINITO = 15;
+
 const EFFECT_CATALOG = {
   // --- Danno e cura ---
   danno_diretto:       { categoria: 'danno_cura', descrizione: 'Danno fisso a un personaggio' },
@@ -3181,7 +3230,7 @@ const EFFECT_CATALOG = {
   ricarica_sorpresa:   { categoria: 'personaggi', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' }
 };
 
-const TARGETS = ['avversario', 'se_stesso', 'personaggio_specifico', 'tutti'];
+const TARGETS = ['avversario', 'tutti_avversari', 'se_stesso', 'alleato_casuale', 'tutti_alleati', 'personaggio_specifico'];
 const SUITS = ['♥', '♦', '♣', '♠'];
 
 // Una carta può portare un solo `effect` (forma vecchia) oppure una lista
@@ -3264,18 +3313,66 @@ function resetTurnoMagie(magicState) { magicState.giocateQuestoTurno = 0; }
 // rigiocare uguale e i registri delle mosse non servono a niente.
 function caso(ctx) { return (ctx && ctx.rng) ? ctx.rng : Math.random; }
 
-function resolveTargetCharacters(target, casterCharacters, opponentCharacters, suit, rng = Math.random) {
-  if (target === 'se_stesso') {
-    return suit ? [suit] : SUITS.filter((s) => casterCharacters[s].pv > 0);
+// ------------------------------------------------------------
+// CHI COLPISCE UN EFFETTO
+//
+// Un bersaglio dice DUE cose: da che parte del tavolo si guarda (i miei
+// o i suoi) e quanti se ne prendono. Prima erano due decisioni separate:
+// questa funzione diceva QUANTI, e ogni singolo effetto ricavava per
+// conto proprio DA CHE PARTE — con due regole diverse a seconda che
+// l'effetto facesse male o bene.
+//
+// Il risultato: "tutti" voleva dire "tutti i nemici" su un danno e
+// "tutti i miei" su una cura. Comodo per caso, ma impossibile da
+// scrivere su una carta senza sapere a memoria quale effetto segue
+// quale regola — e soprattutto rendeva certe carte INESPRIMIBILI:
+// "riduci la difesa di TUTTI gli avversari" non si poteva dire in alcun
+// modo, perché "tutti" su un effetto difensivo virava sui propri.
+//
+// Adesso il bersaglio dice tutto da solo, in un posto solo. La parola
+// ambigua "tutti" è sparita: al suo posto ci sono "tutti_alleati" e
+// "tutti_avversari", che non si possono fraintendere.
+//
+// I MORTI NON SI CONTANO, MAI. Né per essere colpiti (il danno andrebbe
+// sprecato) né per essere curati — curare un personaggio a zero PV lo
+// riporterebbe in vita, e la resurrezione non è una regola di questo
+// gioco: non deve entrarci di soppiatto da una cura ad area.
+// ------------------------------------------------------------
+const BERSAGLI_RISOLTI = {
+  se_stesso:             { lato: 'mio', quanti: 'suo_o_tutti' },
+  alleato_casuale:       { lato: 'mio', quanti: 'casuale' },
+  tutti_alleati:         { lato: 'mio', quanti: 'tutti' },
+  avversario:            { lato: 'suo', quanti: 'casuale' },
+  tutti_avversari:       { lato: 'suo', quanti: 'tutti' },
+  personaggio_specifico: { lato: 'suo', quanti: 'scelto' }
+};
+
+function risolviBersaglio(target, ctx, predefinito, rng) {
+  const nome = target || predefinito;
+  const def = BERSAGLI_RISOLTI[nome];
+  // un bersaglio sconosciuto non colpisce niente: il controllo delle
+  // carte lo boccia prima, questo è solo per non far danni se passa
+  if (!def) return { pool: ctx.opponentCharacters, lato: 'opponent', suits: [] };
+
+  const pool = def.lato === 'mio' ? ctx.casterCharacters : ctx.opponentCharacters;
+  // `lato` viaggia con l'effetto che dura nel tempo: quando scadrà, chi
+  // lo toglie deve sapere su quale dei due schieramenti era stato messo
+  // (vedi tickActiveEffects). Sono le stesse due parole che quello legge.
+  const lato = def.lato === 'mio' ? 'caster' : 'opponent';
+  const vivi = () => SUITS.filter((s) => pool[s] && pool[s].pv > 0);
+
+  if (def.quanti === 'scelto') return { pool, lato, suits: ctx.suit ? [ctx.suit] : [] };
+  if (def.quanti === 'tutti') return { pool, lato, suits: vivi() };
+  if (def.quanti === 'suo_o_tutti') {
+    // con un seme indicato è QUEL personaggio (l'eroe che sta agendo);
+    // senza, sono tutti i propri ancora in piedi
+    return { pool, lato, suits: ctx.suit ? [ctx.suit] : vivi() };
   }
-  if (target === 'tutti') return SUITS;
-  if (target === 'personaggio_specifico') return suit ? [suit] : [];
-  // 'avversario' (default): un personaggio avversario specifico se indicato,
-  // altrimenti uno scelto a caso fra quelli ancora vivi
-  if (suit) return [suit];
-  const alive = SUITS.filter((s) => opponentCharacters[s].pv > 0);
-  if (alive.length === 0) return [];
-  return [alive[interoCasuale(rng, alive.length)]];
+  // 'casuale': quello indicato se c'è, altrimenti uno a caso fra i vivi
+  if (ctx.suit) return { pool, lato, suits: [ctx.suit] };
+  const in_piedi = vivi();
+  if (in_piedi.length === 0) return { pool, lato, suits: [] };
+  return { pool, lato, suits: [in_piedi[interoCasuale(rng, in_piedi.length)]] };
 }
 
 // ------------------------------------------------------------
@@ -3295,16 +3392,14 @@ function applyEffect(card, ctx) {
 
   switch (effect) {
     case 'danno_diretto': {
-      const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) infliggiDanno(pool[s], param);
-      return { ok: true, applied: true, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
     }
     case 'danno_percentuale': {
-      const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) infliggiDanno(pool[s], pool[s].pvMax * (param / 100));
-      return { ok: true, applied: true, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
     }
     // Danno calcolato sull'ATT di un PROPRIO eroe, non sui PV del bersaglio
     // né sui punti delle carte. È quello che usano le abilità speciali, ma
@@ -3315,20 +3410,19 @@ function applyEffect(card, ctx) {
         SUITS.reduce((best, s) => (ctx.casterCharacters[s].att > ctx.casterCharacters[best].att ? s : best), SUITS[0]);
       const attaccante = ctx.casterCharacters[semeAtt];
       if (!attaccante) return { ok: true, applied: false, note: 'eroe attaccante non trovato' };
-      const suits = resolveTargetCharacters(target || 'avversario', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'se_stesso') ? ctx.casterCharacters : ctx.opponentCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       const danno = attaccante.att * (param / 100);
       for (const s of suits) infliggiDanno(pool[s], danno);
-      return { ok: true, applied: true, colpiti: suits, danno, semeAttaccante: semeAtt };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, danno, semeAttaccante: semeAtt };
     }
     case 'cura_diretta': {
-      const suits = resolveTargetCharacters(target || 'se_stesso', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'avversario') ? ctx.opponentCharacters : ctx.casterCharacters;
+      const { pool, suits } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].pv = Math.min(pool[s].pvMax, pool[s].pv + param);
-      return { ok: true, applied: true, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
     }
     case 'scarto_forzato': {
-      const hand = (target === 'se_stesso') ? ctx.casterHand : ctx.opponentHand;
+      const mia = BERSAGLI_RISOLTI[target || 'avversario'] && BERSAGLI_RISOLTI[target || 'avversario'].lato === 'mio';
+      const hand = mia ? ctx.casterHand : ctx.opponentHand;
       const n = Math.min(param || 1, hand.length);
       const scartate = [];
       for (let i = 0; i < n; i++) {
@@ -3356,16 +3450,14 @@ function applyEffect(card, ctx) {
       return { ok: true, applied: false, note: `parametro brucia_carta "${parametro}" non gestito` };
     }
     case 'boost_att': {
-      const suits = resolveTargetCharacters(target || 'se_stesso', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'avversario') ? ctx.opponentCharacters : ctx.casterCharacters;
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].att += param;
-      return { ok: true, applied: true, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: (target === 'avversario') ? 'opponent' : 'caster', turniRimasti: durata_turni } };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
     }
     case 'boost_difesa': {
-      const suits = resolveTargetCharacters(target || 'se_stesso', ctx.casterCharacters, ctx.opponentCharacters, ctx.suit, caso(ctx));
-      const pool = (target === 'avversario') ? ctx.opponentCharacters : ctx.casterCharacters;
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) + param;
-      return { ok: true, applied: true, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: (target === 'avversario') ? 'opponent' : 'caster', turniRimasti: durata_turni } };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
     }
     // RECUPERA UNA CARTA GIÀ SPESA.
     // Prima rimetteva a "non usata" il flag della Sorpresa, quando il
@@ -3388,6 +3480,79 @@ function applyEffect(card, ctx) {
         if (i !== -1) ms.giocate.splice(i, 1);
       }
       return { ok: true, applied: true, recuperata };
+    }
+    // I PUNTI MAGIA DELL'AVVERSARIO.
+    // Sette carte del roster tolgono punti magia: e' un modo di colpire
+    // che non passa dai PV — si spegne la benzina delle abilita' invece
+    // di togliere vita. Serve il GIOCATORE, non i suoi personaggi: i
+    // punti magia sono una riserva unica, non stanno su una carta.
+    // Se il contesto non porta i giocatori (un punto vecchio che ancora
+    // non li passa) l'effetto non esplode, dice solo che non ha agito.
+    case 'riduci_punti_magia': {
+      const chi = (target === 'se_stesso' || target === 'alleato_casuale' || target === 'tutti_alleati')
+        ? ctx.casterPlayer : ctx.opponentPlayer;
+      if (!chi) return { ok: true, applied: false, note: 'giocatore non disponibile nel contesto' };
+      const prima = chi.puntiMagia || 0;
+      chi.puntiMagia = Math.max(0, prima - param);     // mai sotto zero
+      return { ok: true, applied: prima > 0, tolti: prima - chi.puntiMagia, puntiRimasti: chi.puntiMagia };
+    }
+    case 'aumenta_punti_magia': {
+      const chi = (target === 'avversario' || target === 'tutti_avversari' || target === 'personaggio_specifico')
+        ? ctx.opponentPlayer : ctx.casterPlayer;
+      if (!chi) return { ok: true, applied: false, note: 'giocatore non disponibile nel contesto' };
+      const tetto = ctx.puntiMagiaMax || PUNTI_MAGIA_MAX_PREDEFINITO;
+      const prima = chi.puntiMagia || 0;
+      chi.puntiMagia = Math.min(tetto, prima + param); // il tetto resta quello del gioco
+      return { ok: true, applied: chi.puntiMagia > prima, dati: chi.puntiMagia - prima, puntiRimasti: chi.puntiMagia };
+    }
+    // CURA IN PERCENTUALE dei PV massimi. Le carte vere parlano quasi
+    // sempre cosi' ("cura tutti gli alleati del 20%"), e una cura fissa
+    // non sa adattarsi a personaggi con VITA molto diversa fra loro.
+    case 'cura_percentuale': {
+      const { pool, suits } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
+      for (const s of suits) pool[s].pv = Math.min(pool[s].pvMax, pool[s].pv + pool[s].pvMax * (param / 100));
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
+    }
+    // AUMENTO DELL'ATT IN PERCENTUALE.
+    // Va tenuto separato da boost_att (che somma un numero fisso) per un
+    // motivo preciso: quando scade bisogna togliere ESATTAMENTE quanto si
+    // era aggiunto. Il 30% di un eroe da 180 non e' il 30% di uno da 80,
+    // quindi il valore va calcolato adesso e ricordato — se lo si
+    // ricalcolasse alla scadenza, su un ATT nel frattempo cambiato, la
+    // sottrazione sarebbe sbagliata e l'eroe resterebbe piu' forte (o piu'
+    // debole) per sempre.
+    case 'boost_att_percentuale': {
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
+      const aggiunti = {};
+      for (const s of suits) {
+        const quanto = pool[s].att * (param / 100);
+        aggiunti[s] = quanto;
+        pool[s].att += quanto;
+      }
+      return { ok: true, applied: suits.length > 0, colpiti: suits, aggiunti,
+               effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, aggiunti, turniRimasti: durata_turni } };
+    }
+    // ABBASSA LA DIFESA: si incassa piu' danno finche' dura.
+    // Non e' boost_difesa con un numero negativo: un parametro negativo su
+    // una carta e' una trappola per chi le scrive (e per chi le legge in
+    // gioco). La parola dice quello che fa.
+    case 'riduci_difesa': {
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) - param;
+      return { ok: true, applied: suits.length > 0, colpiti: suits,
+               effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
+    }
+    // TOGLIE I MALUS DI DIFESA (il "cura tutti i disturbi della difesa"
+    // di Iara). Solo i malus: un bonus in corso non si perde per essersi
+    // curati. Il conto degli effetti a scadenza resta coerente perche'
+    // qui si azzera solo la parte negativa gia' applicata.
+    case 'pulisci_malus_difesa': {
+      const { pool, suits } = risolviBersaglio(target, ctx, 'tutti_alleati', caso(ctx));
+      let puliti = 0;
+      for (const s of suits) {
+        if ((pool[s].difesaPercent || 0) < 0) { pool[s].difesaPercent = 0; puliti++; }
+      }
+      return { ok: true, applied: puliti > 0, colpiti: suits, puliti };
     }
     // DISTRUGGE LE TRAPPOLE AVVERSARIE.
     // Sempre l'avversario: ctx.magicStateOpponent (non magicStateCaster).
@@ -3513,12 +3678,23 @@ function tickActiveEffects(magicState, casterCharacters, opponentCharacters) {
     e.turniRimasti -= 1;
     if (e.turniRimasti > 0) return true;
     // revert dell'effetto se era una modifica diretta a un personaggio
-    if (e.effect === 'boost_att' || e.effect === 'boost_difesa') {
+    const DA_ANNULLARE = ['boost_att', 'boost_difesa', 'boost_att_percentuale', 'riduci_difesa'];
+    if (DA_ANNULLARE.includes(e.effect)) {
       const pool = e.pool === 'opponent' ? opponentCharacters : casterCharacters;
       for (const s of e.colpiti || []) {
         if (!pool[s]) continue;
         if (e.effect === 'boost_att') pool[s].att -= e.parametro;
-        if (e.effect === 'boost_difesa') pool[s].difesaPercent = Math.max(0, (pool[s].difesaPercent || 0) - e.parametro);
+        // di un aumento percentuale si toglie QUANTO era stato aggiunto
+        // allora, non il ricalcolo di adesso: nel frattempo l'ATT può
+        // essere cambiata, e ricalcolare lascerebbe l'eroe più forte o
+        // più debole per sempre.
+        if (e.effect === 'boost_att_percentuale') pool[s].att -= (e.aggiunti && e.aggiunti[s]) || 0;
+        // Niente Math.max(0, ...) qui: la difesa può stare sotto zero
+        // (vedi riduzioneDifesa in core-rules.js), e schiacciarla a zero
+        // toglierebbe di mezzo un malus ancora in corso messo da
+        // qualcun altro.
+        if (e.effect === 'boost_difesa') pool[s].difesaPercent = (pool[s].difesaPercent || 0) - e.parametro;
+        if (e.effect === 'riduci_difesa') pool[s].difesaPercent = (pool[s].difesaPercent || 0) + e.parametro;
       }
     }
     scaduti.push(e);
@@ -3553,7 +3729,7 @@ function tickActiveEffects(magicState, casterCharacters, opponentCharacters) {
 //      armati su chi sta per giocare
 // ============================================================
 
-return {TRAP_EXPIRY_TURNS_DEFAULT, EFFECT_CATALOG, validateCardDefinition, validateSelection, makeMagicState, cartaConsumata, resetTurnoMagie, applyEffect, activateSorpresa, armTrappola, tickTrapExpiry, checkTrapTrigger, tickActiveEffects};
+return {TRAP_EXPIRY_TURNS_DEFAULT, PUNTI_MAGIA_MAX_PREDEFINITO, EFFECT_CATALOG, validateCardDefinition, validateSelection, makeMagicState, cartaConsumata, resetTurnoMagie, applyEffect, activateSorpresa, armTrappola, tickTrapExpiry, checkTrapTrigger, tickActiveEffects};
 })();
 
 // ===== engine/character-abilities.js (incorporato) =====
@@ -4103,6 +4279,8 @@ function scattaTrappole(state, proprietarioIndex, evento) {
       tallone: state.tallone,
       magicStateCaster: ms,
       magicStateOpponent: vittima.magic,
+      casterPlayer: proprietario, opponentPlayer: vittima,
+      puntiMagiaMax: PUNTI_MAGIA_MAX,
       rng: state.rng          // il caso della partita, non quello del processo
     };
     const esito = checkTrapTrigger(ms, evento, null, ctx);
@@ -4171,10 +4349,12 @@ const EFFETTI_DI_FLUSSO = [
 
 // Fa scattare un'abilità a evento su ciascuno dei 4 personaggi del
 // proprietario (spec §7: agganciata a trigger del game loop già esistenti).
-function fireAbilityEvent(ownerCharacters, otherCharacters, eventName, ownerMagic, otherMagic) {
+function fireAbilityEvent(ownerCharacters, otherCharacters, eventName, ownerMagic, otherMagic, ownerPlayer, otherPlayer) {
   const ctx = {
     casterCharacters: ownerCharacters, opponentCharacters: otherCharacters,
-    magicStateCaster: ownerMagic, magicStateOpponent: otherMagic
+    magicStateCaster: ownerMagic, magicStateOpponent: otherMagic,
+    casterPlayer: ownerPlayer, opponentPlayer: otherPlayer,
+    puntiMagiaMax: PUNTI_MAGIA_MAX
   };
   for (const s of SUITS) checkAbilityTrigger(ownerCharacters[s], s, eventName, ctx);
 }
@@ -4221,7 +4401,9 @@ function nextTurn(state, nowMs) {
   // all'inizio del proprio turno (spec §7: cicliche a turni fissi).
   const ctx = {
     casterCharacters: player.characters, opponentCharacters: opponent.characters,
-    magicStateCaster: player.magic, magicStateOpponent: opponent.magic
+    magicStateCaster: player.magic, magicStateOpponent: opponent.magic,
+    casterPlayer: player, opponentPlayer: opponent,
+    puntiMagiaMax: PUNTI_MAGIA_MAX
   };
   for (const s of SUITS) tickCharacterAbility(player.characters[s], s, ctx);
 }
@@ -4571,7 +4753,7 @@ function concludiCalata(state, playerIndex, result) {
       player.pozzetto = [];
       player.pozzettoTaken = true;
       result.pozzettoPreso = true;
-      fireAbilityEvent(player.characters, defender.characters, 'on_pozzetto', player.magic, defender.magic);
+      fireAbilityEvent(player.characters, defender.characters, 'on_pozzetto', player.magic, defender.magic, player, defender);
     } else if (player.pozzettoTaken) {
       // seconda volta a zero carte, dopo aver già usato il pozzetto: chiusura
       if (hasQualifyingMeld(player)) {
@@ -4580,7 +4762,7 @@ function concludiCalata(state, playerIndex, result) {
         state.winReason = 'chiusura_al_volo';
         result.matchEnded = true;
         result.winReason = 'chiusura_al_volo';
-        fireAbilityEvent(player.characters, defender.characters, 'on_chiusura', player.magic, defender.magic);
+        fireAbilityEvent(player.characters, defender.characters, 'on_chiusura', player.magic, defender.magic, player, defender);
       }
       // se non ha ancora un burraco da 5+, resta a mani vuote: dovrà scartare
       // dell'ultima carta pescata al turno successivo — caso limite, non
@@ -4736,6 +4918,8 @@ function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, n
     const ctxEffetti = {
       casterCharacters: player.characters, opponentCharacters: defender.characters,
       magicStateCaster: player.magic, magicStateOpponent: defender.magic,
+      casterPlayer: player, opponentPlayer: defender,
+      puntiMagiaMax: PUNTI_MAGIA_MAX,
       suit: semeAttaccante, rng: state.rng
     };
     result.effettiAbilita = altriEffetti.map((e) => ({ effect: e.effect, ...applyEffect(e, ctxEffetti) }));
@@ -4799,6 +4983,10 @@ function giocaCartaMagica(state, playerIndex, indiceCarta, nowMs = Date.now()) {
     casterHand: player.hand, opponentHand: avversario.hand,
     scarti: state.scarti, tallone: state.tallone, magicStateCaster: ms,
     magicStateOpponent: avversario.magic,   // serve a chi distrugge le Trappole altrui
+    // I GIOCATORI, non solo i loro personaggi: i punti magia sono una
+    // riserva unica del giocatore, non stanno su una carta.
+    casterPlayer: player, opponentPlayer: avversario,
+    puntiMagiaMax: PUNTI_MAGIA_MAX,
     rng: state.rng            // il caso della partita, non quello del processo
   };
 
@@ -4880,7 +5068,8 @@ function actionDiscard(state, playerIndex, cardId, nowMs) {
     player.pozzetto = [];
     player.pozzettoTaken = true;
     fireAbilityEvent(player.characters, state.players[opponentIndex(playerIndex)].characters, 'on_pozzetto',
-      player.magic, state.players[opponentIndex(playerIndex)].magic);
+      player.magic, state.players[opponentIndex(playerIndex)].magic,
+      player, state.players[opponentIndex(playerIndex)]);
     nextTurn(state, nowMs);
     return { ok: true, pozzettoPreso: true };
   }
@@ -4890,7 +5079,8 @@ function actionDiscard(state, playerIndex, cardId, nowMs) {
     state.winner = playerIndex;
     state.winReason = 'chiusura';
     fireAbilityEvent(player.characters, state.players[opponentIndex(playerIndex)].characters, 'on_chiusura',
-      player.magic, state.players[opponentIndex(playerIndex)].magic);
+      player.magic, state.players[opponentIndex(playerIndex)].magic,
+      player, state.players[opponentIndex(playerIndex)]);
     return { ok: true, matchEnded: true, winReason: 'chiusura' };
   }
 

@@ -24,6 +24,11 @@ import { interoCasuale, infliggiDanno } from './core-rules.js';
 
 export const TRAP_EXPIRY_TURNS_DEFAULT = 3;
 
+// Il tetto vero dei punti magia lo decide il motore di partita e arriva
+// nel contesto; questo serve solo quando un effetto viene provato da
+// solo, fuori da una partita.
+export const PUNTI_MAGIA_MAX_PREDEFINITO = 15;
+
 export const EFFECT_CATALOG = {
   // --- Danno e cura ---
   danno_diretto:       { categoria: 'danno_cura', descrizione: 'Danno fisso a un personaggio' },
@@ -302,6 +307,79 @@ export function applyEffect(card, ctx) {
       }
       return { ok: true, applied: true, recuperata };
     }
+    // I PUNTI MAGIA DELL'AVVERSARIO.
+    // Sette carte del roster tolgono punti magia: e' un modo di colpire
+    // che non passa dai PV — si spegne la benzina delle abilita' invece
+    // di togliere vita. Serve il GIOCATORE, non i suoi personaggi: i
+    // punti magia sono una riserva unica, non stanno su una carta.
+    // Se il contesto non porta i giocatori (un punto vecchio che ancora
+    // non li passa) l'effetto non esplode, dice solo che non ha agito.
+    case 'riduci_punti_magia': {
+      const chi = (target === 'se_stesso' || target === 'alleato_casuale' || target === 'tutti_alleati')
+        ? ctx.casterPlayer : ctx.opponentPlayer;
+      if (!chi) return { ok: true, applied: false, note: 'giocatore non disponibile nel contesto' };
+      const prima = chi.puntiMagia || 0;
+      chi.puntiMagia = Math.max(0, prima - param);     // mai sotto zero
+      return { ok: true, applied: prima > 0, tolti: prima - chi.puntiMagia, puntiRimasti: chi.puntiMagia };
+    }
+    case 'aumenta_punti_magia': {
+      const chi = (target === 'avversario' || target === 'tutti_avversari' || target === 'personaggio_specifico')
+        ? ctx.opponentPlayer : ctx.casterPlayer;
+      if (!chi) return { ok: true, applied: false, note: 'giocatore non disponibile nel contesto' };
+      const tetto = ctx.puntiMagiaMax || PUNTI_MAGIA_MAX_PREDEFINITO;
+      const prima = chi.puntiMagia || 0;
+      chi.puntiMagia = Math.min(tetto, prima + param); // il tetto resta quello del gioco
+      return { ok: true, applied: chi.puntiMagia > prima, dati: chi.puntiMagia - prima, puntiRimasti: chi.puntiMagia };
+    }
+    // CURA IN PERCENTUALE dei PV massimi. Le carte vere parlano quasi
+    // sempre cosi' ("cura tutti gli alleati del 20%"), e una cura fissa
+    // non sa adattarsi a personaggi con VITA molto diversa fra loro.
+    case 'cura_percentuale': {
+      const { pool, suits } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
+      for (const s of suits) pool[s].pv = Math.min(pool[s].pvMax, pool[s].pv + pool[s].pvMax * (param / 100));
+      return { ok: true, applied: suits.length > 0, colpiti: suits };
+    }
+    // AUMENTO DELL'ATT IN PERCENTUALE.
+    // Va tenuto separato da boost_att (che somma un numero fisso) per un
+    // motivo preciso: quando scade bisogna togliere ESATTAMENTE quanto si
+    // era aggiunto. Il 30% di un eroe da 180 non e' il 30% di uno da 80,
+    // quindi il valore va calcolato adesso e ricordato — se lo si
+    // ricalcolasse alla scadenza, su un ATT nel frattempo cambiato, la
+    // sottrazione sarebbe sbagliata e l'eroe resterebbe piu' forte (o piu'
+    // debole) per sempre.
+    case 'boost_att_percentuale': {
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
+      const aggiunti = {};
+      for (const s of suits) {
+        const quanto = pool[s].att * (param / 100);
+        aggiunti[s] = quanto;
+        pool[s].att += quanto;
+      }
+      return { ok: true, applied: suits.length > 0, colpiti: suits, aggiunti,
+               effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, aggiunti, turniRimasti: durata_turni } };
+    }
+    // ABBASSA LA DIFESA: si incassa piu' danno finche' dura.
+    // Non e' boost_difesa con un numero negativo: un parametro negativo su
+    // una carta e' una trappola per chi le scrive (e per chi le legge in
+    // gioco). La parola dice quello che fa.
+    case 'riduci_difesa': {
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) - param;
+      return { ok: true, applied: suits.length > 0, colpiti: suits,
+               effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
+    }
+    // TOGLIE I MALUS DI DIFESA (il "cura tutti i disturbi della difesa"
+    // di Iara). Solo i malus: un bonus in corso non si perde per essersi
+    // curati. Il conto degli effetti a scadenza resta coerente perche'
+    // qui si azzera solo la parte negativa gia' applicata.
+    case 'pulisci_malus_difesa': {
+      const { pool, suits } = risolviBersaglio(target, ctx, 'tutti_alleati', caso(ctx));
+      let puliti = 0;
+      for (const s of suits) {
+        if ((pool[s].difesaPercent || 0) < 0) { pool[s].difesaPercent = 0; puliti++; }
+      }
+      return { ok: true, applied: puliti > 0, colpiti: suits, puliti };
+    }
     // DISTRUGGE LE TRAPPOLE AVVERSARIE.
     // Sempre l'avversario: ctx.magicStateOpponent (non magicStateCaster).
     // Se non arriva — un punto vecchio che ancora non passa questo campo
@@ -426,12 +504,23 @@ export function tickActiveEffects(magicState, casterCharacters, opponentCharacte
     e.turniRimasti -= 1;
     if (e.turniRimasti > 0) return true;
     // revert dell'effetto se era una modifica diretta a un personaggio
-    if (e.effect === 'boost_att' || e.effect === 'boost_difesa') {
+    const DA_ANNULLARE = ['boost_att', 'boost_difesa', 'boost_att_percentuale', 'riduci_difesa'];
+    if (DA_ANNULLARE.includes(e.effect)) {
       const pool = e.pool === 'opponent' ? opponentCharacters : casterCharacters;
       for (const s of e.colpiti || []) {
         if (!pool[s]) continue;
         if (e.effect === 'boost_att') pool[s].att -= e.parametro;
-        if (e.effect === 'boost_difesa') pool[s].difesaPercent = Math.max(0, (pool[s].difesaPercent || 0) - e.parametro);
+        // di un aumento percentuale si toglie QUANTO era stato aggiunto
+        // allora, non il ricalcolo di adesso: nel frattempo l'ATT può
+        // essere cambiata, e ricalcolare lascerebbe l'eroe più forte o
+        // più debole per sempre.
+        if (e.effect === 'boost_att_percentuale') pool[s].att -= (e.aggiunti && e.aggiunti[s]) || 0;
+        // Niente Math.max(0, ...) qui: la difesa può stare sotto zero
+        // (vedi riduzioneDifesa in core-rules.js), e schiacciarla a zero
+        // toglierebbe di mezzo un malus ancora in corso messo da
+        // qualcun altro.
+        if (e.effect === 'boost_difesa') pool[s].difesaPercent = (pool[s].difesaPercent || 0) - e.parametro;
+        if (e.effect === 'riduci_difesa') pool[s].difesaPercent = (pool[s].difesaPercent || 0) + e.parametro;
       }
     }
     scaduti.push(e);
