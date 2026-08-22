@@ -15,6 +15,7 @@ let failures = 0;
 const check = (l, c) => { console.log((c ? 'OK   ' : 'FAIL ') + l); if (!c) failures++; };
 const T0 = Date.parse('2026-08-04T10:00:00.000Z');
 const cuori = (v) => v.map((x) => makeCard('♥', x));
+const SEMI = ['♥', '♦', '♣', '♠'];
 
 const TRAPPOLA_SCARTO   = { id: 't_scarto', tipo: 'trappola', effect: 'scarto_forzato', parametro: '1', trigger: 'avversario_pesca', target: 'avversario', durata_turni: 0 };
 const TRAPPOLA_RIFLETTE = { id: 't_rifl',  tipo: 'trappola', effect: 'riflette_danno', parametro: '50', trigger: 'subisco_danno', target: 'se_stesso', durata_turni: 0 };
@@ -472,7 +473,12 @@ function partita(magiche) {
   s2.players[0].characters['♠'].att = 100;
   const r2 = usaAbilitaSpeciale(s2, 0, '♠', '♥', T0 + 1000);
   check('la forma vecchia (un solo effect) resta identica a prima', r2.ok === true && Math.abs(r2.damage - 30) < 1e-9);
-  check('e non racconta nessun "effettiAbilita" (non ne ha)', r2.effettiAbilita === undefined);
+  // il resoconto e' diventato uniforme: ogni abilita' racconta cosa ha
+  // fatto, anche quando fa una cosa sola. Prima lo raccontavano solo
+  // quelle a piu' effetti, e chi leggeva doveva sapere quale caso era.
+  check('e racconta comunque il suo unico effetto',
+    Array.isArray(r2.effettiAbilita) && r2.effettiAbilita.length === 1 &&
+    r2.effettiAbilita[0].effect === 'danno_da_attacco');
 }
 
 // --- 19. LA CONVERSIONE: ruba i bonus, rispedisce i malus ---
@@ -531,6 +537,72 @@ function partita(magiche) {
     check('senza Conversione il bonus resta a chi se lo e dato',
       state.players[0].characters['♥'].difesaPercent === 30);
   }
+}
+
+// --- 20. UN'ABILITA' SI RISOLVE DA SOLA (nessuna carta dice "a scelta") ---
+{
+  // Tremore del suolo (007): danno a TUTTI i nemici, nessun bersaglio da scegliere
+  const TREMORE = { trigger: 'attivazione_manuale', costo: 5,
+    effetti: [{ effect: 'danno_da_attacco', parametro: '15', target: 'tutti_avversari' }] };
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, abilities: [{ '♦': TREMORE }, {}] });
+  state.players[0].puntiMagia = 15;
+  state.players[0].characters['♦'].att = 100;      // 15 danni a testa
+
+  // NIENTE bersaglio passato: e' il punto
+  const r = usaAbilitaSpeciale(state, 0, '♦', null, T0 + 1000);
+  check('parte senza che nessuno scelga un bersaglio', r.ok === true, r.reason);
+  check('e colpisce tutti e quattro i nemici', r.colpi.length === 4);
+  check('ognuno ha incassato', SEMI.every((s) => state.players[1].characters[s].pv < 100));
+}
+
+// --- 21. "L'AVVERSARIO COLPITO": danno e malus sullo STESSO nemico ---
+// Onca-Pintada (013): "fa il 25% di danno e l avversario colpito per 2
+// turni ha difesa ridotta del 20%". Il bersaglio lo estrae il motore, e
+// il malus deve seguirlo — non finire su un altro nemico a caso.
+{
+  const MORSO = { trigger: 'attivazione_manuale', costo: 4, effetti: [
+    { effect: 'danno_da_attacco', parametro: '25', target: 'avversario' },
+    { effect: 'riduci_difesa', parametro: '20', target: 'bersaglio_colpito', durata_turni: 2 }
+  ] };
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, abilities: [{ '♣': MORSO }, {}] });
+  state.players[0].puntiMagia = 15;
+  state.players[0].characters['♣'].att = 100;
+
+  const r = usaAbilitaSpeciale(state, 0, '♣', null, T0 + 1000);
+  check('il morso va a segno', r.ok === true && r.colpi.length === 1);
+
+  const colpito = r.colpi[0].suit;
+  check('IL MALUS E SULLO STESSO NEMICO CHE HA INCASSATO',
+    state.players[1].characters[colpito].difesaPercent === -20);
+  const altri = SEMI.filter((s) => s !== colpito);
+  check('e nessun altro nemico e stato indebolito',
+    altri.every((s) => !state.players[1].characters[s].difesaPercent));
+}
+
+// --- 22. L'ORDINE SULLA CARTA E' L'ORDINE IN PARTITA ---
+// Papa Figo (001): "distrugge le carte trappola sul campo E infligge il
+// 30% del danno spada" — prima si puliva il campo, poi si colpiva.
+{
+  const NOTTURNO = { trigger: 'attivazione_manuale', costo: 5, effetti: [
+    { effect: 'distruggi_trappole', target: 'avversario' },
+    { effect: 'danno_da_attacco', parametro: '30', target: 'avversario' }
+  ] };
+  const TRAPPOLA = { id: 't_z', tipo: 'trappola', effect: 'scarto_forzato', parametro: '1',
+                     trigger: 'avversario_pesca', target: 'avversario', durata_turni: 0 };
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5,
+    magiche: [[], [TRAPPOLA]], abilities: [{ '♦': NOTTURNO }, {}] });
+  state.players[0].puntiMagia = 15;
+  state.players[0].characters['♦'].att = 100;
+
+  state.currentPlayerIndex = 1;
+  giocaCartaMagica(state, 1, 0, T0 + 1000);
+  check('la trappola avversaria e sul campo', state.players[1].magic.trappoleArmate.length === 1);
+
+  state.currentPlayerIndex = 0;
+  const r = usaAbilitaSpeciale(state, 0, '♦', null, T0 + 2000);
+  check('l attacco notturno parte', r.ok === true, r.reason);
+  check('le trappole sono state distrutte', state.players[1].magic.trappoleArmate.length === 0);
+  check('E il colpo e comunque arrivato', r.damage > 0 && r.colpi.length === 1);
 }
 
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));

@@ -42,7 +42,7 @@
 
 import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } from './core-rules.js';
 import { attachAbility, tickCharacterAbility, checkAbilityTrigger } from './character-abilities.js';
-import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata } from './magic-cards.js';
+import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata, risolviBersaglio } from './magic-cards.js';
 import { elencoEffetti, CONDIZIONI, EFFETTI_DIFFERITI } from './vocabolario.js';
 
 export const TURN_SECONDS = 60;      // spec §2: 1 minuto per turno a giocatore
@@ -1017,6 +1017,17 @@ export function actionAttachToMeld(state, playerIndex, meldId, cardIds, nowMs) {
 // ------------------------------------------------------------
 export const ABILITA_PERCENT_DEFAULT = 30;
 
+// QUESTA ABILITA' CHIEDE AL GIOCATORE DI MIRARE?
+// Quasi mai: nessuna carta del roster dice "a scelta", quindi il
+// bersaglio lo decide la carta. Resta possibile scriverne una che lo
+// chieda (target "personaggio_specifico") — e allora il tavolo deve
+// entrare in "scegli il bersaglio" invece di far partire il colpo
+// subito. Lo decide il motore, non il client: cosi' la risposta e' la
+// stessa in locale e in rete, e non si sfasa se un giorno cambia.
+export function abilitaChiedeBersaglio(ability) {
+  return elencoEffetti(ability).some((e) => e.target === 'personaggio_specifico');
+}
+
 export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, nowMs = Date.now()) {
   chargeElapsedTime(state, nowMs);
   if (state.status !== 'in_progress') return { ok: false, reason: 'Partita conclusa.' };
@@ -1047,40 +1058,33 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
     return { ok: false, reason: 'Punti magia insufficienti: servono ' + costoAbilita + ', ne hai ' + (player.puntiMagia || 0) + '.' };
   }
 
-  const bersaglio = defender.characters[semeBersaglio];
-  if (!bersaglio) return { ok: false, reason: 'Bersaglio non valido.' };
-  if (bersaglio.pv <= 0) return { ok: false, reason: 'Quel personaggio è già fuori combattimento: scegline un altro.' };
-
-  // UN'ABILITÀ PUÒ FARE PIÙ COSE (come una Carta Magica): si scrivono in
-  // "effetti: [...]". Quello con target "personaggio_specifico" è IL
-  // COLPO — l'unico che chiede un bersaglio scelto dal giocatore, l'unico
-  // per cui esiste questa funzione. Gli altri (es. "distruggi_trappole")
-  // si applicano da soli, senza bersaglio a scelta, come già fanno gli
-  // stessi effetti su una Carta Magica.
-  // La forma vecchia con un solo "effect" in cima resta identica: è
-  // esattamente quello che leggevano già le otto carte d'esempio, e
-  // qui sotto produce lo stesso identico risultato di prima.
-  //
-  // PIU' DI UN COLPO: se l'abilità elenca DUE effetti con bersaglio a
-  // scelta, sono due colpi sullo stesso bersaglio — è la Queixada della
-  // Caipora, "colpisce con due cariche da 20% di danno ognuna". Prima ne
-  // veniva letto uno solo e il secondo spariva in silenzio.
-  const effetti = elencoEffetti(eroe._ability);
-  const effettiColpo = effetti.filter((e) => e.target === 'personaggio_specifico');
-  const altriEffetti = effetti.filter((e) => e.target !== 'personaggio_specifico');
-  // niente colpo dichiarato: vale la percentuale di riferimento, come da sempre
-  const cariche = effettiColpo.length
-    ? effettiColpo.map((e) => Number(e.parametro) || ABILITA_PERCENT_DEFAULT)
-    : [ABILITA_PERCENT_DEFAULT];
-  const pct = cariche[0];
+  // UN'ABILITÀ SI RISOLVE DA SOLA.
+  // Il giocatore sceglie QUALE suo eroe attiva, mai chi colpire: nessuna
+  // carta del roster dice "a scelta", quindi il bersaglio lo decide la
+  // carta (uno a caso, tutti, i propri...). `semeBersaglio` resta per le
+  // carte che un giorno vorranno farlo scegliere davvero — oggi nessuna.
+  // Un eroe senza abilità dichiarata colpisce comunque, alla percentuale
+  // di riferimento: è il comportamento di sempre dei personaggi
+  // segnaposto, e toglierlo li lascerebbe con un pulsante che spende
+  // punti magia e non fa niente.
+  const dichiarati = elencoEffetti(eroe._ability);
+  const effetti = dichiarati.length ? dichiarati
+    : [{ effect: 'danno_da_attacco', parametro: String(ABILITA_PERCENT_DEFAULT), target: 'avversario' }];
+  const serveScelta = effetti.some((e) => e.target === 'personaggio_specifico');
+  if (serveScelta) {
+    const scelto = defender.characters[semeBersaglio];
+    if (!scelto) return { ok: false, reason: 'Bersaglio non valido.' };
+    if (scelto.pv <= 0) return { ok: false, reason: 'Quel personaggio è già fuori combattimento: scegline un altro.' };
+  }
 
   const result = {
-    ok: true, abilita: true, percentuale: pct,
-    costo: costoAbilita, semeAttaccante, semeBersaglio,
+    ok: true, abilita: true,
+    costo: costoAbilita, semeAttaccante,
     suit: semeAttaccante        // su di lui torna indietro il danno riflesso
   };
+  if (serveScelta) result.semeBersaglio = semeBersaglio;
 
-  // PRIMA le trappole, POI il colpo.
+  // PRIMA le trappole, POI gli effetti.
   // Usare l'abilità di un eroe fa scattare le trappole dell'avversario
   // (regola del committente): schierarle serve anche a punire chi tira
   // fuori i colpi speciali. E devono scattare adesso, non dopo: una
@@ -1091,55 +1095,82 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
     ...scattaTrappole(state, defenderIndex, 'subisco_danno')
   ];
 
-  // GLI ALTRI EFFETTI DELL'ABILITÀ, SE CE NE SONO.
-  // Dopo che le trappole hanno avuto la loro occasione di scattare (sono
-  // una reazione all'uso dell'abilità in sé), prima del colpo — così
-  // "distrugge le trappole e infligge danno" fa esattamente questo,
-  // nell'ordine in cui si legge sulla carta.
-  if (altriEffetti.length) {
-    const ctxEffetti = {
+  // GLI EFFETTI SI ESEGUONO NELL'ORDINE IN CUI SONO SCRITTI SULLA CARTA.
+  // Prima c'era una divisione fissa — "il colpo" da una parte, "gli altri
+  // effetti" dall'altra, questi ultimi sempre prima — e con essa
+  // l'impossibilità di scrivere "fa danno E POI indebolisce chi ha
+  // colpito": il malus veniva applicato prima che il colpo scegliesse
+  // qualcuno. Adesso l'ordine sulla carta è l'ordine in partita.
+  let damage = 0;
+  const colpi = [];
+  let bersaglioColpito = [];      // chi ha già incassato: lo riusa "bersaglio_colpito"
+  const esiti = [];
+
+  for (const e of effetti) {
+    // IL COLPO DI SPADA passa dalla catena completa del danno: varianza,
+    // bonus del pozzetto, raddoppia/annulla/riflette. Gli altri effetti
+    // no — un "danno_diretto" scritto su un'abilità è un numero fisso,
+    // come su una Carta Magica, e non deve consumare il raddoppio.
+    if (e.effect === 'danno_da_attacco') {
+      const pct = Number(e.parametro) || ABILITA_PERCENT_DEFAULT;
+      const { pool, suits } = risolviBersaglio(
+        e.target, { casterCharacters: player.characters, opponentCharacters: defender.characters,
+                    suit: serveScelta ? semeBersaglio : null, bersaglioColpito, rng: state.rng },
+        'avversario', state.rng);
+
+      let lordo = eroe.att * (pct / 100) * fattoreVarianza(state);
+      lordo = modificaDanno(state, playerIndex, lordo, result);
+
+      const presi = [];
+      for (const s of suits) {
+        const netto = infliggiDanno(pool[s], lordo);
+        damage += netto;
+        if (netto > 0) {
+          colpi.push({ suit: s, damage: netto, cardId: pool[s].cardId, pvRimasti: pool[s].pv });
+          presi.push(s);
+          checkAbilityTrigger(pool[s], s, 'on_subisco_danno',
+            { casterCharacters: defender.characters, opponentCharacters: player.characters });
+        }
+      }
+      if (presi.length) bersaglioColpito = presi;
+      esiti.push({ effect: e.effect, percentuale: pct, colpiti: presi });
+      continue;
+    }
+
+    const ctxEffetto = {
       casterCharacters: player.characters, opponentCharacters: defender.characters,
+      casterHand: player.hand, opponentHand: defender.hand,
+      scarti: state.scarti, tallone: state.tallone,
       magicStateCaster: player.magic, magicStateOpponent: defender.magic,
       casterPlayer: player, opponentPlayer: defender,
       puntiMagiaMax: PUNTI_MAGIA_MAX,
-      suit: semeAttaccante, rng: state.rng
+      // "se_stesso" su un'abilità vuol dire l'eroe che la sta usando;
+      // se la carta chiede un bersaglio scelto, è quello.
+      suit: e.target === 'se_stesso' ? semeAttaccante : (serveScelta ? semeBersaglio : null),
+      bersaglioColpito,
+      rng: state.rng
     };
-    result.effettiAbilita = altriEffetti.map((e) => {
-      const res = applyEffect(e, ctxEffetti);
-      const reazioni = avvisaChiGuardaLeDifese(state, playerIndex, e, { ...res, lato: res.effettoAttivo && res.effettoAttivo.pool });
-      return { effect: e.effect, ...res, ...(reazioni.length ? { trappoleScattate: reazioni } : {}) };
-    });
+    const res = applyEffect(e, ctxEffetto);
+    const reazioni = avvisaChiGuardaLeDifese(state, playerIndex, e, { ...res, lato: res.effettoAttivo && res.effettoAttivo.pool });
+    esiti.push({ effect: e.effect, ...res, ...(reazioni.length ? { trappoleScattate: reazioni } : {}) });
   }
 
-  // L'abilità non passava affatto dagli effetti sul danno: raddoppia,
-  // annulla e riflette valevano sulle calate e non sui colpi speciali.
-  // (Il bonus del pozzetto lo mette modificaDanno: qui lo si toglie,
-  // altrimenti verrebbe contato due volte.)
-  // Ogni carica passa per conto suo dagli effetti sul danno: raddoppia,
-  // annulla e riflette valgono "sul prossimo colpo", e con due cariche
-  // il prossimo è la prima. È la stessa regola che vale fra due calate.
-  let damage = 0;
-  const colpi = [];
-  for (const carica of cariche) {
-    let questo = eroe.att * (carica / 100) * fattoreVarianza(state);
-    questo = modificaDanno(state, playerIndex, questo, result);
-    const netto = infliggiDanno(bersaglio, questo);
-    damage += netto;
-    if (netto > 0) colpi.push({ suit: semeBersaglio, damage: netto, cardId: bersaglio.cardId, pvRimasti: bersaglio.pv });
-  }
   player.puntiMagia -= costoAbilita;
   player.abilitaUsate.push(semeAttaccante);
 
   result.damage = damage;
-  result.cariche = cariche.length;
   result.puntiRimasti = player.puntiMagia;
   result.colpi = colpi;
-
-  checkAbilityTrigger(bersaglio, semeBersaglio, 'on_subisco_danno', { casterCharacters: defender.characters, opponentCharacters: player.characters });
+  result.effettiAbilita = esiti;
+  // quanta parte dell'ATT ha pesato il primo colpo: serve al tavolo per
+  // raccontare "il 30% del suo attacco"
+  const primoColpo = esiti.find((x) => x.effect === 'danno_da_attacco');
+  if (primoColpo) result.percentuale = primoColpo.percentuale;
 
   if (checkKO(state, defenderIndex)) result.matchEnded = true;
   return result;
 }
+
 
 // ------------------------------------------------------------
 // CARTE MAGICHE — attivazione dentro la partita

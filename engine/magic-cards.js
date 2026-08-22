@@ -56,7 +56,7 @@ export const EFFECT_CATALOG = {
   ricarica_sorpresa:   { categoria: 'personaggi', descrizione: 'Rende di nuovo giocabile una Carta Magica già spesa in questa partita' }
 };
 
-const TARGETS = ['avversario', 'tutti_avversari', 'se_stesso', 'alleato_casuale', 'tutti_alleati', 'personaggio_specifico'];
+const TARGETS = ['avversario', 'tutti_avversari', 'se_stesso', 'alleato_casuale', 'tutti_alleati', 'personaggio_specifico', 'bersaglio_colpito'];
 const SUITS = ['♥', '♦', '♣', '♠'];
 
 // Una carta può portare un solo `effect` (forma vecchia) oppure una lista
@@ -170,10 +170,16 @@ const BERSAGLI_RISOLTI = {
   tutti_alleati:         { lato: 'mio', quanti: 'tutti' },
   avversario:            { lato: 'suo', quanti: 'casuale' },
   tutti_avversari:       { lato: 'suo', quanti: 'tutti' },
-  personaggio_specifico: { lato: 'suo', quanti: 'scelto' }
+  personaggio_specifico: { lato: 'suo', quanti: 'scelto' },
+  // "l'avversario COLPITO", "il nemico colpito": non se ne estrae uno
+  // nuovo, si riusa quello che il colpo di QUESTA stessa abilità ha
+  // appena preso. Serve a due carte (Onça-Pintada, Boitatà) che fanno
+  // danno e poi infieriscono sullo stesso bersaglio: senza, il malus
+  // finirebbe su un nemico a caso — magari nemmeno quello ferito.
+  bersaglio_colpito:     { lato: 'suo', quanti: 'gia_colpito' }
 };
 
-function risolviBersaglio(target, ctx, predefinito, rng) {
+export function risolviBersaglio(target, ctx, predefinito, rng) {
   const nome = target || predefinito;
   const def = BERSAGLI_RISOLTI[nome];
   // un bersaglio sconosciuto non colpisce niente: il controllo delle
@@ -188,6 +194,10 @@ function risolviBersaglio(target, ctx, predefinito, rng) {
   const vivi = () => SUITS.filter((s) => pool[s] && pool[s].pv > 0);
 
   if (def.quanti === 'scelto') return { pool, lato, suits: ctx.suit ? [ctx.suit] : [] };
+  // chi è già stato colpito da questa abilità: lo dice chi la sta
+  // eseguendo. Se non c'è stato nessun colpo, non c'è nessuno su cui
+  // infierire e l'effetto non tocca niente.
+  if (def.quanti === 'gia_colpito') return { pool, lato, suits: (ctx.bersaglioColpito || []).slice() };
   if (def.quanti === 'tutti') return { pool, lato, suits: vivi() };
   if (def.quanti === 'suo_o_tutti') {
     // con un seme indicato è QUEL personaggio (l'eroe che sta agendo);

@@ -193,6 +193,21 @@ if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 &&
     ', punti ' + (prima && prima.players[0].puntiMagia));
 }
 
+// ---------- 5bis. l'abilita' che NON chiede di mirare ----------
+// NON COPERTO QUI, e vale la pena dire perche'.
+// Nessuna carta del roster vero dice "a scelta": il bersaglio lo decide
+// la carta, quindi il passo "tocca un nemico" si salta e il colpo parte
+// al primo tocco. Le carte SEGNAPOSTO di oggi chiedono invece tutte di
+// mirare, quindi da questa pagina quel percorso non si raggiunge.
+// Per provarlo servirebbe cambiare l'abilita' di un eroe a partita
+// avviata — e la pagina, giustamente, lascia uscire solo una COPIA dello
+// stato proprio per impedirlo. Aprire una porta sullo stato vero solo
+// per una prova sarebbe peggio del buco che copre.
+// La decisione (chiedere o no il bersaglio) e' provata nel motore, in
+// engine/magie-in-partita.test.js; questo percorso dell'interfaccia si
+// coprira' da se' quando le carte vere prenderanno il posto dei
+// segnaposto, perche' diventera' la strada normale.
+
 check('nessun errore JavaScript in tutta la partita', guasti.length === 0,
   (guasti[0] || '').split('\n').slice(0, 2).join(' | '));
 

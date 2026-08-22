@@ -566,15 +566,23 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   check('non si può riusare subito: i punti sono finiti', subito.ok === false);
 }
 
-// --- 21. L'abilità non colpisce un personaggio già morto ---
+// --- 21. L'abilità non colpisce MAI un personaggio già morto ---
+// Prima era un rifiuto: si sceglieva il bersaglio a mano, e mirare a un
+// caduto veniva bocciato con un messaggio. Adesso il bersaglio lo estrae
+// il motore, e lo estrae SOLO fra i vivi: la protezione non è più un
+// controllo che si può dimenticare, è il modo in cui funziona.
 {
   const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
-  const eroe = state.players[0].characters['♠'];
   state.players[0].puntiMagia = 4;
-  state.players[1].characters['♥'].pv = 0;
-  const res = usaAbilitaSpeciale(state, 0, '♠', '♥', T0 + 1000);
-  check('bersaglio già fuori combattimento: rifiutato', res.ok === false && /già fuori combattimento/.test(res.reason));
-  check('i punti non vengono sprecati: restano per riprovare', state.players[0].puntiMagia === 4);
+  // ne lascio in piedi uno solo: qualunque cosa esca, dev'essere lui
+  for (const s of ['♥', '♦', '♣']) state.players[1].characters[s].pv = 0;
+
+  const res = usaAbilitaSpeciale(state, 0, '♠', null, T0 + 1000);
+  check('l'abilità parte anche senza scegliere un bersaglio', res.ok === true, res.reason);
+  check('e il colpo va sull'unico ancora in piedi',
+    res.colpi.length === 1 && res.colpi[0].suit === '♠');
+  check('i caduti restano a zero, nessun danno sprecato su di loro',
+    ['♥', '♦', '♣'].every((s) => state.players[1].characters[s].pv === 0));
 }
 
 // --- 22. L'abilità può dare il KO ---

@@ -2964,6 +2964,14 @@ const ui = {
       avviso('Punti magia insufficienti: servono ' + costo + ', ne hai ' + S.players[0].puntiMagia + '.');
       return;
     }
+    // QUASI NESSUNA ABILITA' CHIEDE DI MIRARE.
+    // Nessuna carta del roster dice "a scelta": il bersaglio lo decide la
+    // carta (uno a caso, tutti, i propri...). Quindi il piu' delle volte
+    // il colpo parte subito, e il passo "tocca un nemico" — che non
+    // avrebbe niente da chiedere — si salta del tutto. Chi decide se
+    // serve e' il motore, non questa pagina.
+    if (!abilitaChiedeBersaglio(eroe._ability)) { this.colpisci(null, seme); return; }
+
     bersaglioAttivo = seme;
     const t = testo(eroe.cardId);
     const pct = (eroe._ability && eroe._ability.parametro) || 30;
@@ -2988,9 +2996,11 @@ const ui = {
   // parte l'avversario non vedeva proprio nulla.
   // Ora passa da esegui(), che in locale chiama il motore e in rete
   // chiede al server. Stessa forma dell'esito, un solo percorso.
-  async colpisci(semeBersaglio) {
-    if (!bersaglioAttivo) return;
-    const attaccante = bersaglioAttivo;
+  // `attaccanteDiretto` arriva quando l'abilita' non chiede di mirare:
+  // si salta il passo della scelta e si va dritti al colpo.
+  async colpisci(semeBersaglio, attaccanteDiretto) {
+    if (!bersaglioAttivo && !attaccanteDiretto) return;
+    const attaccante = attaccanteDiretto || bersaglioAttivo;
     bersaglioAttivo = null;
     $('istruzioneBersaglio').classList.remove('mostra');
     const r = await esegui(
@@ -3294,7 +3304,7 @@ PRELIEVI = [
                     'actionAttachToMeld', 'actionDiscard', 'usaAbilitaSpeciale',
                     'giocaCartaMagica', 'haEffetto', 'checkTurnTimeout',
                     'TURN_SECONDS', 'SECONDI_DI_STUDIO',
-                    'abbandona']),
+                    'abbandona', 'abilitaChiedeBersaglio']),
     ('magic-cards.js', ['makeMagicState', 'activateSorpresa', 'armTrappola', 'resetTurnoMagie']),
     ('core-rules.js', ['valueLabel']),
     ('bot.js', ['botGiocaTurno'])
