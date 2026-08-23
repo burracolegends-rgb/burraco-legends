@@ -2267,6 +2267,57 @@
       100% { opacity: 0; transform: translate(-50%, 78px) scale(0.9); }
     }
 
+    /* ============================================================
+       LA CARTA INGRANDITA
+       Al tavolo le carte sono minuscole per forza: ci sono quattordici
+       carte, due mani e il tavolo da burraco nello stesso schermo. Ma
+       prima di usare una carta uno vuole GUARDARLA — leggere cosa fa,
+       vedere l'illustrazione. Qui la carta si apre grande, con la sua
+       cornice (che a questa misura finalmente si vede), e sotto il
+       bottone per usarla.
+       PER LE CARTE MAGICHE E' ANCHE UNA PROTEZIONE: prima bastava un
+       tocco per giocarne una, e una Carta Magica giocata e' spesa per
+       sempre — un dito storto costava una carta. Adesso il tocco apre
+       e basta; per usarla si preme USA, che e' una decisione separata.
+       ============================================================ */
+    #veloCarta {
+      position: fixed; inset: 0; z-index: 895; display: none;
+      align-items: center; justify-content: center; padding: 3vh 4vw;
+      background: rgba(6,4,10,0.82); backdrop-filter: blur(4px);
+    }
+    #veloCarta.mostra { display: flex; animation: veloCartaIn 0.18s ease-out; }
+    @keyframes veloCartaIn { from { opacity: 0; } to { opacity: 1; } }
+    #veloCarta .colonna {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      max-height: 100%;
+    }
+    /* La carta e' alta quanto lo consente lo schermo, non larga quanto
+       lo consente: in orizzontale su un telefono e' l'altezza a mancare,
+       e una carta che esce sopra e sotto non si legge comunque. */
+    #veloCarta .carta-illustrata {
+      height: min(74vh, 420px); width: auto; aspect-ratio: 0.71;
+      border-radius: 12px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.85), 0 0 44px rgba(232,196,106,0.28);
+      animation: cartaGrandeIn 0.28s cubic-bezier(.2,1.25,.4,1) both;
+    }
+    @keyframes cartaGrandeIn {
+      from { opacity: 0; transform: scale(0.78) translateY(14px); }
+      to   { opacity: 1; transform: none; }
+    }
+    #veloCarta .bottoni { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    #veloCarta button {
+      font-family: inherit; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.6px;
+      padding: 9px 24px; border-radius: 10px; cursor: pointer;
+      border: 1px solid var(--oro, #e8c46a); color: #f0e2c0;
+      background: linear-gradient(180deg, rgba(74,53,32,0.95), rgba(32,22,13,0.95));
+    }
+    #veloCarta button.usa {
+      background: linear-gradient(180deg, #ffe9ae, var(--oro, #e8c46a)); color: #2a1c08;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6), 0 0 22px rgba(232,196,106,0.45);
+    }
+    #veloCarta button:active { transform: translateY(1px); }
+    #veloCarta .nota-carta { font-size: 0.75rem; color: #b7a686; text-align: center; max-width: 300px; }
+
     /* ------------------------------------------------------------
        IL LAMPO DELLA CARTA MAGICA
        Una Carta Magica finora si vedeva solo come una carta grande al
@@ -2532,6 +2583,132 @@
       font-size: 0.92rem; font-weight: 800; letter-spacing: 0.5px;
       background: linear-gradient(180deg, #fff0c2, #e8c46a 55%, #b98d2c); color: #2a1c08;
     }
+
+  /* ---------- LA CARTA ILLUSTRATA (condivisa fra le pagine) ---------- */
+  .carta-illustrata {
+    position: relative; aspect-ratio: 0.71; overflow: hidden;
+    container-type: inline-size;
+    /* Lo sfondo si vede DENTRO la finestra, dietro l'illustrazione:
+       le illustrazioni hanno lo sfondo trasparente, quindi il colore
+       della carta traspare intorno al personaggio ed e' quello che le
+       fa sembrare disegnate dentro la cornice invece che incollate. */
+    background:
+      radial-gradient(ellipse at 50% 30%, var(--velo, rgba(255,255,255,0.10)), transparent 62%),
+      linear-gradient(168deg, #2a2140 0%, #1a1428 60%, #120d1c 100%);
+    --fin-x: 15.16%; --fin-y: 13.57%; --fin-w: 69.91%; --fin-h: 51.73%;
+    --nome-x: 17.36%; --nome-y: 4.52%; --nome-w: 64.24%; --nome-h: 7.81%;
+    --desc-x: 14.47%; --desc-y: 67.84%; --desc-w: 70.02%; --desc-h: 10.28%;
+    --statsx-x: 14.47%; --statdx-x: 50.93%; --stat-y: 81.83%;
+    --statsx-w: 31.25%; --statdx-w: 33.56%; --stat-h: 8.22%;
+  }
+  /* La cornice delle Carte Magiche ha proporzioni sue: finestra un
+     filo piu' bassa e UN SOLO riquadro in basso, piu' alto (niente
+     vita/attacco da scrivere, solo l'effetto). */
+  .carta-illustrata.magica {
+    --fin-y: 13.31%; --fin-h: 52.44%;
+    --nome-x: 19.68%; --nome-y: 4.87%; --nome-w: 61.34%; --nome-h: 7.71%;
+    --desc-x: 15.63%; --desc-y: 68.18%; --desc-w: 69.44%; --desc-h: 21.10%;
+  }
+
+  .ci-finestra {
+    position: absolute; overflow: hidden;
+    left: var(--fin-x); top: var(--fin-y); width: var(--fin-w); height: var(--fin-h);
+  }
+  /* "a coprire": l'illustrazione riempie tutta la finestra e quello che
+     avanza si taglia, invece di lasciare bordi vuoti ai lati. */
+  .ci-arte { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .ci-cornice {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; pointer-events: none;
+  }
+
+  /* --- i testi, ognuno nel suo spazio vuoto della cornice --- */
+  .ci-testata, .ci-desc, .ci-stat {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    text-align: center; overflow: hidden; pointer-events: none;
+  }
+  .ci-testata {
+    left: var(--nome-x); top: var(--nome-y); width: var(--nome-w); height: var(--nome-h);
+    flex-direction: column; gap: 0;
+  }
+  .ci-nome {
+    font-family: Georgia, 'Times New Roman', serif; font-weight: 700;
+    color: #f0e2c0; line-height: 1.05;
+    font-size: 11px; font-size: 6.2cqw;
+    text-shadow: 0 1px 2px #000; letter-spacing: 0.2px;
+    max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ci-stelle { color: #e2b43c; line-height: 1; font-size: 7px; font-size: 3.6cqw; }
+  .ci-seme { color: #c41e28; font-size: 8px; font-size: 4.6cqw; line-height: 1; }
+  .ci-seme.nero { color: #2a2830; }
+
+  .ci-desc {
+    left: var(--desc-x); top: var(--desc-y); width: var(--desc-w); height: var(--desc-h);
+    padding: 0 3%;
+    font-family: Georgia, 'Times New Roman', serif; color: #2a2118;
+    font-size: 7px; font-size: 3.5cqw; line-height: 1.25;
+  }
+  /* SULLA CORNICE MAGICA il riquadro non e' pergamena ma metallo scuro,
+     quindi il testo va chiaro. Era pero' un grigio-lilla tenue su un
+     grigio medio: sulla carta si leggeva a fatica, grigio su grigio.
+     Adesso e' un bianco caldo pieno, con un'ombra netta sotto che lo
+     stacca dal fondo — la stessa che porta il nome nella barra in cima.
+     E il corpo cresce un po': quel riquadro e' il doppio piu' alto di
+     quello dei personaggi, il testo ci sta comodo. */
+  .carta-illustrata.magica .ci-desc {
+    color: #f6efdc; font-size: 8px; font-size: 3.9cqw;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  }
+
+  /* VITA / ATT: l'etichetta SOPRA, il numero SOTTO, e devono restare
+     due righe separate. Prima l'altezza del riquadro era fissata al
+     riquadro della cornice e il contenuto, se cresceva, ci finiva
+     dentro a forza: l'etichetta e il numero si accavallavano.
+     Adesso l'altezza e' un MINIMO, non una gabbia — il riquadro parte
+     dal punto giusto e si prende quello che gli serve — e le due righe
+     hanno un'interlinea dichiarata, cosi' non si toccano mai. */
+  .ci-stat {
+    top: var(--stat-y); min-height: var(--stat-h); height: auto;
+    flex-direction: column; justify-content: center; gap: 0.6cqw; line-height: 1;
+  }
+  .ci-stat.sx { left: var(--statsx-x); width: var(--statsx-w); }
+  .ci-stat.dx { left: var(--statdx-x); width: var(--statdx-w); }
+  .ci-stat .etichetta {
+    color: #cfc3a6; font-size: 5px; font-size: 2.5cqw;
+    letter-spacing: 0.5px; line-height: 1.1; display: block;
+  }
+  .ci-stat .numero {
+    font-family: Georgia, serif; font-weight: 800; color: #f7ecd2;
+    font-size: 10px; font-size: 5.2cqw; line-height: 1.1;
+    text-shadow: 0 1px 2px #000; display: block;
+  }
+
+  /* SULLE CARTE PICCOLE il testo minuto non si legge: si toglie invece
+     di lasciarlo li' come sporco. Il nome resta — e' quello che serve a
+     riconoscere la carta — e i numeri si vedono ingrandendola. */
+  @container (max-width: 165px) {
+    .ci-desc, .ci-stat { display: none; }
+  }
+
+  /* la carta che non si possiede: sagoma spenta */
+  .carta-illustrata.manca .ci-arte { filter: grayscale(1) brightness(0.28); }
+  .carta-illustrata.manca .ci-cornice { filter: grayscale(0.85) brightness(0.55); }
+  .carta-illustrata.manca .ci-nome { color: rgba(255,255,255,0.34); }
+
+  /* SENZA ILLUSTRAZIONE.
+     I personaggi segnaposto (001-008) e le carte di esempio sono nati
+     prima delle illustrazioni e non ne hanno una: sono la dotazione di
+     benvenuto, fuori commercio, destinati a sparire. Mettere il tag
+     dell'immagine lo stesso vorrebbe dire l'icona di immagine rotta —
+     il modo peggiore di dire "questa carta non ha un disegno". Al suo
+     posto il seme, grande, nella finestra: si capisce che e' una carta
+     senza figura, non una figura che non si e' caricata. */
+  .ci-senza-arte {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 34px; font-size: 30cqw; line-height: 1;
+    color: rgba(255,255,255,0.13); text-shadow: 0 0 6cqw currentColor;
+  }
 </style>
 </head>
 <body>
@@ -2663,6 +2840,13 @@
 </div>
 
 <div id="bcardPop"></div>
+<div id="veloCarta">
+  <div class="colonna">
+    <div id="cartaGrandeDentro"></div>
+    <div class="nota-carta" id="notaCarta"></div>
+    <div class="bottoni" id="bottoniCarta"></div>
+  </div>
+</div>
 <div id="istruzioneBersaglio"></div>
 <div id="sorpresaOverlay">
   <div class="raggi"></div>
@@ -6132,6 +6316,66 @@ const DATI_CARTE = {
 
 const ILLUSTRAZIONI = ["personaggio_101", "personaggio_102", "personaggio_103", "personaggio_104", "personaggio_105", "personaggio_106", "personaggio_107", "personaggio_108", "personaggio_109", "personaggio_110", "personaggio_111", "personaggio_112", "personaggio_113", "personaggio_114", "personaggio_115", "personaggio_116", "personaggio_117", "personaggio_118", "personaggio_119", "personaggio_120", "personaggio_121", "personaggio_122", "personaggio_123", "personaggio_124", "sorpresa_101", "sorpresa_102", "sorpresa_103", "trappola_101", "trappola_102"];
 
+// Il seme si colora come sulla carta vera: rossi cuori e quadri.
+const SEMI_ROSSI = ['♥', '♦'];
+
+// Le carte magiche non hanno seme: il loro tipo si legge dall'id.
+function eMagica(carta) {
+  return !carta.seme;
+}
+
+function immagineCarta(idCarta) {
+  return 'immagini/' + idCarta + '.webp';
+}
+
+// La carta illustrata: cornice, finestra con l'arte, testi al loro posto.
+// `opzioni.posseduta` a false la spegne (sagoma di quello che manca).
+function cartaIllustrata(carta, testi, opzioni) {
+  const o = opzioni || {};
+  const magica = eMagica(carta);
+  const cornice = magica ? 'cornice-magica' : 'cornice-personaggio';
+  const posseduta = o.posseduta !== false;
+  const stelle = o.stelle || '';
+
+  const seme = carta.seme
+    ? '<span class="ci-seme' + (SEMI_ROSSI.includes(carta.seme) ? '' : ' nero') + '">' + carta.seme + '</span>'
+    : '';
+
+  // Il nome e le stelle stanno nella barra in cima; il seme accanto al nome.
+  const testata =
+    '<div class="ci-testata">' +
+      '<div class="ci-nome">' + (posseduta ? testi.nome : '? ? ?') + (seme ? ' ' + seme : '') + '</div>' +
+      (stelle ? '<div class="ci-stelle">' + stelle + '</div>' : '') +
+    '</div>';
+
+  // I numeri solo per i personaggi: una Carta Magica non ha vita ne' attacco.
+  const numeri = (!magica && posseduta)
+    ? '<div class="ci-stat sx"><span class="etichetta">VITA</span><span class="numero">' + carta.vita + '</span></div>' +
+      '<div class="ci-stat dx"><span class="etichetta">ATT</span><span class="numero">' + carta.att + '</span></div>'
+    : '';
+
+  const descrizione = (posseduta && testi.descrizione)
+    ? '<div class="ci-desc">' + testi.descrizione + '</div>' : '';
+
+  // Non tutte le carte hanno un'illustrazione: l'elenco di quelle che ce
+  // l'hanno lo scrive il generatore leggendo la cartella vera, cosi' non
+  // si puo' sbagliare (vedi dati_illustrazioni in carta_illustrata.py).
+  // loading="lazy": l'album puo' avere decine di carte, e scaricarle
+  // tutte insieme all'apertura vorrebbe dire aspettare per vedere le
+  // prime. Cosi' arrivano quelle che si guardano.
+  const haArte = typeof ILLUSTRAZIONI !== 'undefined' && ILLUSTRAZIONI.indexOf(carta.id) !== -1;
+  const dentroFinestra = haArte
+    ? '<img class="ci-arte" src="' + immagineCarta(carta.id) + '" alt="" loading="lazy" draggable="false">'
+    : '<div class="ci-senza-arte">' + (carta.seme || (carta.tipo === 'trappola' ? '⚡' : '✦')) + '</div>';
+
+  return '<div class="carta-illustrata' + (magica ? ' magica' : '') +
+           (posseduta ? '' : ' manca') + '">' +
+      '<div class="ci-finestra">' + dentroFinestra + '</div>' +
+      '<img class="ci-cornice" src="' + immagineCarta(cornice) + '" alt="" loading="lazy" draggable="false">' +
+      testata + numeri + descrizione +
+    '</div>';
+}
+
 // ============================================================
 // BURRACO LEGENDS — tavolo di gioco.
 //
@@ -6489,8 +6733,12 @@ function bcardPersonaggio(ch, seme, mio) {
       (giaUsata && ch.pv > 0 ? ' esausta' : '') + (mirabile ? ' mirabile' : '') +
       (haRitratto ? ' con-ritratto' : '') +
       '" data-seme="' + seme + '" data-lato="' + (mio ? 'mio' : 'avv') + '"' +
-      (pronta ? ' onclick="ui.attivaAbilita(\'' + seme + '\')"' : '') +
-      (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
+      // Durante la scelta del bersaglio il tocco su un nemico DEVE
+      // colpire, non aprire la carta: si e' gia' nel mezzo di una
+      // decisione, aprire un'altra finestra la interromperebbe.
+      // Fuori da quel momento, toccare una carta la apre e basta.
+      (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"'
+                : ' onclick="ui.guarda(\'' + (mio ? 'mio' : 'avv') + '\',\'' + seme + '\')"') +
       ' data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione) + '"' +
       ' data-stelle="' + stelle(ch.rarita) + '"' +
       // La Difesa non si mostra a schermo (richiesta del committente):
@@ -6585,7 +6833,10 @@ function disegnaStriscia(contenitore, indiceGiocatore, mie) {
                                       : 'Non costa punti magia. Vale un solo utilizzo: giocata, sparisce anche dalla tua collezione.') + '"' +
             ' data-tipo="' + carta.tipo + '"' +
             ' data-stelle="' + stelle(carta.rarita || 1) + '"' +
-            ' onclick="ui.magica(' + i + ')">' +
+            // il tocco APRE la carta; per giocarla si preme USA nella
+            // finestra grande (una Carta Magica giocata e' spesa per
+            // sempre: non deve dipendere da un dito storto)
+            ' onclick="ui.guardaMagica(' + i + ')">' +
             '<div class="sigillo">' + (carta.tipo === 'sorpresa' ? '✦' : '⚡') + '</div>' +
             '<div class="etichetta">' + (carta.tipo === 'sorpresa' ? 'SORPRESA' : 'TRAPPOLA') + '</div>' +
             '<div class="nome-magia">' + t.nome + '</div>' +
@@ -8042,6 +8293,42 @@ function apriCartaMagica({ tipo, chi, nome, descrizione, esito, costo, durata = 
   apriCartaMagica._t = setTimeout(() => ov.classList.remove('mostra'), durata);
 }
 
+// ============================================================
+// LA CARTA INGRANDITA
+// Si apre toccando una carta del tavolo. Mostra la carta grande, con la
+// cornice, e sotto il bottone per usarla — se e' una carta che si puo'
+// usare adesso. Il perche' del bottone e non del tocco diretto: una
+// Carta Magica giocata e' spesa per sempre, e prima bastava un dito
+// storto per buttarla via.
+// ============================================================
+function chiudiCartaGrande() {
+  $('veloCarta').classList.remove('mostra');
+}
+
+// `azione` = { etichetta, fai } oppure niente, se la carta non si puo'
+// usare in questo momento. `nota` spiega PERCHE' non si puo': un bottone
+// che manca senza spiegazione sembra un guasto.
+function apriCartaGrande(carta, testi, opzioni) {
+  const o = opzioni || {};
+  $('cartaGrandeDentro').innerHTML = cartaIllustrata(carta, testi, { stelle: o.stelle || '' });
+  $('notaCarta').textContent = o.nota || '';
+  const bottoni = [];
+  if (o.azione) {
+    bottoni.push('<button class="usa" id="bottoneUsaCarta">' + o.azione.etichetta + '</button>');
+  }
+  bottoni.push('<button id="bottoneChiudiCarta">Chiudi</button>');
+  $('bottoniCarta').innerHTML = bottoni.join('');
+  if (o.azione) {
+    $('bottoneUsaCarta').onclick = (e) => {
+      e.stopPropagation();
+      chiudiCartaGrande();
+      o.azione.fai();
+    };
+  }
+  $('bottoneChiudiCarta').onclick = (e) => { e.stopPropagation(); chiudiCartaGrande(); };
+  $('veloCarta').classList.add('mostra');
+}
+
 // ------------------------------------------------------------
 // IL LAMPO DORATO DELLA CARTA MAGICA
 // Parte da un punto (dove stava la carta magica) e arriva su una carta
@@ -8350,6 +8637,58 @@ const ui = {
   // 1) tocchi il TUO eroe con la barra piena  → si entra in "scegli il bersaglio"
   // 2) tocchi un personaggio AVVERSARIO vivo  → il colpo parte
   // ------------------------------------------------------------
+  // ------------------------------------------------------------
+  // GUARDARE UNA CARTA
+  // Toccare una carta del tavolo la apre grande. Se e' una mia carta e
+  // l'abilita' si puo' usare adesso, sotto compare il bottone; se non
+  // si puo', compare il motivo — un bottone che manca senza spiegazione
+  // sembra un guasto del gioco.
+  // ------------------------------------------------------------
+  guarda(lato, seme) {
+    const mio = lato === 'mio';
+    const eroe = S.players[mio ? 0 : 1].characters[seme];
+    if (!eroe) return;
+    const carta = dati.personaggi[eroe.cardId];
+    if (!carta) return;
+    const t = testo(eroe.cardId);
+
+    let azione = null, nota = '';
+    if (mio) {
+      const costo = costoAbilita(eroe);
+      const giaUsata = (S.players[0].abilitaUsate || []).includes(seme);
+      if (eroe.pv <= 0)                         nota = 'Questo eroe è fuori combattimento.';
+      else if (S.currentPlayerIndex !== 0)      nota = 'Non è il tuo turno.';
+      else if (giaUsata)                        nota = 'Ha già usato la sua abilità in questo turno.';
+      else if (S.players[0].puntiMagia < costo) nota = 'Servono ' + costo + ' punti magia, ne hai ' + S.players[0].puntiMagia + '.';
+      else azione = { etichetta: 'USA ABILITÀ · ' + costo + ' PM', fai: () => ui.attivaAbilita(seme) };
+    }
+    apriCartaGrande(carta, t, { stelle: stelle(eroe.rarita), azione, nota });
+  },
+
+  // La Carta Magica: stessa finestra, ma il bottone qui conta di piu' —
+  // giocata, la carta e' spesa per sempre, anche dalla collezione.
+  guardaMagica(i) {
+    const ms = magie[0], carta = ms.selection[i];
+    if (!carta) return;
+    const t = testo(carta.id);
+    const usata = (ms.consumate || []).includes(i);
+    const armata = ms.trappoleArmate.some((x) => x.cardId === carta.id);
+
+    let azione = null, nota = '';
+    if (usata)                              nota = 'Già usata: ogni Carta Magica vale un solo utilizzo.';
+    else if (armata)                        nota = 'È armata sul campo: scatterà da sola quando serve.';
+    else if (S.currentPlayerIndex !== 0)    nota = 'Non è il tuo turno.';
+    else if (ms.giocateQuestoTurno >= 1)    nota = 'Hai già giocato una Carta Magica in questo turno.';
+    else azione = {
+      etichetta: carta.tipo === 'trappola' ? 'ARMA LA TRAPPOLA' : 'USA',
+      fai: () => ui.magica(i)
+    };
+    if (!nota && azione) {
+      nota = 'Non costa punti magia. Vale un solo utilizzo: giocata, sparisce anche dalla tua collezione.';
+    }
+    apriCartaGrande(carta, t, { stelle: stelle(carta.rarita || 1), azione, nota });
+  },
+
   attivaAbilita(seme) {
     if (S.currentPlayerIndex !== 0) { avviso('Non è il tuo turno.'); return; }
     const eroe = S.players[0].characters[seme];
@@ -8528,7 +8867,12 @@ $('veloImpostazioni').addEventListener('click', (e) => {
   if (e.target === $('veloImpostazioni')) $('veloImpostazioni').classList.remove('aperto');
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') $('veloImpostazioni').classList.remove('aperto');
+  if (e.key === 'Escape') { $('veloImpostazioni').classList.remove('aperto'); chiudiCartaGrande(); }
+});
+// toccare il velo (fuori dalla carta) chiude: e' il gesto che tutti
+// provano per primo, e non deve far partire niente
+$('veloCarta').addEventListener('click', (e) => {
+  if (e.target === $('veloCarta')) chiudiCartaGrande();
 });
 
 window.ui = ui;

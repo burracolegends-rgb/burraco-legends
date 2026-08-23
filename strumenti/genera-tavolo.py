@@ -6,7 +6,7 @@ import re, io, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # L'elenco delle carte che hanno davvero un'illustrazione: si legge
 # dalla cartella vera, cosi' non puo' andare fuori sincrono con i file.
-from carta_illustrata import dati_illustrazioni
+from carta_illustrata import dati_illustrazioni, CSS_CARTA_ILLUSTRATA, JS_CARTA_ILLUSTRATA
 
 # game.html di Burraco Pulito: da qui si prende SOLO il foglio di stile.
 # Metti il file accanto a questo script, oppure indica il suo percorso.
@@ -1093,6 +1093,57 @@ BATTLE_CSS = r'''
       100% { opacity: 0; transform: translate(-50%, 78px) scale(0.9); }
     }
 
+    /* ============================================================
+       LA CARTA INGRANDITA
+       Al tavolo le carte sono minuscole per forza: ci sono quattordici
+       carte, due mani e il tavolo da burraco nello stesso schermo. Ma
+       prima di usare una carta uno vuole GUARDARLA — leggere cosa fa,
+       vedere l'illustrazione. Qui la carta si apre grande, con la sua
+       cornice (che a questa misura finalmente si vede), e sotto il
+       bottone per usarla.
+       PER LE CARTE MAGICHE E' ANCHE UNA PROTEZIONE: prima bastava un
+       tocco per giocarne una, e una Carta Magica giocata e' spesa per
+       sempre — un dito storto costava una carta. Adesso il tocco apre
+       e basta; per usarla si preme USA, che e' una decisione separata.
+       ============================================================ */
+    #veloCarta {
+      position: fixed; inset: 0; z-index: 895; display: none;
+      align-items: center; justify-content: center; padding: 3vh 4vw;
+      background: rgba(6,4,10,0.82); backdrop-filter: blur(4px);
+    }
+    #veloCarta.mostra { display: flex; animation: veloCartaIn 0.18s ease-out; }
+    @keyframes veloCartaIn { from { opacity: 0; } to { opacity: 1; } }
+    #veloCarta .colonna {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      max-height: 100%;
+    }
+    /* La carta e' alta quanto lo consente lo schermo, non larga quanto
+       lo consente: in orizzontale su un telefono e' l'altezza a mancare,
+       e una carta che esce sopra e sotto non si legge comunque. */
+    #veloCarta .carta-illustrata {
+      height: min(74vh, 420px); width: auto; aspect-ratio: 0.71;
+      border-radius: 12px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.85), 0 0 44px rgba(232,196,106,0.28);
+      animation: cartaGrandeIn 0.28s cubic-bezier(.2,1.25,.4,1) both;
+    }
+    @keyframes cartaGrandeIn {
+      from { opacity: 0; transform: scale(0.78) translateY(14px); }
+      to   { opacity: 1; transform: none; }
+    }
+    #veloCarta .bottoni { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    #veloCarta button {
+      font-family: inherit; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.6px;
+      padding: 9px 24px; border-radius: 10px; cursor: pointer;
+      border: 1px solid var(--oro, #e8c46a); color: #f0e2c0;
+      background: linear-gradient(180deg, rgba(74,53,32,0.95), rgba(32,22,13,0.95));
+    }
+    #veloCarta button.usa {
+      background: linear-gradient(180deg, #ffe9ae, var(--oro, #e8c46a)); color: #2a1c08;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6), 0 0 22px rgba(232,196,106,0.45);
+    }
+    #veloCarta button:active { transform: translateY(1px); }
+    #veloCarta .nota-carta { font-size: 0.75rem; color: #b7a686; text-align: center; max-width: 300px; }
+
     /* ------------------------------------------------------------
        IL LAMPO DELLA CARTA MAGICA
        Una Carta Magica finora si vedeva solo come una carta grande al
@@ -1440,6 +1491,13 @@ BODY = r'''
 </div>
 
 <div id="bcardPop"></div>
+<div id="veloCarta">
+  <div class="colonna">
+    <div id="cartaGrandeDentro"></div>
+    <div class="nota-carta" id="notaCarta"></div>
+    <div class="bottoni" id="bottoniCarta"></div>
+  </div>
+</div>
 <div id="istruzioneBersaglio"></div>
 <div id="sorpresaOverlay">
   <div class="raggi"></div>
@@ -1870,8 +1928,12 @@ function bcardPersonaggio(ch, seme, mio) {
       (giaUsata && ch.pv > 0 ? ' esausta' : '') + (mirabile ? ' mirabile' : '') +
       (haRitratto ? ' con-ritratto' : '') +
       '" data-seme="' + seme + '" data-lato="' + (mio ? 'mio' : 'avv') + '"' +
-      (pronta ? ' onclick="ui.attivaAbilita(\'' + seme + '\')"' : '') +
-      (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
+      // Durante la scelta del bersaglio il tocco su un nemico DEVE
+      // colpire, non aprire la carta: si e' gia' nel mezzo di una
+      // decisione, aprire un'altra finestra la interromperebbe.
+      // Fuori da quel momento, toccare una carta la apre e basta.
+      (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"'
+                : ' onclick="ui.guarda(\'' + (mio ? 'mio' : 'avv') + '\',\'' + seme + '\')"') +
       ' data-nome="' + esc(t.nome) + '" data-desc="' + esc(t.descrizione) + '"' +
       ' data-stelle="' + stelle(ch.rarita) + '"' +
       // La Difesa non si mostra a schermo (richiesta del committente):
@@ -1966,7 +2028,10 @@ function disegnaStriscia(contenitore, indiceGiocatore, mie) {
                                       : 'Non costa punti magia. Vale un solo utilizzo: giocata, sparisce anche dalla tua collezione.') + '"' +
             ' data-tipo="' + carta.tipo + '"' +
             ' data-stelle="' + stelle(carta.rarita || 1) + '"' +
-            ' onclick="ui.magica(' + i + ')">' +
+            // il tocco APRE la carta; per giocarla si preme USA nella
+            // finestra grande (una Carta Magica giocata e' spesa per
+            // sempre: non deve dipendere da un dito storto)
+            ' onclick="ui.guardaMagica(' + i + ')">' +
             '<div class="sigillo">' + (carta.tipo === 'sorpresa' ? '✦' : '⚡') + '</div>' +
             '<div class="etichetta">' + (carta.tipo === 'sorpresa' ? 'SORPRESA' : 'TRAPPOLA') + '</div>' +
             '<div class="nome-magia">' + t.nome + '</div>' +
@@ -3423,6 +3488,42 @@ function apriCartaMagica({ tipo, chi, nome, descrizione, esito, costo, durata = 
   apriCartaMagica._t = setTimeout(() => ov.classList.remove('mostra'), durata);
 }
 
+// ============================================================
+// LA CARTA INGRANDITA
+// Si apre toccando una carta del tavolo. Mostra la carta grande, con la
+// cornice, e sotto il bottone per usarla — se e' una carta che si puo'
+// usare adesso. Il perche' del bottone e non del tocco diretto: una
+// Carta Magica giocata e' spesa per sempre, e prima bastava un dito
+// storto per buttarla via.
+// ============================================================
+function chiudiCartaGrande() {
+  $('veloCarta').classList.remove('mostra');
+}
+
+// `azione` = { etichetta, fai } oppure niente, se la carta non si puo'
+// usare in questo momento. `nota` spiega PERCHE' non si puo': un bottone
+// che manca senza spiegazione sembra un guasto.
+function apriCartaGrande(carta, testi, opzioni) {
+  const o = opzioni || {};
+  $('cartaGrandeDentro').innerHTML = cartaIllustrata(carta, testi, { stelle: o.stelle || '' });
+  $('notaCarta').textContent = o.nota || '';
+  const bottoni = [];
+  if (o.azione) {
+    bottoni.push('<button class="usa" id="bottoneUsaCarta">' + o.azione.etichetta + '</button>');
+  }
+  bottoni.push('<button id="bottoneChiudiCarta">Chiudi</button>');
+  $('bottoniCarta').innerHTML = bottoni.join('');
+  if (o.azione) {
+    $('bottoneUsaCarta').onclick = (e) => {
+      e.stopPropagation();
+      chiudiCartaGrande();
+      o.azione.fai();
+    };
+  }
+  $('bottoneChiudiCarta').onclick = (e) => { e.stopPropagation(); chiudiCartaGrande(); };
+  $('veloCarta').classList.add('mostra');
+}
+
 // ------------------------------------------------------------
 // IL LAMPO DORATO DELLA CARTA MAGICA
 // Parte da un punto (dove stava la carta magica) e arriva su una carta
@@ -3731,6 +3832,58 @@ const ui = {
   // 1) tocchi il TUO eroe con la barra piena  → si entra in "scegli il bersaglio"
   // 2) tocchi un personaggio AVVERSARIO vivo  → il colpo parte
   // ------------------------------------------------------------
+  // ------------------------------------------------------------
+  // GUARDARE UNA CARTA
+  // Toccare una carta del tavolo la apre grande. Se e' una mia carta e
+  // l'abilita' si puo' usare adesso, sotto compare il bottone; se non
+  // si puo', compare il motivo — un bottone che manca senza spiegazione
+  // sembra un guasto del gioco.
+  // ------------------------------------------------------------
+  guarda(lato, seme) {
+    const mio = lato === 'mio';
+    const eroe = S.players[mio ? 0 : 1].characters[seme];
+    if (!eroe) return;
+    const carta = dati.personaggi[eroe.cardId];
+    if (!carta) return;
+    const t = testo(eroe.cardId);
+
+    let azione = null, nota = '';
+    if (mio) {
+      const costo = costoAbilita(eroe);
+      const giaUsata = (S.players[0].abilitaUsate || []).includes(seme);
+      if (eroe.pv <= 0)                         nota = 'Questo eroe è fuori combattimento.';
+      else if (S.currentPlayerIndex !== 0)      nota = 'Non è il tuo turno.';
+      else if (giaUsata)                        nota = 'Ha già usato la sua abilità in questo turno.';
+      else if (S.players[0].puntiMagia < costo) nota = 'Servono ' + costo + ' punti magia, ne hai ' + S.players[0].puntiMagia + '.';
+      else azione = { etichetta: 'USA ABILITÀ · ' + costo + ' PM', fai: () => ui.attivaAbilita(seme) };
+    }
+    apriCartaGrande(carta, t, { stelle: stelle(eroe.rarita), azione, nota });
+  },
+
+  // La Carta Magica: stessa finestra, ma il bottone qui conta di piu' —
+  // giocata, la carta e' spesa per sempre, anche dalla collezione.
+  guardaMagica(i) {
+    const ms = magie[0], carta = ms.selection[i];
+    if (!carta) return;
+    const t = testo(carta.id);
+    const usata = (ms.consumate || []).includes(i);
+    const armata = ms.trappoleArmate.some((x) => x.cardId === carta.id);
+
+    let azione = null, nota = '';
+    if (usata)                              nota = 'Già usata: ogni Carta Magica vale un solo utilizzo.';
+    else if (armata)                        nota = 'È armata sul campo: scatterà da sola quando serve.';
+    else if (S.currentPlayerIndex !== 0)    nota = 'Non è il tuo turno.';
+    else if (ms.giocateQuestoTurno >= 1)    nota = 'Hai già giocato una Carta Magica in questo turno.';
+    else azione = {
+      etichetta: carta.tipo === 'trappola' ? 'ARMA LA TRAPPOLA' : 'USA',
+      fai: () => ui.magica(i)
+    };
+    if (!nota && azione) {
+      nota = 'Non costa punti magia. Vale un solo utilizzo: giocata, sparisce anche dalla tua collezione.';
+    }
+    apriCartaGrande(carta, t, { stelle: stelle(carta.rarita || 1), azione, nota });
+  },
+
   attivaAbilita(seme) {
     if (S.currentPlayerIndex !== 0) { avviso('Non è il tuo turno.'); return; }
     const eroe = S.players[0].characters[seme];
@@ -3909,7 +4062,12 @@ $('veloImpostazioni').addEventListener('click', (e) => {
   if (e.target === $('veloImpostazioni')) $('veloImpostazioni').classList.remove('aperto');
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') $('veloImpostazioni').classList.remove('aperto');
+  if (e.key === 'Escape') { $('veloImpostazioni').classList.remove('aperto'); chiudiCartaGrande(); }
+});
+// toccare il velo (fuori dalla carta) chiude: e' il gesto che tutti
+// provano per primo, e non deve far partire niente
+$('veloCarta').addEventListener('click', (e) => {
+  if (e.target === $('veloCarta')) chiudiCartaGrande();
 });
 
 window.ui = ui;
@@ -4165,6 +4323,7 @@ out.append('<style>')
 out.append(css)
 out.append(BATTLE_CSS)
 out.append(CSS_IMPOSTAZIONI)
+out.append(CSS_CARTA_ILLUSTRATA)
 out.append('</style>\n</head>\n<body>\n')
 out.append(BODY)
 # Il pannello va PRIMA dello script: lo script cerca i suoi bottoni
@@ -4213,6 +4372,7 @@ out.append('\n<script>\n(function(){\n"use strict";\n'
 out.append(motore)
 out.append(DATI)
 out.append(dati_illustrazioni(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+out.append(JS_CARTA_ILLUSTRATA)
 out.append(SCRIPT)
 out.append('\n})();\n</script>\n</body>\n</html>\n')
 

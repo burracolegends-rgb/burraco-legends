@@ -309,9 +309,14 @@ function tipoDi(c) {
 function simboloDi(c) {
   return c.seme ? c.seme : (SIMBOLO[tipoDi(c)] || '✦');
 }
+// I file in cards/i18n scrivono "descrizione", non "desc": qui si
+// leggeva la chiave sbagliata, quindi la descrizione era vuota SEMPRE —
+// e non si notava perche' l'album non la mostrava da nessuna parte.
+// Adesso che la carta illustrata la stampa dentro la cornice, il buco
+// si vedrebbe eccome.
 function testo(id) {
   const t = TESTI && TESTI[id];
-  return { nome: (t && t.nome) || id, desc: (t && t.desc) || '' };
+  return { nome: (t && t.nome) || id, descrizione: (t && t.descrizione) || '' };
 }
 function stelle(r) { return '★'.repeat(r) + '☆'.repeat(5 - r); }
 

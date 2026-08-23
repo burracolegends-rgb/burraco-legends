@@ -371,16 +371,39 @@
     font-family: Georgia, 'Times New Roman', serif; color: #2a2118;
     font-size: 7px; font-size: 3.5cqw; line-height: 1.25;
   }
-  /* Sulla cornice magica il riquadro e' scuro, non pergamena */
-  .carta-illustrata.magica .ci-desc { color: #d2cde6; }
+  /* SULLA CORNICE MAGICA il riquadro non e' pergamena ma metallo scuro,
+     quindi il testo va chiaro. Era pero' un grigio-lilla tenue su un
+     grigio medio: sulla carta si leggeva a fatica, grigio su grigio.
+     Adesso e' un bianco caldo pieno, con un'ombra netta sotto che lo
+     stacca dal fondo — la stessa che porta il nome nella barra in cima.
+     E il corpo cresce un po': quel riquadro e' il doppio piu' alto di
+     quello dei personaggi, il testo ci sta comodo. */
+  .carta-illustrata.magica .ci-desc {
+    color: #f6efdc; font-size: 8px; font-size: 3.9cqw;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  }
 
-  .ci-stat { top: var(--stat-y); height: var(--stat-h); flex-direction: column; gap: 0; }
+  /* VITA / ATT: l'etichetta SOPRA, il numero SOTTO, e devono restare
+     due righe separate. Prima l'altezza del riquadro era fissata al
+     riquadro della cornice e il contenuto, se cresceva, ci finiva
+     dentro a forza: l'etichetta e il numero si accavallavano.
+     Adesso l'altezza e' un MINIMO, non una gabbia — il riquadro parte
+     dal punto giusto e si prende quello che gli serve — e le due righe
+     hanno un'interlinea dichiarata, cosi' non si toccano mai. */
+  .ci-stat {
+    top: var(--stat-y); min-height: var(--stat-h); height: auto;
+    flex-direction: column; justify-content: center; gap: 0.6cqw; line-height: 1;
+  }
   .ci-stat.sx { left: var(--statsx-x); width: var(--statsx-w); }
   .ci-stat.dx { left: var(--statdx-x); width: var(--statdx-w); }
-  .ci-stat .etichetta { color: #b6ab93; font-size: 5px; font-size: 2.6cqw; letter-spacing: 0.5px; line-height: 1; }
+  .ci-stat .etichetta {
+    color: #cfc3a6; font-size: 5px; font-size: 2.5cqw;
+    letter-spacing: 0.5px; line-height: 1.1; display: block;
+  }
   .ci-stat .numero {
-    font-family: Georgia, serif; font-weight: 800; color: #f0e2c0;
-    font-size: 10px; font-size: 5.4cqw; line-height: 1.1; text-shadow: 0 1px 2px #000;
+    font-family: Georgia, serif; font-weight: 800; color: #f7ecd2;
+    font-size: 10px; font-size: 5.2cqw; line-height: 1.1;
+    text-shadow: 0 1px 2px #000; display: block;
   }
 
   /* SULLE CARTE PICCOLE il testo minuto non si legge: si toglie invece

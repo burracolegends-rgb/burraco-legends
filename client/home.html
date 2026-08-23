@@ -450,6 +450,30 @@
 
     .insegna h1 { letter-spacing: 2px; }
     .insegna .sotto { font-size: 0.72rem; }
+
+    /* NOME, SHARKINI E IMPOSTAZIONI SULLA STESSA RIGA.
+       La barra in alto va a capo da sola quando non ci sta (flex-wrap),
+       e su un telefono non ci stava mai: il nome occupava tutta la prima
+       riga e sharkini + ingranaggio finivano sotto, come una seconda
+       barra. Due righe per tre informazioni corte.
+       Qui si vieta l'andata a capo e si fa spazio nel modo giusto: e' il
+       NOME a potersi accorciare (con i puntini, se serve), perche' e'
+       l'unica delle tre che si puo' indovinare — un saldo troncato o
+       un'icona a meta' no. */
+    .barra-alta { flex-wrap: nowrap; align-items: stretch; gap: 7px; }
+    .profilo { flex: 1 1 auto; min-width: 0; padding: 5px 10px 5px 5px; gap: 8px; }
+    .profilo > div:last-child { min-width: 0; }
+    .profilo .nick { font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profilo .liv { font-size: 0.6rem; }
+    .cornice-avatar { flex: 0 0 auto; }
+    .valute { flex: 0 0 auto; gap: 6px; }
+    /* la moneta si riconosce dall'icona: la parola "sharkini" accanto
+       e' spazio speso per ripetere quello che si vede gia' */
+    .valuta .etichetta-moneta { display: none; }
+    .valuta { padding: 6px 9px; font-size: 0.8rem; gap: 5px; }
+    .valuta svg { width: 17px; height: 17px; }
+    .ingranaggio { width: 34px; height: 34px; align-self: center; }
+    .ingranaggio svg { width: 18px; height: 18px; }
   }
 </style>
 </head>

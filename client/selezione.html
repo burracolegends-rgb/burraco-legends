@@ -119,6 +119,23 @@
   .torna { display: inline-block; margin-bottom: 8px; font-size: 0.85rem;
            color: var(--muted, #9a8fb5); text-decoration: none; }
   .torna:hover { color: var(--ok, #d4af37); }
+
+  /* --- le miniature delle illustrazioni --- */
+  .con-mini { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .con-mini .testi { min-width: 0; }
+  .mini-arte {
+    width: 38px; height: 38px; border-radius: 7px; object-fit: cover; flex: 0 0 auto;
+    border: 1px solid var(--border); background: #191430;
+  }
+  .mini-vuota {
+    width: 38px; height: 38px; border-radius: 7px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); background: #191430;
+    color: var(--text-dim); font-size: 1.1rem;
+  }
+  .magic-card .mini-arte, .magic-card .mini-vuota {
+    width: 100%; height: 92px; border-radius: 8px; margin-bottom: 8px;
+  }
 </style>
 </head>
 <body>
@@ -180,125 +197,1065 @@
 // cards/data e cards/i18n nella cartella del progetto: questo è uno
 // snapshot di quei file, non una fonte alternativa.
 // ============================================================
+/* ==== CARTE — generato da strumenti/aggiorna-selezione.py, non modificare a mano ==== */
 const PERSONAGGI = [
-  { id: 'personaggio_001', seme: '♥', rarita: 2, vita: 100, att: 90, difesa: 1.05 },
-  { id: 'personaggio_002', seme: '♥', rarita: 4, vita: 140, att: 120, difesa: 1.12 },
-  { id: 'personaggio_003', seme: '♦', rarita: 2, vita: 100, att: 90, difesa: 1.05 },
-  { id: 'personaggio_004', seme: '♦', rarita: 4, vita: 140, att: 120, difesa: 1.12 },
-  { id: 'personaggio_005', seme: '♣', rarita: 2, vita: 100, att: 90, difesa: 1.05 },
-  { id: 'personaggio_006', seme: '♣', rarita: 5, vita: 160, att: 135, difesa: 1.18 },
-  { id: 'personaggio_007', seme: '♠', rarita: 3, vita: 120, att: 105, difesa: 1.08 },
-  { id: 'personaggio_008', seme: '♠', rarita: 4, vita: 140, att: 120, difesa: 1.12 }
+  {
+    "id": "personaggio_001",
+    "seme": "♥",
+    "rarita": 2,
+    "vita": 100,
+    "att": 90,
+    "difesa": 1.05
+  },
+  {
+    "id": "personaggio_002",
+    "seme": "♥",
+    "rarita": 4,
+    "vita": 140,
+    "att": 120,
+    "difesa": 1.12
+  },
+  {
+    "id": "personaggio_003",
+    "seme": "♦",
+    "rarita": 2,
+    "vita": 100,
+    "att": 90,
+    "difesa": 1.05
+  },
+  {
+    "id": "personaggio_004",
+    "seme": "♦",
+    "rarita": 4,
+    "vita": 140,
+    "att": 120,
+    "difesa": 1.12
+  },
+  {
+    "id": "personaggio_005",
+    "seme": "♣",
+    "rarita": 2,
+    "vita": 100,
+    "att": 90,
+    "difesa": 1.05
+  },
+  {
+    "id": "personaggio_006",
+    "seme": "♣",
+    "rarita": 5,
+    "vita": 160,
+    "att": 135,
+    "difesa": 1.18
+  },
+  {
+    "id": "personaggio_007",
+    "seme": "♠",
+    "rarita": 3,
+    "vita": 120,
+    "att": 105,
+    "difesa": 1.08
+  },
+  {
+    "id": "personaggio_008",
+    "seme": "♠",
+    "rarita": 4,
+    "vita": 140,
+    "att": 120,
+    "difesa": 1.12
+  },
+  {
+    "id": "personaggio_101",
+    "seme": "♦",
+    "rarita": 5,
+    "vita": 140,
+    "att": 180,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_102",
+    "seme": "♥",
+    "rarita": 3,
+    "vita": 120,
+    "att": 80,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_103",
+    "seme": "♦",
+    "rarita": 3,
+    "vita": 120,
+    "att": 80,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_104",
+    "seme": "♠",
+    "rarita": 3,
+    "vita": 120,
+    "att": 80,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_105",
+    "seme": "♣",
+    "rarita": 3,
+    "vita": 130,
+    "att": 80,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_106",
+    "seme": "♥",
+    "rarita": 3,
+    "vita": 90,
+    "att": 110,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_107",
+    "seme": "♦",
+    "rarita": 3,
+    "vita": 80,
+    "att": 120,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_108",
+    "seme": "♠",
+    "rarita": 3,
+    "vita": 120,
+    "att": 85,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_109",
+    "seme": "♣",
+    "rarita": 3,
+    "vita": 110,
+    "att": 100,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_110",
+    "seme": "♥",
+    "rarita": 4,
+    "vita": 160,
+    "att": 110,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_111",
+    "seme": "♦",
+    "rarita": 4,
+    "vita": 120,
+    "att": 140,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_112",
+    "seme": "♠",
+    "rarita": 4,
+    "vita": 140,
+    "att": 120,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_113",
+    "seme": "♣",
+    "rarita": 4,
+    "vita": 120,
+    "att": 140,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_114",
+    "seme": "♥",
+    "rarita": 4,
+    "vita": 130,
+    "att": 130,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_115",
+    "seme": "♦",
+    "rarita": 4,
+    "vita": 150,
+    "att": 110,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_116",
+    "seme": "♠",
+    "rarita": 4,
+    "vita": 140,
+    "att": 120,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_117",
+    "seme": "♣",
+    "rarita": 4,
+    "vita": 140,
+    "att": 120,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_118",
+    "seme": "♠",
+    "rarita": 5,
+    "vita": 150,
+    "att": 170,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_119",
+    "seme": "♣",
+    "rarita": 5,
+    "vita": 145,
+    "att": 175,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_120",
+    "seme": "♥",
+    "rarita": 5,
+    "vita": 170,
+    "att": 150,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_121",
+    "seme": "♣",
+    "rarita": 5,
+    "vita": 130,
+    "att": 180,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_122",
+    "seme": "♥",
+    "rarita": 5,
+    "vita": 160,
+    "att": 160,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_123",
+    "seme": "♦",
+    "rarita": 5,
+    "vita": 140,
+    "att": 190,
+    "difesa": 1
+  },
+  {
+    "id": "personaggio_124",
+    "seme": "♠",
+    "rarita": 5,
+    "vita": 160,
+    "att": 160,
+    "difesa": 1
+  }
 ];
 const MAGICHE = [
-  { id: 'sorpresa_001', tipo: 'sorpresa', rarita: 3, effect: 'danno_diretto', parametro: '30' },
-  { id: 'sorpresa_002', tipo: 'sorpresa', rarita: 4, effect: 'boost_att', parametro: '20' },
-  { id: 'trappola_001', tipo: 'trappola', rarita: 2, effect: 'scarto_forzato', parametro: '1' },
-  { id: 'trappola_002', tipo: 'trappola', rarita: 5, effect: 'riflette_danno', parametro: '50' }
+  {
+    "id": "sorpresa_001",
+    "tipo": "sorpresa",
+    "rarita": 3
+  },
+  {
+    "id": "sorpresa_002",
+    "tipo": "sorpresa",
+    "rarita": 4
+  },
+  {
+    "id": "sorpresa_003",
+    "tipo": "sorpresa",
+    "rarita": 4
+  },
+  {
+    "id": "sorpresa_101",
+    "tipo": "sorpresa",
+    "rarita": 3
+  },
+  {
+    "id": "sorpresa_102",
+    "tipo": "sorpresa",
+    "rarita": 3
+  },
+  {
+    "id": "sorpresa_103",
+    "tipo": "sorpresa",
+    "rarita": 4
+  },
+  {
+    "id": "trappola_001",
+    "tipo": "trappola",
+    "rarita": 2
+  },
+  {
+    "id": "trappola_002",
+    "tipo": "trappola",
+    "rarita": 5
+  },
+  {
+    "id": "trappola_003",
+    "tipo": "trappola",
+    "rarita": 5
+  },
+  {
+    "id": "trappola_101",
+    "tipo": "trappola",
+    "rarita": 5
+  },
+  {
+    "id": "trappola_102",
+    "tipo": "trappola",
+    "rarita": 4
+  }
 ];
+const CARTE_TESTI = {
+  "it": {
+    "personaggio_001": {
+      "nome": "Fiamma Ardente",
+      "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo."
+    },
+    "personaggio_002": {
+      "nome": "Regina di Brace",
+      "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta."
+    },
+    "personaggio_003": {
+      "nome": "Custode di Cristallo",
+      "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile."
+    },
+    "personaggio_004": {
+      "nome": "Sovrano d'Ambra",
+      "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa."
+    },
+    "personaggio_005": {
+      "nome": "Guardiano del Bosco",
+      "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente."
+    },
+    "personaggio_006": {
+      "nome": "Spirito della Foresta Antica",
+      "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso."
+    },
+    "personaggio_007": {
+      "nome": "Lama d'Ombra",
+      "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista."
+    },
+    "personaggio_008": {
+      "nome": "Assassino delle Nebbie",
+      "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte."
+    },
+    "sorpresa_001": {
+      "nome": "Fulmine Improvviso",
+      "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita."
+    },
+    "sorpresa_002": {
+      "nome": "Furia di Battaglia",
+      "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività."
+    },
+    "trappola_001": {
+      "nome": "Insidia nell'Ombra",
+      "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare."
+    },
+    "trappola_002": {
+      "nome": "Specchio di Ritorsione",
+      "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto."
+    },
+    "sorpresa_003": {
+      "nome": "Triplice Benedizione",
+      "descrizione": "Un solo gesto e tre doni: colpisce l'avversario, risana un tuo eroe e ti concede una carta in più alla prossima pescata."
+    },
+    "trappola_003": {
+      "nome": "Sigillo del Disperato",
+      "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."
+    },
+    "personaggio_101": {
+      "nome": "Papa Figo",
+      "descrizione": "Attacco notturno: distrugge le carte trappola sul campo e infligge il 30% del danno spada"
+    },
+    "personaggio_102": {
+      "nome": "Zè l'Arara",
+      "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"
+    },
+    "personaggio_103": {
+      "nome": "Sua Majestade o Papagaio",
+      "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"
+    },
+    "personaggio_104": {
+      "nome": "Lorinho",
+      "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"
+    },
+    "personaggio_105": {
+      "nome": "Zeca il Capibara",
+      "descrizione": "Riposo curativo: Cura tutti gli alleati di 30 hp"
+    },
+    "personaggio_106": {
+      "nome": "Chico il Mico",
+      "descrizione": "Colpo della scimmia: Infligge il 30% di danni ad un avversario casuale"
+    },
+    "personaggio_107": {
+      "nome": "Jão il Tamanduá",
+      "descrizione": "Tremore del suolo: Infligge il 15% di danno a tutti i nemici"
+    },
+    "personaggio_108": {
+      "nome": "Tonho il Tatu",
+      "descrizione": "Difesa coriacea: Tutti gli alleati per 3 turni hanno difesa aumentata del 25%"
+    },
+    "personaggio_109": {
+      "nome": "Boto Felipe",
+      "descrizione": "Getto d'acqua: Infligge 20% di danno a un avversario. Per 2 turni tutti gli avversari hanno difesa ridotta del 20%"
+    },
+    "personaggio_110": {
+      "nome": "Vitoria-Regia",
+      "descrizione": "Fiore curativo:Cura tutti gli alleati di 50 hp"
+    },
+    "personaggio_111": {
+      "nome": "Queixada della Caipora",
+      "descrizione": "Carica: colpisce con due cariche da 20% di danno ognuna"
+    },
+    "personaggio_112": {
+      "nome": "Cão-do-Mato",
+      "descrizione": "Ricerca del bersaglio: Aumenta del 25% il danno di carte calate e abilità"
+    },
+    "personaggio_113": {
+      "nome": "Onça-Pintada",
+      "descrizione": "Morso feroce: fa il 25% di danno e l avversario colpito per 2 turni ha difesa ridotta del 20%"
+    },
+    "personaggio_114": {
+      "nome": "Anaconda Gigante",
+      "descrizione": "Stritolamento:fa 15% di danno a tutti gli avversari e riduce di 2 i punti magia dell avversario"
+    },
+    "personaggio_115": {
+      "nome": "Pisadeira",
+      "descrizione": "Terrore: Riduce del 25% la difesa di tutti gli avversari"
+    },
+    "personaggio_116": {
+      "nome": "Corpo-Seco",
+      "descrizione": "Corteccia:Aumenta la difesa degli alleati del 25%"
+    },
+    "personaggio_117": {
+      "nome": "Mapinguari",
+      "descrizione": "Colpo della bestia:infligge il 40% di danno a un avversario"
+    },
+    "personaggio_118": {
+      "nome": "Curupira",
+      "descrizione": "Attacco furtivo: Fa il 20% di danno a tutti gli avversari e aumenta del 20% la difesa degli alleati"
+    },
+    "personaggio_119": {
+      "nome": "Caipora",
+      "descrizione": "Carica: Fa il 40% di danno a un avversario e riduce i pm avversari di 1"
+    },
+    "personaggio_120": {
+      "nome": "Iara",
+      "descrizione": "Canto curativo: Cura tutti gli alleati del 20% e cura tutti i disturbi della difesa"
+    },
+    "personaggio_121": {
+      "nome": "Boitatá",
+      "descrizione": "Morso di boitata: fa il 20% di danno a un nemico, d ora in poi per attivare la skill del nemico colpito servirà 1 pm in piu fino a un massimo di 7 pm"
+    },
+    "personaggio_122": {
+      "nome": "Saci-Pererê",
+      "descrizione": "Scherzo del folletto: Aumenta l'attacco di un alleato casuale del 30% per due turni, cura un alleato casuale del 30%, aumenta la difesa di un alleato casuale del 30%"
+    },
+    "personaggio_123": {
+      "nome": "Mula Sem Cabeça",
+      "descrizione": "Rabbia: Aumenta il suo attacco del 100% per 2 turni"
+    },
+    "personaggio_124": {
+      "nome": "Cuca",
+      "descrizione": "Maleficio della strega:Riduce i pm avversari di 3, riduce la difesa avversaria del 30%"
+    },
+    "sorpresa_101": {
+      "nome": "Fulmine Nero",
+      "descrizione": "Infligge 50 danni diretti"
+    },
+    "sorpresa_102": {
+      "nome": "Pozione Magica",
+      "descrizione": "Aumenta di 2 i punti magia"
+    },
+    "trappola_101": {
+      "nome": "Specchio riflesso",
+      "descrizione": "Si attiva quando l avversario usa una abilità che fa danno diretto. Il danno viene restituito al mittente"
+    },
+    "sorpresa_103": {
+      "nome": "Mano sacra",
+      "descrizione": "Ti permette di pescare altre due carte dal mazzo"
+    },
+    "trappola_102": {
+      "nome": "Conversione",
+      "descrizione": "Carta coperta che si attiva quando l avversario attiva bonus o malus della difesa. Ruba i bonus e rispedisce al mittente i malus"
+    }
+  },
+  "en": {
+    "personaggio_001": {
+      "nome": "Burning Flame",
+      "descrizione": "A Hearts warrior with a fiery temper, always ready to strike first."
+    },
+    "personaggio_002": {
+      "nome": "Queen of Embers",
+      "descrizione": "Rules the Hearts suit with a fire that never goes out, not even in defeat."
+    },
+    "personaggio_003": {
+      "nome": "Crystal Warden",
+      "descrizione": "Guards the treasures of Diamonds behind a transparent, unbreakable armor."
+    },
+    "personaggio_004": {
+      "nome": "Amber Sovereign",
+      "descrizione": "Their throne is carved from amber: every move is calculated and precious."
+    },
+    "personaggio_005": {
+      "nome": "Forest Guardian",
+      "descrizione": "A silent protector of Clubs, rooted and patient."
+    },
+    "personaggio_006": {
+      "nome": "Spirit of the Ancient Forest",
+      "descrizione": "The rarest form of the Clubs suit: said to be as old as the deck itself."
+    },
+    "personaggio_007": {
+      "nome": "Shadow Blade",
+      "descrizione": "Moves through Spades without a sound, striking before being seen."
+    },
+    "personaggio_008": {
+      "nome": "Mist Assassin",
+      "descrizione": "The deadliest of the Spades characters: no one sees them coming twice."
+    },
+    "sorpresa_001": {
+      "nome": "Sudden Lightning",
+      "descrizione": "A direct damage strike, playable at any point in the match."
+    },
+    "sorpresa_002": {
+      "nome": "Battle Fury",
+      "descrizione": "Temporarily boosts your character's ATT: two turns of pure aggression."
+    },
+    "trappola_001": {
+      "nome": "Shadow Snare",
+      "descrizione": "Stays hidden until the opponent draws: then forces them to discard."
+    },
+    "trappola_002": {
+      "nome": "Mirror of Retribution",
+      "descrizione": "If you take damage while active, half of it is returned to the attacker."
+    },
+    "sorpresa_003": {
+      "nome": "Threefold Blessing",
+      "descrizione": "One gesture, three gifts: it strikes the opponent, heals one of your heroes and grants you an extra card on your next draw."
+    },
+    "trappola_003": {
+      "nome": "Seal of the Desperate",
+      "descrizione": "Can only be deployed when your heroes are down to less than half. If the opponent dares use an ability, it blocks their melding for a turn."
+    },
+    "personaggio_101": {
+      "nome": "Papa Figo",
+      "descrizione": "Night attack: destroys trap cards on the field and deals 30% sword damage"
+    },
+    "personaggio_102": {
+      "nome": "Zè l'Arara",
+      "descrizione": "Macaw peck: Reduces the opponent's mana by 1 point. This card takes 10 damage to its life points"
+    },
+    "personaggio_103": {
+      "nome": "Sua Majestade o Papagaio",
+      "descrizione": "Macaw peck: Reduces the opponent's mana by 1 point. This card takes 10 damage to its life points"
+    },
+    "personaggio_104": {
+      "nome": "Lorinho",
+      "descrizione": "Macaw peck: Reduces the opponent's mana by 1 point. This card takes 10 damage to its life points"
+    },
+    "personaggio_105": {
+      "nome": "Zeca il Capibara",
+      "descrizione": "Healing rest: Heals all allies for 30 hp"
+    },
+    "personaggio_106": {
+      "nome": "Chico il Mico",
+      "descrizione": "Monkey strike: Deals 30% damage to a random opponent"
+    },
+    "personaggio_107": {
+      "nome": "Jão il Tamanduá",
+      "descrizione": "Ground tremor: Deals 15% damage to all enemies"
+    },
+    "personaggio_108": {
+      "nome": "Tonho il Tatu",
+      "descrizione": "Tough hide defense: For 3 turns, all allies have their defense increased by 25%"
+    },
+    "personaggio_109": {
+      "nome": "Boto Felipe",
+      "descrizione": "Water jet: Deals 20% damage to an opponent. For 2 turns, all opponents have their defense reduced by 20%"
+    },
+    "personaggio_110": {
+      "nome": "Vitoria-Regia",
+      "descrizione": "Healing flower: Heals all allies for 50 hp"
+    },
+    "personaggio_111": {
+      "nome": "Queixada della Caipora",
+      "descrizione": "Charge: strikes with two charges dealing 20% damage each"
+    },
+    "personaggio_112": {
+      "nome": "Cão-do-Mato",
+      "descrizione": "Target tracking: Increases the damage of played cards and abilities by 25%"
+    },
+    "personaggio_113": {
+      "nome": "Onça-Pintada",
+      "descrizione": "Ferocious bite: deals 25% damage and the struck opponent has their defense reduced by 20% for 2 turns"
+    },
+    "personaggio_114": {
+      "nome": "Anaconda Gigante",
+      "descrizione": "Crushing coil: deals 15% damage to all opponents and reduces the opponent's magic points by 2"
+    },
+    "personaggio_115": {
+      "nome": "Pisadeira",
+      "descrizione": "Terror: Reduces the defense of all opponents by 25%"
+    },
+    "personaggio_116": {
+      "nome": "Corpo-Seco",
+      "descrizione": "Bark shell: Increases allies' defense by 25%"
+    },
+    "personaggio_117": {
+      "nome": "Mapinguari",
+      "descrizione": "Beast strike: deals 40% damage to an opponent"
+    },
+    "personaggio_118": {
+      "nome": "Curupira",
+      "descrizione": "Stealth attack: Deals 20% damage to all opponents and increases allies' defense by 20%"
+    },
+    "personaggio_119": {
+      "nome": "Caipora",
+      "descrizione": "Charge: Deals 40% damage to an opponent and reduces the opponent's magic points by 1"
+    },
+    "personaggio_120": {
+      "nome": "Iara",
+      "descrizione": "Healing song: Heals all allies by 20% and cures all defense ailments"
+    },
+    "personaggio_121": {
+      "nome": "Boitatá",
+      "descrizione": "Boitatá's bite: deals 20% damage to an enemy; from now on, activating the struck enemy's skill will require 1 extra magic point, up to a maximum of 7 magic points"
+    },
+    "personaggio_122": {
+      "nome": "Saci-Pererê",
+      "descrizione": "Trickster's prank: Increases a random ally's attack by 30% for two turns, heals a random ally by 30%, increases a random ally's defense by 30%"
+    },
+    "personaggio_123": {
+      "nome": "Mula Sem Cabeça",
+      "descrizione": "Rage: Increases its own attack by 100% for 2 turns"
+    },
+    "personaggio_124": {
+      "nome": "Cuca",
+      "descrizione": "Witch's curse: Reduces the opponent's magic points by 3, reduces the opponent's defense by 30%"
+    },
+    "sorpresa_101": {
+      "nome": "Fulmine Nero",
+      "descrizione": "Deals 50 direct damage"
+    },
+    "sorpresa_102": {
+      "nome": "Pozione Magica",
+      "descrizione": "Increases magic points by 2"
+    },
+    "trappola_101": {
+      "nome": "Specchio riflesso",
+      "descrizione": "Activates when the opponent uses an ability that deals direct damage. The damage is returned to the sender"
+    },
+    "sorpresa_103": {
+      "nome": "Mano sacra",
+      "descrizione": "Allows you to draw two more cards from the deck"
+    },
+    "trappola_102": {
+      "nome": "Conversione",
+      "descrizione": "Face-down card that activates when the opponent triggers a defense bonus or penalty. It steals the bonus and sends the penalty back to the sender"
+    }
+  },
+  "es": {
+    "personaggio_001": {
+      "nome": "Llama Ardiente",
+      "descrizione": "Una guerrera de Corazones de temperamento fogoso, siempre lista para golpear primero."
+    },
+    "personaggio_002": {
+      "nome": "Reina de Brasas",
+      "descrizione": "Gobierna el palo de Corazones con un fuego que nunca se apaga, ni siquiera en la derrota."
+    },
+    "personaggio_003": {
+      "nome": "Guardiana de Cristal",
+      "descrizione": "Protege los tesoros de Diamantes tras una armadura transparente e inquebrantable."
+    },
+    "personaggio_004": {
+      "nome": "Soberano de Ámbar",
+      "descrizione": "Su trono está tallado en ámbar: cada movimiento es calculado y valioso."
+    },
+    "personaggio_005": {
+      "nome": "Guardián del Bosque",
+      "descrizione": "Un protector silencioso de Tréboles, arraigado y paciente."
+    },
+    "personaggio_006": {
+      "nome": "Espíritu del Bosque Antiguo",
+      "descrizione": "La forma más rara del palo de Tréboles: se dice que es tan viejo como la baraja misma."
+    },
+    "personaggio_007": {
+      "nome": "Hoja de Sombra",
+      "descrizione": "Se mueve entre las Picas sin hacer ruido, golpeando antes de ser vista."
+    },
+    "personaggio_008": {
+      "nome": "Asesino de la Niebla",
+      "descrizione": "El más letal de los personajes de Picas: nadie lo ve llegar dos veces."
+    },
+    "sorpresa_001": {
+      "nome": "Rayo Repentino",
+      "descrizione": "Un golpe de daño directo, jugable en cualquier momento de la partida."
+    },
+    "sorpresa_002": {
+      "nome": "Furia de Batalla",
+      "descrizione": "Aumenta temporalmente el ATT de tu personaje: dos turnos de pura agresividad."
+    },
+    "trappola_001": {
+      "nome": "Trampa en la Sombra",
+      "descrizione": "Permanece oculta hasta que el rival roba: entonces lo obliga a descartar."
+    },
+    "trappola_002": {
+      "nome": "Espejo de Represalia",
+      "descrizione": "Si recibes daño mientras está activa, la mitad vuelve a quien lo infligió."
+    },
+    "sorpresa_003": {
+      "nome": "Triple Bendición",
+      "descrizione": "Un solo gesto y tres dones: golpea al rival, sana a uno de tus héroes y te concede una carta más en el próximo robo."
+    },
+    "trappola_003": {
+      "nome": "Sello del Desesperado",
+      "descrizione": "Solo se puede desplegar cuando tus héroes están por debajo de la mitad. Si el rival osa usar una habilidad, le bloquea la bajada durante un turno."
+    },
+    "personaggio_101": {
+      "nome": "Papa Figo",
+      "descrizione": "Ataque nocturno: destruye las cartas trampa en el campo e inflige el 30% de daño de espada"
+    },
+    "personaggio_102": {
+      "nome": "Zè l'Arara",
+      "descrizione": "Picotazo del guacamayo: Reduce el maná del oponente en 1 punto. Esta carta recibe 10 puntos de daño de vida"
+    },
+    "personaggio_103": {
+      "nome": "Sua Majestade o Papagaio",
+      "descrizione": "Picotazo del guacamayo: Reduce el maná del oponente en 1 punto. Esta carta recibe 10 puntos de daño de vida"
+    },
+    "personaggio_104": {
+      "nome": "Lorinho",
+      "descrizione": "Picotazo del guacamayo: Reduce el maná del oponente en 1 punto. Esta carta recibe 10 puntos de daño de vida"
+    },
+    "personaggio_105": {
+      "nome": "Zeca il Capibara",
+      "descrizione": "Descanso curativo: Cura a todos los aliados 30 puntos de vida"
+    },
+    "personaggio_106": {
+      "nome": "Chico il Mico",
+      "descrizione": "Golpe del mono: Inflige 30% de daño a un oponente al azar"
+    },
+    "personaggio_107": {
+      "nome": "Jão il Tamanduá",
+      "descrizione": "Temblor de tierra: Inflige 15% de daño a todos los enemigos"
+    },
+    "personaggio_108": {
+      "nome": "Tonho il Tatu",
+      "descrizione": "Defensa coriácea: Durante 3 turnos, todos los aliados tienen la defensa aumentada en un 25%"
+    },
+    "personaggio_109": {
+      "nome": "Boto Felipe",
+      "descrizione": "Chorro de agua: Inflige 20% de daño a un oponente. Durante 2 turnos, todos los oponentes tienen la defensa reducida en un 20%"
+    },
+    "personaggio_110": {
+      "nome": "Vitoria-Regia",
+      "descrizione": "Flor curativa: Cura a todos los aliados 50 puntos de vida"
+    },
+    "personaggio_111": {
+      "nome": "Queixada della Caipora",
+      "descrizione": "Carga: golpea con dos embestidas del 20% de daño cada una"
+    },
+    "personaggio_112": {
+      "nome": "Cão-do-Mato",
+      "descrizione": "Rastreo del objetivo: Aumenta en un 25% el daño de las cartas jugadas y las habilidades"
+    },
+    "personaggio_113": {
+      "nome": "Onça-Pintada",
+      "descrizione": "Mordisco feroz: inflige 25% de daño y el oponente golpeado tiene la defensa reducida en un 20% durante 2 turnos"
+    },
+    "personaggio_114": {
+      "nome": "Anaconda Gigante",
+      "descrizione": "Constricción: inflige 15% de daño a todos los oponentes y reduce en 2 los puntos de magia del oponente"
+    },
+    "personaggio_115": {
+      "nome": "Pisadeira",
+      "descrizione": "Terror: Reduce la defensa de todos los oponentes en un 25%"
+    },
+    "personaggio_116": {
+      "nome": "Corpo-Seco",
+      "descrizione": "Corteza: Aumenta la defensa de los aliados en un 25%"
+    },
+    "personaggio_117": {
+      "nome": "Mapinguari",
+      "descrizione": "Golpe de la bestia: inflige 40% de daño a un oponente"
+    },
+    "personaggio_118": {
+      "nome": "Curupira",
+      "descrizione": "Ataque furtivo: Inflige 20% de daño a todos los oponentes y aumenta la defensa de los aliados en un 20%"
+    },
+    "personaggio_119": {
+      "nome": "Caipora",
+      "descrizione": "Carga: Inflige 40% de daño a un oponente y reduce en 1 los puntos de magia del oponente"
+    },
+    "personaggio_120": {
+      "nome": "Iara",
+      "descrizione": "Canto curativo: Cura a todos los aliados en un 20% y cura todas las alteraciones de la defensa"
+    },
+    "personaggio_121": {
+      "nome": "Boitatá",
+      "descrizione": "Mordisco del boitatá: inflige 20% de daño a un enemigo; a partir de ahora, activar la habilidad del enemigo golpeado requerirá 1 punto de magia más, hasta un máximo de 7 puntos de magia"
+    },
+    "personaggio_122": {
+      "nome": "Saci-Pererê",
+      "descrizione": "Broma del duende: Aumenta el ataque de un aliado al azar en un 30% durante dos turnos, cura a un aliado al azar en un 30%, aumenta la defensa de un aliado al azar en un 30%"
+    },
+    "personaggio_123": {
+      "nome": "Mula Sem Cabeça",
+      "descrizione": "Furia: Aumenta su propio ataque en un 100% durante 2 turnos"
+    },
+    "personaggio_124": {
+      "nome": "Cuca",
+      "descrizione": "Maleficio de la bruja: Reduce los puntos de magia del oponente en 3, reduce la defensa del oponente en un 30%"
+    },
+    "sorpresa_101": {
+      "nome": "Fulmine Nero",
+      "descrizione": "Inflige 50 puntos de daño directo"
+    },
+    "sorpresa_102": {
+      "nome": "Pozione Magica",
+      "descrizione": "Aumenta los puntos de magia en 2"
+    },
+    "trappola_101": {
+      "nome": "Specchio riflesso",
+      "descrizione": "Se activa cuando el oponente usa una habilidad que inflige daño directo. El daño se devuelve al remitente"
+    },
+    "sorpresa_103": {
+      "nome": "Mano sacra",
+      "descrizione": "Te permite robar dos cartas más del mazo"
+    },
+    "trappola_102": {
+      "nome": "Conversione",
+      "descrizione": "Carta boca abajo que se activa cuando el oponente activa un bono o penalización de defensa. Roba el bono y devuelve la penalización al remitente"
+    }
+  },
+  "pt": {
+    "personaggio_001": {
+      "nome": "Chama Ardente",
+      "descrizione": "Uma guerreira de Copas de temperamento fogoso, sempre pronta para golpear primeiro."
+    },
+    "personaggio_002": {
+      "nome": "Rainha das Brasas",
+      "descrizione": "Governa o naipe de Copas com um fogo que nunca se apaga, nem mesmo na derrota."
+    },
+    "personaggio_003": {
+      "nome": "Guardiã de Cristal",
+      "descrizione": "Protege os tesouros de Ouros atrás de uma armadura transparente e inquebrável."
+    },
+    "personaggio_004": {
+      "nome": "Soberano de Âmbar",
+      "descrizione": "Seu trono é esculpido em âmbar: cada movimento é calculado e precioso."
+    },
+    "personaggio_005": {
+      "nome": "Guardião da Floresta",
+      "descrizione": "Um protetor silencioso de Paus, enraizado e paciente."
+    },
+    "personaggio_006": {
+      "nome": "Espírito da Floresta Antiga",
+      "descrizione": "A forma mais rara do naipe de Paus: dizem que é tão antigo quanto o próprio baralho."
+    },
+    "personaggio_007": {
+      "nome": "Lâmina das Sombras",
+      "descrizione": "Move-se entre as Espadas sem fazer ruído, golpeando antes de ser vista."
+    },
+    "personaggio_008": {
+      "nome": "Assassino da Neblina",
+      "descrizione": "O mais letal dos personagens de Espadas: ninguém o vê chegar duas vezes."
+    },
+    "sorpresa_001": {
+      "nome": "Raio Repentino",
+      "descrizione": "Um golpe de dano direto, jogável a qualquer momento da partida."
+    },
+    "sorpresa_002": {
+      "nome": "Fúria de Batalha",
+      "descrizione": "Aumenta temporariamente o ATT do seu personagem: dois turnos de pura agressividade."
+    },
+    "trappola_001": {
+      "nome": "Armadilha na Sombra",
+      "descrizione": "Fica oculta até o adversário comprar: então o obriga a descartar."
+    },
+    "trappola_002": {
+      "nome": "Espelho de Retaliação",
+      "descrizione": "Se você sofrer dano enquanto ativa, metade retorna a quem o causou."
+    },
+    "sorpresa_003": {
+      "nome": "Bênção Tripla",
+      "descrizione": "Um só gesto e três dons: golpeia o adversário, cura um dos seus heróis e concede uma carta a mais na próxima compra."
+    },
+    "trappola_003": {
+      "nome": "Selo do Desesperado",
+      "descrizione": "Só pode ser posicionada quando os seus heróis estão abaixo da metade. Se o adversário ousar usar uma habilidade, bloqueia a baixada dele por um turno."
+    },
+    "personaggio_101": {
+      "nome": "Papa Figo",
+      "descrizione": "Ataque noturno: destrói as cartas armadilha em campo e causa 30% de dano de espada"
+    },
+    "personaggio_102": {
+      "nome": "Zè l'Arara",
+      "descrizione": "Bicada da arara: Reduz o mana do adversário em 1 ponto. Esta carta sofre 10 pontos de dano de vida"
+    },
+    "personaggio_103": {
+      "nome": "Sua Majestade o Papagaio",
+      "descrizione": "Bicada da arara: Reduz o mana do adversário em 1 ponto. Esta carta sofre 10 pontos de dano de vida"
+    },
+    "personaggio_104": {
+      "nome": "Lorinho",
+      "descrizione": "Bicada da arara: Reduz o mana do adversário em 1 ponto. Esta carta sofre 10 pontos de dano de vida"
+    },
+    "personaggio_105": {
+      "nome": "Zeca il Capibara",
+      "descrizione": "Descanso curativo: Cura todos os aliados em 30 pontos de vida"
+    },
+    "personaggio_106": {
+      "nome": "Chico il Mico",
+      "descrizione": "Golpe do macaco: Causa 30% de dano a um adversário aleatório"
+    },
+    "personaggio_107": {
+      "nome": "Jão il Tamanduá",
+      "descrizione": "Tremor do solo: Causa 15% de dano a todos os inimigos"
+    },
+    "personaggio_108": {
+      "nome": "Tonho il Tatu",
+      "descrizione": "Defesa coriácea: Por 3 turnos, todos os aliados têm a defesa aumentada em 25%"
+    },
+    "personaggio_109": {
+      "nome": "Boto Felipe",
+      "descrizione": "Jato d'água: Causa 20% de dano a um adversário. Por 2 turnos, todos os adversários têm a defesa reduzida em 20%"
+    },
+    "personaggio_110": {
+      "nome": "Vitoria-Regia",
+      "descrizione": "Flor curativa: Cura todos os aliados em 50 pontos de vida"
+    },
+    "personaggio_111": {
+      "nome": "Queixada della Caipora",
+      "descrizione": "Investida: golpeia com duas investidas de 20% de dano cada"
+    },
+    "personaggio_112": {
+      "nome": "Cão-do-Mato",
+      "descrizione": "Rastreamento do alvo: Aumenta em 25% o dano das cartas jogadas e das habilidades"
+    },
+    "personaggio_113": {
+      "nome": "Onça-Pintada",
+      "descrizione": "Mordida feroz: causa 25% de dano e o adversário atingido tem a defesa reduzida em 20% por 2 turnos"
+    },
+    "personaggio_114": {
+      "nome": "Anaconda Gigante",
+      "descrizione": "Constrição: causa 15% de dano a todos os adversários e reduz em 2 os pontos de magia do adversário"
+    },
+    "personaggio_115": {
+      "nome": "Pisadeira",
+      "descrizione": "Terror: Reduz a defesa de todos os adversários em 25%"
+    },
+    "personaggio_116": {
+      "nome": "Corpo-Seco",
+      "descrizione": "Casca: Aumenta a defesa dos aliados em 25%"
+    },
+    "personaggio_117": {
+      "nome": "Mapinguari",
+      "descrizione": "Golpe da fera: causa 40% de dano a um adversário"
+    },
+    "personaggio_118": {
+      "nome": "Curupira",
+      "descrizione": "Ataque furtivo: Causa 20% de dano a todos os adversários e aumenta a defesa dos aliados em 20%"
+    },
+    "personaggio_119": {
+      "nome": "Caipora",
+      "descrizione": "Investida: Causa 40% de dano a um adversário e reduz em 1 os pontos de magia do adversário"
+    },
+    "personaggio_120": {
+      "nome": "Iara",
+      "descrizione": "Canto curativo: Cura todos os aliados em 20% e cura todos os distúrbios de defesa"
+    },
+    "personaggio_121": {
+      "nome": "Boitatá",
+      "descrizione": "Mordida do boitatá: causa 20% de dano a um inimigo; a partir de agora, ativar a habilidade do inimigo atingido exigirá mais 1 ponto de magia, até um máximo de 7 pontos de magia"
+    },
+    "personaggio_122": {
+      "nome": "Saci-Pererê",
+      "descrizione": "Travessura do duende: Aumenta o ataque de um aliado aleatório em 30% por dois turnos, cura um aliado aleatório em 30%, aumenta a defesa de um aliado aleatório em 30%"
+    },
+    "personaggio_123": {
+      "nome": "Mula Sem Cabeça",
+      "descrizione": "Fúria: Aumenta seu próprio ataque em 100% por 2 turnos"
+    },
+    "personaggio_124": {
+      "nome": "Cuca",
+      "descrizione": "Maldição da bruxa: Reduz os pontos de magia do adversário em 3, reduz a defesa do adversário em 30%"
+    },
+    "sorpresa_101": {
+      "nome": "Fulmine Nero",
+      "descrizione": "Causa 50 pontos de dano direto"
+    },
+    "sorpresa_102": {
+      "nome": "Pozione Magica",
+      "descrizione": "Aumenta os pontos de magia em 2"
+    },
+    "trappola_101": {
+      "nome": "Specchio riflesso",
+      "descrizione": "Ativa-se quando o adversário usa uma habilidade que causa dano direto. O dano é devolvido ao remetente"
+    },
+    "sorpresa_103": {
+      "nome": "Mano sacra",
+      "descrizione": "Permite que você compre mais duas cartas do baralho"
+    },
+    "trappola_102": {
+      "nome": "Conversione",
+      "descrizione": "Carta virada para baixo que se ativa quando o adversário ativa um bônus ou penalidade de defesa. Rouba o bônus e devolve a penalidade ao remetente"
+    }
+  }
+};
+const ILLUSTRAZIONI = ["personaggio_101", "personaggio_102", "personaggio_103", "personaggio_104", "personaggio_105", "personaggio_106", "personaggio_107", "personaggio_108", "personaggio_109", "personaggio_110", "personaggio_111", "personaggio_112", "personaggio_113", "personaggio_114", "personaggio_115", "personaggio_116", "personaggio_117", "personaggio_118", "personaggio_119", "personaggio_120", "personaggio_121", "personaggio_122", "personaggio_123", "personaggio_124", "sorpresa_101", "sorpresa_102", "sorpresa_103", "trappola_101", "trappola_102"];
+/* ==== FINE CARTE ==== */
 
+// Le traduzioni dell'INTERFACCIA di questa pagina (titoli, bottoni).
+// Restano qui perche' sono di questa pagina: i nomi e i testi delle
+// CARTE invece arrivano da cards/i18n, nel blocco generato qui sopra.
 const I18N = {
-  it: {
-    ui: {
+  it: { ui: {
       sottotitolo: 'Scegli 4 Personaggi (uno per seme) e 3 Carte Magiche: sono quelli con cui scenderai in campo.',
       titoloPersonaggi: 'Personaggi', hintPersonaggi: 'Uno obbligatorio per ciascun seme.',
       titoloMagiche: 'Carte Magiche', hintMagiche: 'Scegline esattamente 3, mix libero fra Sorpresa e Trappola.',
       scegli: 'Scegli...', vita: 'VITA', att: 'ATT', difesa: 'DIF',
-      ordinaPer: 'Ordina per:', ordinaPunteggio: 'Punteggio (rarità)', ordinaNome: 'Nome',
+      ordinaPer: 'Ordina per:', ordinaPunteggio: 'Punteggio (raritÃ )', ordinaNome: 'Nome',
       entraBtn: 'Conferma il mazzo', riepilogoTitolo: 'Squadra pronta',
-      progresso: (p, m) => `Personaggi: ${p}/4 · Carte Magiche: ${m}/3`
-    },
-    cards: {
-      "personaggio_001": { "nome": "Fiamma Ardente", "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo." },
-      "personaggio_002": { "nome": "Regina di Brace", "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta." },
-      "personaggio_003": { "nome": "Custode di Cristallo", "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile." },
-      "personaggio_004": { "nome": "Sovrano d'Ambra", "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa." },
-      "personaggio_005": { "nome": "Guardiano del Bosco", "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente." },
-      "personaggio_006": { "nome": "Spirito della Foresta Antica", "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso." },
-      "personaggio_007": { "nome": "Lama d'Ombra", "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista." },
-      "personaggio_008": { "nome": "Assassino delle Nebbie", "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte." },
-      "sorpresa_001": { "nome": "Fulmine Improvviso", "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita." },
-      "sorpresa_002": { "nome": "Furia di Battaglia", "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività." },
-      "trappola_001": { "nome": "Insidia nell'Ombra", "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare." },
-      "trappola_002": { "nome": "Specchio di Ritorsione", "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto." }
-    }
-  },
-  en: {
-    ui: {
+      progresso: (p, m) => `Personaggi: ${p}/4 Â· Carte Magiche: ${m}/3`
+  } },
+  en: { ui: {
       sottotitolo: 'Select 4 Characters (one per suit) and 3 Magic Cards before entering the match list.',
       titoloPersonaggi: 'Characters', hintPersonaggi: 'One required for each suit.',
       titoloMagiche: 'Magic Cards', hintMagiche: 'Pick exactly 3, any mix of Surprise and Trap.',
       scegli: 'Choose...', vita: 'HP', att: 'ATK', difesa: 'DEF',
       ordinaPer: 'Sort by:', ordinaPunteggio: 'Score (rarity)', ordinaNome: 'Name',
       entraBtn: 'Confirm this deck', riepilogoTitolo: 'Team ready',
-      progresso: (p, m) => `Characters: ${p}/4 · Magic Cards: ${m}/3`
-    },
-    cards: {
-      "personaggio_001": { "nome": "Burning Flame", "descrizione": "A Hearts warrior with a fiery temper, always ready to strike first." },
-      "personaggio_002": { "nome": "Queen of Embers", "descrizione": "Rules the Hearts suit with a fire that never goes out, not even in defeat." },
-      "personaggio_003": { "nome": "Crystal Warden", "descrizione": "Guards the treasures of Diamonds behind a transparent, unbreakable armor." },
-      "personaggio_004": { "nome": "Amber Sovereign", "descrizione": "Their throne is carved from amber: every move is calculated and precious." },
-      "personaggio_005": { "nome": "Forest Guardian", "descrizione": "A silent protector of Clubs, rooted and patient." },
-      "personaggio_006": { "nome": "Spirit of the Ancient Forest", "descrizione": "The rarest form of the Clubs suit: said to be as old as the deck itself." },
-      "personaggio_007": { "nome": "Shadow Blade", "descrizione": "Moves through Spades without a sound, striking before being seen." },
-      "personaggio_008": { "nome": "Mist Assassin", "descrizione": "The deadliest of the Spades characters: no one sees them coming twice." },
-      "sorpresa_001": { "nome": "Sudden Lightning", "descrizione": "A direct damage strike, playable at any point in the match." },
-      "sorpresa_002": { "nome": "Battle Fury", "descrizione": "Temporarily boosts your character's ATK: two turns of pure aggression." },
-      "trappola_001": { "nome": "Shadow Snare", "descrizione": "Stays hidden until the opponent draws: then forces them to discard." },
-      "trappola_002": { "nome": "Mirror of Retribution", "descrizione": "If you take damage while active, half of it is returned to the attacker." }
-    }
-  },
-  es: {
-    ui: {
-      sottotitolo: 'Selecciona 4 Personajes (uno por palo) y 3 Cartas Mágicas antes de entrar en la lista de partidas.',
+      progresso: (p, m) => `Characters: ${p}/4 Â· Magic Cards: ${m}/3`
+  } },
+  es: { ui: {
+      sottotitolo: 'Selecciona 4 Personajes (uno por palo) y 3 Cartas MÃ¡gicas antes de entrar en la lista de partidas.',
       titoloPersonaggi: 'Personajes', hintPersonaggi: 'Uno obligatorio por cada palo.',
-      titoloMagiche: 'Cartas Mágicas', hintMagiche: 'Elige exactamente 3, mezcla libre de Sorpresa y Trampa.',
+      titoloMagiche: 'Cartas MÃ¡gicas', hintMagiche: 'Elige exactamente 3, mezcla libre de Sorpresa y Trampa.',
       scegli: 'Elegir...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
-      ordinaPer: 'Ordenar por:', ordinaPunteggio: 'Puntuación (rareza)', ordinaNome: 'Nombre',
+      ordinaPer: 'Ordenar por:', ordinaPunteggio: 'PuntuaciÃ³n (rareza)', ordinaNome: 'Nombre',
       entraBtn: 'Confirmar la baraja', riepilogoTitolo: 'Equipo listo',
-      progresso: (p, m) => `Personajes: ${p}/4 · Cartas Mágicas: ${m}/3`
-    },
-    cards: {
-      "personaggio_001": { "nome": "Llama Ardiente", "descrizione": "Una guerrera de Corazones de temperamento fogoso, siempre lista para golpear primero." },
-      "personaggio_002": { "nome": "Reina de Brasas", "descrizione": "Gobierna el palo de Corazones con un fuego que nunca se apaga, ni siquiera en la derrota." },
-      "personaggio_003": { "nome": "Guardiana de Cristal", "descrizione": "Protege los tesoros de Diamantes tras una armadura transparente e inquebrantable." },
-      "personaggio_004": { "nome": "Soberano de Ámbar", "descrizione": "Su trono está tallado en ámbar: cada movimiento es calculado y valioso." },
-      "personaggio_005": { "nome": "Guardián del Bosque", "descrizione": "Un protector silencioso de Tréboles, arraigado y paciente." },
-      "personaggio_006": { "nome": "Espíritu del Bosque Antiguo", "descrizione": "La forma más rara del palo de Tréboles: se dice que es tan viejo como la baraja misma." },
-      "personaggio_007": { "nome": "Hoja de Sombra", "descrizione": "Se mueve entre las Picas sin hacer ruido, golpeando antes de ser vista." },
-      "personaggio_008": { "nome": "Asesino de la Niebla", "descrizione": "El más letal de los personajes de Picas: nadie lo ve llegar dos veces." },
-      "sorpresa_001": { "nome": "Rayo Repentino", "descrizione": "Un golpe de daño directo, jugable en cualquier momento de la partida." },
-      "sorpresa_002": { "nome": "Furia de Batalla", "descrizione": "Aumenta temporalmente el ATQ de tu personaje: dos turnos de pura agresividad." },
-      "trappola_001": { "nome": "Trampa en la Sombra", "descrizione": "Permanece oculta hasta que el rival roba: entonces lo obliga a descartar." },
-      "trappola_002": { "nome": "Espejo de Represalia", "descrizione": "Si recibes daño mientras está activa, la mitad vuelve a quien lo infligió." }
-    }
-  },
-  pt: {
-    ui: {
-      sottotitolo: 'Selecione 4 Personagens (um por naipe) e 3 Cartas Mágicas antes de entrar na lista de partidas.',
-      titoloPersonaggi: 'Personagens', hintPersonaggi: 'Um obrigatório para cada naipe.',
-      titoloMagiche: 'Cartas Mágicas', hintMagiche: 'Escolha exatamente 3, mistura livre de Surpresa e Armadilha.',
+      progresso: (p, m) => `Personajes: ${p}/4 Â· Cartas MÃ¡gicas: ${m}/3`
+  } },
+  pt: { ui: {
+      sottotitolo: 'Selecione 4 Personagens (um por naipe) e 3 Cartas MÃ¡gicas antes de entrar na lista de partidas.',
+      titoloPersonaggi: 'Personagens', hintPersonaggi: 'Um obrigatÃ³rio para cada naipe.',
+      titoloMagiche: 'Cartas MÃ¡gicas', hintMagiche: 'Escolha exatamente 3, mistura livre de Surpresa e Armadilha.',
       scegli: 'Escolher...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
-      ordinaPer: 'Ordenar por:', ordinaPunteggio: 'Pontuação (raridade)', ordinaNome: 'Nome',
+      ordinaPer: 'Ordenar por:', ordinaPunteggio: 'PontuaÃ§Ã£o (raridade)', ordinaNome: 'Nome',
       entraBtn: 'Confirmar o baralho', riepilogoTitolo: 'Equipe pronta',
-      progresso: (p, m) => `Personagens: ${p}/4 · Cartas Mágicas: ${m}/3`
-    },
-    cards: {
-      "personaggio_001": { "nome": "Chama Ardente", "descrizione": "Uma guerreira de Copas de temperamento fogoso, sempre pronta para golpear primeiro." },
-      "personaggio_002": { "nome": "Rainha das Brasas", "descrizione": "Governa o naipe de Copas com um fogo que nunca se apaga, nem mesmo na derrota." },
-      "personaggio_003": { "nome": "Guardiã de Cristal", "descrizione": "Protege os tesouros de Ouros atrás de uma armadura transparente e inquebrável." },
-      "personaggio_004": { "nome": "Soberano de Âmbar", "descrizione": "Seu trono é esculpido em âmbar: cada movimento é calculado e precioso." },
-      "personaggio_005": { "nome": "Guardião da Floresta", "descrizione": "Um protetor silencioso de Paus, enraizado e paciente." },
-      "personaggio_006": { "nome": "Espírito da Floresta Antiga", "descrizione": "A forma mais rara do naipe de Paus: dizem que é tão antigo quanto o próprio baralho." },
-      "personaggio_007": { "nome": "Lâmina das Sombras", "descrizione": "Move-se entre as Espadas sem fazer ruído, golpeando antes de ser vista." },
-      "personaggio_008": { "nome": "Assassino da Neblina", "descrizione": "O mais letal dos personagens de Espadas: ninguém o vê chegar duas vezes." },
-      "sorpresa_001": { "nome": "Raio Repentino", "descrizione": "Um golpe de dano direto, jogável a qualquer momento da partida." },
-      "sorpresa_002": { "nome": "Fúria de Batalha", "descrizione": "Aumenta temporariamente o ATQ do seu personagem: dois turnos de pura agressividade." },
-      "trappola_001": { "nome": "Armadilha na Sombra", "descrizione": "Fica oculta até o adversário comprar: então o obriga a descartar." },
-      "trappola_002": { "nome": "Espelho de Retaliação", "descrizione": "Se você sofrer dano enquanto ativa, metade retorna a quem o causou." }
-    }
-  }
+      progresso: (p, m) => `Personagens: ${p}/4 Â· Cartas MÃ¡gicas: ${m}/3`
+  } },
 };
+
 const SUPPORTED_LANGS = ['it', 'en', 'es', 'pt'];
 
 // spec §12bis: rileva la lingua di sistema al primo avvio, fallback su
@@ -326,8 +1283,26 @@ const state = {
 };
 
 function t(key) { return I18N[currentLang].ui[key]; }
-function cardText(id) { return I18N[currentLang].cards[id] || { nome: id, descrizione: '' }; }
+// I nomi e le descrizioni delle carte arrivano da cards/i18n, non piu'
+// da una copia incollata dentro questa pagina: erano rimaste indietro
+// di ventine di carte.
+function cardText(id) {
+  const perLingua = CARTE_TESTI[currentLang] || CARTE_TESTI.it || {};
+  return perLingua[id] || { nome: id, descrizione: '' };
+}
 function redSuit(s) { return s === '♥' || s === '♦'; }
+
+// LA MINIATURA DELL'ILLUSTRAZIONE.
+// Scegliere il mazzo guardando solo dei nomi e' come scegliere un
+// libro dall'indice: l'illustrazione e' quello che si ricorda di una
+// carta. Le carte senza disegno (i segnaposto storici) mostrano il
+// loro seme, non un'immagine rotta.
+function miniaturaCarta(id, seme) {
+  if (ILLUSTRAZIONI.indexOf(id) !== -1) {
+    return '<img class="mini-arte" src="immagini/' + id + '.webp" alt="" loading="lazy" draggable="false">';
+  }
+  return '<span class="mini-vuota">' + (seme || '✦') + '</span>';
+}
 
 function sortCards(list, mode) {
   const arr = list.slice();
@@ -367,9 +1342,10 @@ function renderSuits() {
     slot.className = 'slot' + (selected ? ' filled' : '');
     if (selected) {
       const txt = cardText(selected.id);
-      slot.innerHTML = `<div class="name">${txt.nome}</div>
+      slot.innerHTML = `<div class="con-mini">${miniaturaCarta(selected.id, seme)}
+        <div class="testi"><div class="name">${txt.nome}</div>
         <div class="stats">${t('vita')} ${selected.vita} · ${t('att')} ${selected.att}</div>
-        <div class="rarity">${'★'.repeat(selected.rarita)}${'☆'.repeat(5 - selected.rarita)}</div>`;
+        <div class="rarity">${'★'.repeat(selected.rarita)}${'☆'.repeat(5 - selected.rarita)}</div></div></div>`;
     } else {
       slot.textContent = t('scegli');
     }
@@ -383,7 +1359,7 @@ function renderSuits() {
       const txt = cardText(p.id);
       const item = document.createElement('div');
       item.className = 'picker-item';
-      item.innerHTML = `<span>${txt.nome} ${'★'.repeat(p.rarita)}</span><span class="stats">${t('vita')} ${p.vita} · ${t('att')} ${p.att}</span>`;
+      item.innerHTML = `<span class="con-mini">${miniaturaCarta(p.id, p.seme)}<span>${txt.nome} ${'★'.repeat(p.rarita)}</span></span><span class="stats">${t('vita')} ${p.vita} · ${t('att')} ${p.att}</span>`;
       item.onclick = (ev) => {
         ev.stopPropagation();
         state.personaggi[seme] = p;
@@ -407,10 +1383,11 @@ function renderMagic() {
     const card = document.createElement('div');
     card.className = `magic-card tipo-${m.tipo}` + (isSelected ? ' selected' : '');
     card.innerHTML = `<span class="tag ${m.tipo}">${m.tipo}</span>
+      ${miniaturaCarta(m.id, m.tipo === 'trappola' ? '⚡' : '✦')}
       <div class="name">${txt.nome}</div>
       <div class="desc">${txt.descrizione}</div>
       <div class="rarity">${'★'.repeat(m.rarita)}${'☆'.repeat(5 - m.rarita)}</div>
-      <div class="effect-code">${m.effect} (${m.parametro})</div>`;
+`;
     card.onclick = () => {
       if (isSelected) {
         state.magiche = state.magiche.filter((id) => id !== m.id);
