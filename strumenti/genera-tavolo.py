@@ -157,6 +157,20 @@ BATTLE_CSS = r'''
       .riga-turno .chi { font-size: 8px; }
       .riga-turno .orologio { font-size: 11px; }
       .riga-turno .spia-pozzetto { font-size: 7px; padding: 0 3px; }
+
+      /* LE CARTE MAGICHE COPERTE DELL'AVVERSARIO non hanno niente da
+         mostrare oltre a un punto interrogativo: tenerle alla stessa
+         misura delle carte vere è spazio speso per non dire nulla. Si
+         ridefinisce --battle-w/--battle-h solo su di loro: essendo una
+         custom property, tutto quello che dentro la carta è calc() su
+         queste due misure (il simbolo, i margini) si restringe da solo,
+         senza toccare un'altra regola. Questa puo' stare qui, sul primo
+         blocco: nessun'altra regola successiva tocca --battle-w su
+         QUESTO selettore, quindi non perde la gara di specificita'. */
+      .bcard.magica.coperta {
+        --battle-w: calc(var(--battle-w) * 0.68);
+        --battle-h: calc(var(--battle-h) * 0.68);
+      }
     }
 
     /* --- Striscia delle 7 carte Battle (4 personaggi + 3 magiche) --- */
@@ -446,6 +460,32 @@ BATTLE_CSS = r'''
        Tutto disegnato dal foglio di stile: nessuna immagine da scaricare,
        la pagina continua ad aprirsi col doppio clic anche senza rete.
        ============================================================ */
+    /* IL MARGINE DI SICUREZZA MANCAVA PROPRIO DOVE SERVE ORA.
+       game.html (sopra) mette il margine di sicurezza solo sopra e
+       sotto: "ai lati no", dice il commento, perche' Burraco Pulito si
+       gioca anche in verticale e in orizzontale il notch della fotocamera
+       lascia gia' una fascia nera sua. Ma il tavolo di Burraco Legends
+       e' bloccato in orizzontale FORZATO — e ruotando il telefono, la
+       barra dei gesti (quella del sistema, in basso quando si tiene il
+       telefono dritto) finisce a SINISTRA o a DESTRA dello schermo, non
+       più sotto. Il margine di sicurezza si sposta con lei: e' scritto
+       nel CSS del sistema operativo, non lo decidiamo noi. Tenendo
+       fissi i 4px sui lati, quella barra tagliava le carte proprio li'.
+       Qui si mettono TUTTI E QUATTRO i lati sotto env(): quello vero, il
+       sistema lo aggiorna da solo a seconda di come il telefono è girato
+       in quel momento; dove non serve (desktop, o il lato senza barra)
+       env() vale zero e resta il minimo di 4px. */
+    body {
+      padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right))
+               max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left)) !important;
+    }
+
+    /* Seconda difesa contro il pinch-to-zoom, per i browser che
+       ignorano maximum-scale nel viewport: senza gesti di zoom/pan a
+       due dita sulla pagina, il doppio tocco e lo scorrimento normale
+       restano intatti (manipulation li lascia passare, blocca solo il
+       resto). */
+    html, body { touch-action: manipulation; }
     body {
       background:
         /* la luce che cade sul tavolo */
@@ -657,6 +697,13 @@ BATTLE_CSS = r'''
        colpo d'occhio chi lo ha ancora da prendere. */
     .pozzetto-card.preso { opacity: 0.25; filter: grayscale(1); }
 
+    /* Nel tavolo di Burraco Legends questa riga porta gia' le 7 carte e
+       la barra magia dopo di se': il margine automatico di game.html
+       (pensato per un rigo che finiva con lui) qui lo spingerebbe a
+       contendersi lo spazio col resto. Resta dov'e', giusto dopo gli
+       scarti. */
+    .table-resources-row .sort-controls-mobile { margin-left: 0; flex-shrink: 0; }
+
     /* --- BARRA DEI PUNTI MAGIA ---
        Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
        a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
@@ -675,6 +722,31 @@ BATTLE_CSS = r'''
     }
     .barra-magia .conta { font-size: 11px; font-weight: 800; color: var(--charge); font-variant-numeric: tabular-nums; }
     .barra-magia.piena .conta { animation: caricaPiena 1.2s ease-in-out infinite; }
+
+    /* LA BARRA DEI PUNTI MAGIA PRENDEVA TROPPA LARGHEZZA SU TELEFONO.
+       15 tacche più etichetta e conteggio sono comode su un monitor; in
+       mezzo a sette carte per parte e a tutto il resto della fascia,
+       diventano centimetri che mancano altrove. Si stringe: le tacche
+       restano leggibili come andamento (piena/vuota), che è l'unica
+       cosa che serve d'un colpo d'occhio — il numero preciso resta
+       scritto lì accanto.
+       DEVE STARE QUI, DOPO le regole base sopra: stessa regola di
+       cascata di .turni-box qualche riga più giù — a parità di
+       specificità vince chi è scritto dopo, e messa nel primo blocco
+       @media (più in alto nel foglio) perdeva contro queste. */
+    @media (max-height: 480px) {
+      .barra-magia { gap: 3px; }
+      .barra-magia .etichetta { font-size: 7px; }
+      .barra-magia .tacca { width: 3px; height: 9px; }
+      .barra-magia .conta { font-size: 9px; }
+      /* Quella dell'avversario si guarda ancora meno da vicino — serve
+         solo a sapere se sta per potersi permettere qualcosa, non il
+         numero esatto tacca per tacca. Via l'etichetta "MAGIA" (la
+         posizione in alto lo dice già), tacche più strette ancora. */
+      #magiaAvversario .etichetta { display: none; }
+      #magiaAvversario .tacca { width: 2px; height: 7px; }
+      #magiaAvversario .conta { font-size: 8px; }
+    }
 
     /* --- I due cronometri del minuto a turno --- */
     .turni-box { display: flex; flex-direction: column; gap: 3px; }
@@ -1170,6 +1242,20 @@ BODY = r'''
     <div class="pozzetti-cross" id="pozzettiCross"></div>
     <div class="pile mazzo-tallone" id="palTallone" onclick="ui.pesca()">MAZZO<div class="pile-count" id="talloneCount">0</div></div>
     <div class="discard-pile" id="palScarti" onclick="ui.clicScarti()"></div>
+    <!-- Su desktop il riordino sta in basso vicino alla mano
+         (.sort-controls-desktop, sotto): li' c'e' spazio. Su cellulare
+         quello spazio non c'e', quindi i due bottoni stanno qui — ed e'
+         proprio questo blocco che nel tavolo di Burraco Legends non era
+         mai stato copiato da game.html: i bottoni restavano nel file
+         sorgente ma non arrivavano mai sulla pagina. -->
+    <div class="sort-controls-mobile">
+        <button class="btn-sort-premium" title="Ordina per Seme" onclick="ui.ordina('suit')">
+            <div class="suit-grid"><span class="red">♥</span><span class="red">♦</span><span class="black">♣</span><span class="black">♠</span></div>
+        </button>
+        <button class="btn-sort-premium" title="Ordina per Valore" onclick="ui.ordina('value')">
+            <div class="value-flow">3→A</div>
+        </button>
+    </div>
     <div class="battle-strip" id="battleGiocatore"></div>
     <div class="barra-magia" id="magiaGiocatore"></div>
 </div>
@@ -3769,7 +3855,13 @@ controlla_nomi_prelevati()
 
 out = []
 out.append('<!DOCTYPE html>\n<html lang="it">\n<head>\n<meta charset="UTF-8">\n')
-out.append('<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n')
+# Il pinch-to-zoom sul tavolo non serve a niente di buono: il layout e'
+# gia' pensato per starci tutto, e zoomare rompe la vista bloccata in
+# orizzontale (si vede un pezzo solo, e il gesto per rimettere a posto
+# la mano nel resto del gioco non c'e'). Su questa pagina, e solo qui,
+# si toglie: maximum-scale=1 blocca lo zoom su Chrome/Safari moderni,
+# user-scalable=no e' il fratello vecchio che copre i browser piu' datati.
+out.append('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">\n')
 out.append('<title>Burraco Legends — Tavolo</title>\n')
 out.append('<link rel="manifest" href="manifest.json">\n<meta name="theme-color" content="#2a1e12">\n<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">\n')
 out.append('<style>')
@@ -3790,7 +3882,28 @@ out.append('\n<script>\n(function(){\n"use strict";\n'
   "  if (screen.orientation && screen.orientation.lock) {\n"
   "    screen.orientation.lock('landscape').catch(function(){});\n"
   "  }\n"
-  "} catch (e) {}\n")
+  "} catch (e) {}\n"
+  # LA BARRA DI SISTEMA (ora, batteria, rete) NON È LA BARRA DEL
+  # BROWSER. Quella del browser spariva già installando l'app
+  # (manifest "standalone"); questa è dell'operatore Android/iOS e resta
+  # anche dentro un'app vera — a meno di chiedere lo schermo intero.
+  # requestFullscreen() quasi ovunque PRETENDE un gesto dell'utente: al
+  # solo caricamento della pagina i browser la rifiutano in silenzio.
+  # Si tenta comunque subito (nei contesti che lo concedono, tipo alcune
+  # PWA già installate, funziona) e si riprova al primo tocco sul
+  # tavolo, che è il gesto che serve.
+  "function provaSchermoIntero() {\n"
+  "  var el = document.documentElement;\n"
+  "  var giaIntero = document.fullscreenElement || document.webkitFullscreenElement;\n"
+  "  if (giaIntero) return;\n"
+  "  try {\n"
+  "    var richiesta = el.requestFullscreen ? el.requestFullscreen()\n"
+  "                  : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);\n"
+  "    if (richiesta && richiesta.catch) richiesta.catch(function(){});\n"
+  "  } catch (e) {}\n"
+  "}\n"
+  "provaSchermoIntero();\n"
+  "document.addEventListener('pointerdown', provaSchermoIntero, { once: true, passive: true });\n")
 out.append(motore)
 out.append(DATI)
 out.append(SCRIPT)
