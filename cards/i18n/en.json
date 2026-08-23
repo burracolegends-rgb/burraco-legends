@@ -54,5 +54,121 @@
   "trappola_003": {
     "nome": "Seal of the Desperate",
     "descrizione": "Can only be deployed when your heroes are down to less than half. If the opponent dares use an ability, it blocks their melding for a turn."
+  },
+  "personaggio_101": {
+    "nome": "Papa Figo",
+    "descrizione": "Night attack: destroys trap cards on the field and deals 30% sword damage"
+  },
+  "personaggio_102": {
+    "nome": "Zè l'Arara",
+    "descrizione": "Macaw peck: Reduces the opponent's mana by 1 point. This card takes 10 damage to its life points"
+  },
+  "personaggio_103": {
+    "nome": "Sua Majestade o Papagaio",
+    "descrizione": "Macaw peck: Reduces the opponent's mana by 1 point. This card takes 10 damage to its life points"
+  },
+  "personaggio_104": {
+    "nome": "Lorinho",
+    "descrizione": "Macaw peck: Reduces the opponent's mana by 1 point. This card takes 10 damage to its life points"
+  },
+  "personaggio_105": {
+    "nome": "Zeca il Capibara",
+    "descrizione": "Healing rest: Heals all allies for 30 hp"
+  },
+  "personaggio_106": {
+    "nome": "Chico il Mico",
+    "descrizione": "Monkey strike: Deals 30% damage to a random opponent"
+  },
+  "personaggio_107": {
+    "nome": "Jão il Tamanduá",
+    "descrizione": "Ground tremor: Deals 15% damage to all enemies"
+  },
+  "personaggio_108": {
+    "nome": "Tonho il Tatu",
+    "descrizione": "Tough hide defense: For 3 turns, all allies have their defense increased by 25%"
+  },
+  "personaggio_109": {
+    "nome": "Boto Felipe",
+    "descrizione": "Water jet: Deals 20% damage to an opponent. For 2 turns, all opponents have their defense reduced by 20%"
+  },
+  "personaggio_110": {
+    "nome": "Vitoria-Regia",
+    "descrizione": "Healing flower: Heals all allies for 50 hp"
+  },
+  "personaggio_111": {
+    "nome": "Queixada della Caipora",
+    "descrizione": "Charge: strikes with two charges dealing 20% damage each"
+  },
+  "personaggio_112": {
+    "nome": "Cão-do-Mato",
+    "descrizione": "Target tracking: Increases the damage of played cards and abilities by 25%"
+  },
+  "personaggio_113": {
+    "nome": "Onça-Pintada",
+    "descrizione": "Ferocious bite: deals 25% damage and the struck opponent has their defense reduced by 20% for 2 turns"
+  },
+  "personaggio_114": {
+    "nome": "Anaconda Gigante",
+    "descrizione": "Crushing coil: deals 15% damage to all opponents and reduces the opponent's magic points by 2"
+  },
+  "personaggio_115": {
+    "nome": "Pisadeira",
+    "descrizione": "Terror: Reduces the defense of all opponents by 25%"
+  },
+  "personaggio_116": {
+    "nome": "Corpo-Seco",
+    "descrizione": "Bark shell: Increases allies' defense by 25%"
+  },
+  "personaggio_117": {
+    "nome": "Mapinguari",
+    "descrizione": "Beast strike: deals 40% damage to an opponent"
+  },
+  "personaggio_118": {
+    "nome": "Curupira",
+    "descrizione": "Stealth attack: Deals 20% damage to all opponents and increases allies' defense by 20%"
+  },
+  "personaggio_119": {
+    "nome": "Caipora",
+    "descrizione": "Charge: Deals 40% damage to an opponent and reduces the opponent's magic points by 1"
+  },
+  "personaggio_120": {
+    "nome": "Iara",
+    "descrizione": "Healing song: Heals all allies by 20% and cures all defense ailments"
+  },
+  "personaggio_121": {
+    "nome": "Boitatá",
+    "descrizione": "Boitatá's bite: deals 20% damage to an enemy; from now on, activating the struck enemy's skill will require 1 extra magic point, up to a maximum of 7 magic points"
+  },
+  "personaggio_122": {
+    "nome": "Saci-Pererê",
+    "descrizione": "Trickster's prank: Increases a random ally's attack by 30% for two turns, heals a random ally by 30%, increases a random ally's defense by 30%"
+  },
+  "personaggio_123": {
+    "nome": "Mula Sem Cabeça",
+    "descrizione": "Rage: Increases its own attack by 100% for 2 turns"
+  },
+  "personaggio_124": {
+    "nome": "Cuca",
+    "descrizione": "Witch's curse: Reduces the opponent's magic points by 3, reduces the opponent's defense by 30%"
+  },
+  "sorpresa_101": {
+    "nome": "Fulmine Nero",
+    "descrizione": "Deals 50 direct damage"
+  },
+  "sorpresa_102": {
+    "nome": "Pozione Magica",
+    "descrizione": "Increases magic points by 2"
+  },
+  "trappola_101": {
+    "nome": "Specchio riflesso",
+    "descrizione": "Activates when the opponent uses an ability that deals direct damage. The damage is returned to the sender"
+  },
+  "sorpresa_103": {
+    "nome": "Mano sacra",
+    "descrizione": "Allows you to draw two more cards from the deck"
+  },
+  "trappola_102": {
+    "nome": "Conversione",
+    "descrizione": "Face-down card that activates when the opponent triggers a defense bonus or penalty. It steals the bonus and sends the penalty back to the sender"
   }
 }

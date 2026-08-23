@@ -1,0 +1,20 @@
+{
+  "id": "personaggio_123",
+  "seme": "♦",
+  "rarita": 5,
+  "vita": 140,
+  "att": 190,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 4,
+    "effetti": [
+      {
+        "effect": "boost_att_percentuale",
+        "parametro": "100",
+        "target": "se_stesso",
+        "durata_turni": 2
+      }
+    ]
+  }
+}

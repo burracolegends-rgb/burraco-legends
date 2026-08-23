@@ -1,0 +1,23 @@
+{
+  "id": "personaggio_120",
+  "seme": "♥",
+  "rarita": 5,
+  "vita": 170,
+  "att": 150,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "cura_percentuale",
+        "parametro": "20",
+        "target": "tutti_alleati"
+      },
+      {
+        "effect": "pulisci_malus_difesa",
+        "target": "tutti_alleati"
+      }
+    ]
+  }
+}

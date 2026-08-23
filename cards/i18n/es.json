@@ -54,5 +54,121 @@
   "trappola_003": {
     "nome": "Sello del Desesperado",
     "descrizione": "Solo se puede desplegar cuando tus héroes están por debajo de la mitad. Si el rival osa usar una habilidad, le bloquea la bajada durante un turno."
+  },
+  "personaggio_101": {
+    "nome": "Papa Figo",
+    "descrizione": "Ataque nocturno: destruye las cartas trampa en el campo e inflige el 30% de daño de espada"
+  },
+  "personaggio_102": {
+    "nome": "Zè l'Arara",
+    "descrizione": "Picotazo del guacamayo: Reduce el maná del oponente en 1 punto. Esta carta recibe 10 puntos de daño de vida"
+  },
+  "personaggio_103": {
+    "nome": "Sua Majestade o Papagaio",
+    "descrizione": "Picotazo del guacamayo: Reduce el maná del oponente en 1 punto. Esta carta recibe 10 puntos de daño de vida"
+  },
+  "personaggio_104": {
+    "nome": "Lorinho",
+    "descrizione": "Picotazo del guacamayo: Reduce el maná del oponente en 1 punto. Esta carta recibe 10 puntos de daño de vida"
+  },
+  "personaggio_105": {
+    "nome": "Zeca il Capibara",
+    "descrizione": "Descanso curativo: Cura a todos los aliados 30 puntos de vida"
+  },
+  "personaggio_106": {
+    "nome": "Chico il Mico",
+    "descrizione": "Golpe del mono: Inflige 30% de daño a un oponente al azar"
+  },
+  "personaggio_107": {
+    "nome": "Jão il Tamanduá",
+    "descrizione": "Temblor de tierra: Inflige 15% de daño a todos los enemigos"
+  },
+  "personaggio_108": {
+    "nome": "Tonho il Tatu",
+    "descrizione": "Defensa coriácea: Durante 3 turnos, todos los aliados tienen la defensa aumentada en un 25%"
+  },
+  "personaggio_109": {
+    "nome": "Boto Felipe",
+    "descrizione": "Chorro de agua: Inflige 20% de daño a un oponente. Durante 2 turnos, todos los oponentes tienen la defensa reducida en un 20%"
+  },
+  "personaggio_110": {
+    "nome": "Vitoria-Regia",
+    "descrizione": "Flor curativa: Cura a todos los aliados 50 puntos de vida"
+  },
+  "personaggio_111": {
+    "nome": "Queixada della Caipora",
+    "descrizione": "Carga: golpea con dos embestidas del 20% de daño cada una"
+  },
+  "personaggio_112": {
+    "nome": "Cão-do-Mato",
+    "descrizione": "Rastreo del objetivo: Aumenta en un 25% el daño de las cartas jugadas y las habilidades"
+  },
+  "personaggio_113": {
+    "nome": "Onça-Pintada",
+    "descrizione": "Mordisco feroz: inflige 25% de daño y el oponente golpeado tiene la defensa reducida en un 20% durante 2 turnos"
+  },
+  "personaggio_114": {
+    "nome": "Anaconda Gigante",
+    "descrizione": "Constricción: inflige 15% de daño a todos los oponentes y reduce en 2 los puntos de magia del oponente"
+  },
+  "personaggio_115": {
+    "nome": "Pisadeira",
+    "descrizione": "Terror: Reduce la defensa de todos los oponentes en un 25%"
+  },
+  "personaggio_116": {
+    "nome": "Corpo-Seco",
+    "descrizione": "Corteza: Aumenta la defensa de los aliados en un 25%"
+  },
+  "personaggio_117": {
+    "nome": "Mapinguari",
+    "descrizione": "Golpe de la bestia: inflige 40% de daño a un oponente"
+  },
+  "personaggio_118": {
+    "nome": "Curupira",
+    "descrizione": "Ataque furtivo: Inflige 20% de daño a todos los oponentes y aumenta la defensa de los aliados en un 20%"
+  },
+  "personaggio_119": {
+    "nome": "Caipora",
+    "descrizione": "Carga: Inflige 40% de daño a un oponente y reduce en 1 los puntos de magia del oponente"
+  },
+  "personaggio_120": {
+    "nome": "Iara",
+    "descrizione": "Canto curativo: Cura a todos los aliados en un 20% y cura todas las alteraciones de la defensa"
+  },
+  "personaggio_121": {
+    "nome": "Boitatá",
+    "descrizione": "Mordisco del boitatá: inflige 20% de daño a un enemigo; a partir de ahora, activar la habilidad del enemigo golpeado requerirá 1 punto de magia más, hasta un máximo de 7 puntos de magia"
+  },
+  "personaggio_122": {
+    "nome": "Saci-Pererê",
+    "descrizione": "Broma del duende: Aumenta el ataque de un aliado al azar en un 30% durante dos turnos, cura a un aliado al azar en un 30%, aumenta la defensa de un aliado al azar en un 30%"
+  },
+  "personaggio_123": {
+    "nome": "Mula Sem Cabeça",
+    "descrizione": "Furia: Aumenta su propio ataque en un 100% durante 2 turnos"
+  },
+  "personaggio_124": {
+    "nome": "Cuca",
+    "descrizione": "Maleficio de la bruja: Reduce los puntos de magia del oponente en 3, reduce la defensa del oponente en un 30%"
+  },
+  "sorpresa_101": {
+    "nome": "Fulmine Nero",
+    "descrizione": "Inflige 50 puntos de daño directo"
+  },
+  "sorpresa_102": {
+    "nome": "Pozione Magica",
+    "descrizione": "Aumenta los puntos de magia en 2"
+  },
+  "trappola_101": {
+    "nome": "Specchio riflesso",
+    "descrizione": "Se activa cuando el oponente usa una habilidad que inflige daño directo. El daño se devuelve al remitente"
+  },
+  "sorpresa_103": {
+    "nome": "Mano sacra",
+    "descrizione": "Te permite robar dos cartas más del mazo"
+  },
+  "trappola_102": {
+    "nome": "Conversione",
+    "descrizione": "Carta boca abajo que se activa cuando el oponente activa un bono o penalización de defensa. Roba el bono y devuelve la penalización al remitente"
   }
 }

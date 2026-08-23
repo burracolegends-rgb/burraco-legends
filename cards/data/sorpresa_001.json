@@ -1,5 +1,6 @@
 {
   "id": "sorpresa_001",
+  "fuoriCommercio": true,
   "tipo": "sorpresa",
   "rarita": 3,
   "effect": "danno_diretto",

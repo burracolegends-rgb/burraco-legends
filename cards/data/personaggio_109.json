@@ -1,0 +1,25 @@
+{
+  "id": "personaggio_109",
+  "seme": "♣",
+  "rarita": 3,
+  "vita": 110,
+  "att": 100,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "20",
+        "target": "avversario"
+      },
+      {
+        "effect": "riduci_difesa",
+        "parametro": "20",
+        "target": "tutti_avversari",
+        "durata_turni": 2
+      }
+    ]
+  }
+}

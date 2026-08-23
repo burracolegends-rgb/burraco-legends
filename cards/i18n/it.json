@@ -54,5 +54,121 @@
   "trappola_003": {
     "nome": "Sigillo del Disperato",
     "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."
+  },
+  "personaggio_101": {
+    "nome": "Papa Figo",
+    "descrizione": "Attacco notturno: distrugge le carte trappola sul campo e infligge il 30% del danno spada"
+  },
+  "personaggio_102": {
+    "nome": "Zè l'Arara",
+    "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"
+  },
+  "personaggio_103": {
+    "nome": "Sua Majestade o Papagaio",
+    "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"
+  },
+  "personaggio_104": {
+    "nome": "Lorinho",
+    "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"
+  },
+  "personaggio_105": {
+    "nome": "Zeca il Capibara",
+    "descrizione": "Riposo curativo: Cura tutti gli alleati di 30 hp"
+  },
+  "personaggio_106": {
+    "nome": "Chico il Mico",
+    "descrizione": "Colpo della scimmia: Infligge il 30% di danni ad un avversario casuale"
+  },
+  "personaggio_107": {
+    "nome": "Jão il Tamanduá",
+    "descrizione": "Tremore del suolo: Infligge il 15% di danno a tutti i nemici"
+  },
+  "personaggio_108": {
+    "nome": "Tonho il Tatu",
+    "descrizione": "Difesa coriacea: Tutti gli alleati per 3 turni hanno difesa aumentata del 25%"
+  },
+  "personaggio_109": {
+    "nome": "Boto Felipe",
+    "descrizione": "Getto d'acqua: Infligge 20% di danno a un avversario. Per 2 turni tutti gli avversari hanno difesa ridotta del 20%"
+  },
+  "personaggio_110": {
+    "nome": "Vitoria-Regia",
+    "descrizione": "Fiore curativo:Cura tutti gli alleati di 50 hp"
+  },
+  "personaggio_111": {
+    "nome": "Queixada della Caipora",
+    "descrizione": "Carica: colpisce con due cariche da 20% di danno ognuna"
+  },
+  "personaggio_112": {
+    "nome": "Cão-do-Mato",
+    "descrizione": "Ricerca del bersaglio: Aumenta del 25% il danno di carte calate e abilità"
+  },
+  "personaggio_113": {
+    "nome": "Onça-Pintada",
+    "descrizione": "Morso feroce: fa il 25% di danno e l avversario colpito per 2 turni ha difesa ridotta del 20%"
+  },
+  "personaggio_114": {
+    "nome": "Anaconda Gigante",
+    "descrizione": "Stritolamento:fa 15% di danno a tutti gli avversari e riduce di 2 i punti magia dell avversario"
+  },
+  "personaggio_115": {
+    "nome": "Pisadeira",
+    "descrizione": "Terrore: Riduce del 25% la difesa di tutti gli avversari"
+  },
+  "personaggio_116": {
+    "nome": "Corpo-Seco",
+    "descrizione": "Corteccia:Aumenta la difesa degli alleati del 25%"
+  },
+  "personaggio_117": {
+    "nome": "Mapinguari",
+    "descrizione": "Colpo della bestia:infligge il 40% di danno a un avversario"
+  },
+  "personaggio_118": {
+    "nome": "Curupira",
+    "descrizione": "Attacco furtivo: Fa il 20% di danno a tutti gli avversari e aumenta del 20% la difesa degli alleati"
+  },
+  "personaggio_119": {
+    "nome": "Caipora",
+    "descrizione": "Carica: Fa il 40% di danno a un avversario e riduce i pm avversari di 1"
+  },
+  "personaggio_120": {
+    "nome": "Iara",
+    "descrizione": "Canto curativo: Cura tutti gli alleati del 20% e cura tutti i disturbi della difesa"
+  },
+  "personaggio_121": {
+    "nome": "Boitatá",
+    "descrizione": "Morso di boitata: fa il 20% di danno a un nemico, d ora in poi per attivare la skill del nemico colpito servirà 1 pm in piu fino a un massimo di 7 pm"
+  },
+  "personaggio_122": {
+    "nome": "Saci-Pererê",
+    "descrizione": "Scherzo del folletto: Aumenta l'attacco di un alleato casuale del 30% per due turni, cura un alleato casuale del 30%, aumenta la difesa di un alleato casuale del 30%"
+  },
+  "personaggio_123": {
+    "nome": "Mula Sem Cabeça",
+    "descrizione": "Rabbia: Aumenta il suo attacco del 100% per 2 turni"
+  },
+  "personaggio_124": {
+    "nome": "Cuca",
+    "descrizione": "Maleficio della strega:Riduce i pm avversari di 3, riduce la difesa avversaria del 30%"
+  },
+  "sorpresa_101": {
+    "nome": "Fulmine Nero",
+    "descrizione": "Infligge 50 danni diretti"
+  },
+  "sorpresa_102": {
+    "nome": "Pozione Magica",
+    "descrizione": "Aumenta di 2 i punti magia"
+  },
+  "trappola_101": {
+    "nome": "Specchio riflesso",
+    "descrizione": "Si attiva quando l avversario usa una abilità che fa danno diretto. Il danno viene restituito al mittente"
+  },
+  "sorpresa_103": {
+    "nome": "Mano sacra",
+    "descrizione": "Ti permette di pescare altre due carte dal mazzo"
+  },
+  "trappola_102": {
+    "nome": "Conversione",
+    "descrizione": "Carta coperta che si attiva quando l avversario attiva bonus o malus della difesa. Ruba i bonus e rispedisce al mittente i malus"
   }
 }

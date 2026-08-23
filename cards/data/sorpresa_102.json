@@ -1,0 +1,15 @@
+{
+  "id": "sorpresa_102",
+  "tipo": "sorpresa",
+  "rarita": 3,
+  "trigger": "on_activate",
+  "effetti": [
+    {
+      "effect": "aumenta_punti_magia",
+      "parametro": "2",
+      "target": "se_stesso"
+    }
+  ],
+  "durata_turni": 0,
+  "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."
+}

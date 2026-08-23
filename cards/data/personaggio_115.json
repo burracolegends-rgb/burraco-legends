@@ -1,0 +1,21 @@
+{
+  "id": "personaggio_115",
+  "seme": "♦",
+  "rarita": 4,
+  "vita": 150,
+  "att": 110,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 4,
+    "effetti": [
+      {
+        "effect": "riduci_difesa",
+        "parametro": "25",
+        "target": "tutti_avversari",
+        "durata_turni": 2
+      }
+    ],
+    "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."
+  }
+}

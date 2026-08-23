@@ -1,0 +1,15 @@
+{
+  "id": "trappola_101",
+  "tipo": "trappola",
+  "rarita": 5,
+  "trigger": "avversario_usa_abilita",
+  "effetti": [
+    {
+      "effect": "riflette_danno",
+      "parametro": "100",
+      "target": "se_stesso"
+    }
+  ],
+  "durata_turni": 0,
+  "_nota": "Rimanda il 100% del danno: la carta dice \"il danno viene restituito\", non una parte. Rarita' provvisoria."
+}

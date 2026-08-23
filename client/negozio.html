@@ -461,6 +461,24 @@ function offertaPerCarte(quante) {
 }
 
 // ------------------------------------------------------------
+// CHE COSA PUÒ USCIRE DA UN PACCHETTO
+//
+// Non tutte le carte che esistono sono in vendita. I personaggi
+// segnaposto (personaggio_001..008) e le carte di esempio sono la
+// DOTAZIONE DI BENVENUTO: si ricevono all'iscrizione e basta. Se
+// restassero nel mucchio uscirebbero anche dai pacchetti, e chi compra
+// si ritroverebbe copie di carte che ha già avuto gratis — per giunta
+// senza illustrazione, perché sono appunto segnaposto.
+//
+// Il filtro sta qui e non nel server perché è una REGOLA DI GIOCO ("che
+// cosa si può comprare"), non un dettaglio di come gira il sito: così
+// vale uguale ovunque, e il controllo delle carte può verificarla.
+// ------------------------------------------------------------
+function carteInVendita(catalogo) {
+  return (catalogo || []).filter((c) => !c.fuoriCommercio);
+}
+
+// ------------------------------------------------------------
 // GARANZIA (pity)
 // Il contatore conta CARTE, non pacchetti: solo così è giusto anche coi
 // tagli diversi. Chi compra 50 carte in una volta deve ricevere le stesse
@@ -483,13 +501,36 @@ function verificaProbabilita() {
   return Math.abs(somma - 100) < 1e-9;
 }
 
-function estraiRarita(rng) {
-  let r = rng() * 100;
-  for (const rarita of [1, 2, 3, 4, 5]) {
+// SI ESTRAE SOLO FRA LE RARITÀ CHE ESISTONO DAVVERO.
+//
+// La tabella qui sopra descrive un mazzo con carte da 1 a 5 stelle. Il
+// roster vero comincia a 3: non esiste nessun personaggio a 1 o 2
+// stelle. Chiedendo lo stesso una rarità 1 — cioè nel 50% dei casi — non
+// si trovava niente, e `pescaDiRarita` ripiegava sull'ultima spiaggia:
+// una carta a caso fra TUTTE. Cioè metà delle carte di ogni pacchetto
+// veniva estratta a sorte piatta, leggendarie comprese, e la rarità non
+// contava più niente. Un guasto invisibile: i pacchetti si aprivano,
+// le carte uscivano, e sembrava tutto a posto.
+//
+// Adesso i pesi si ridistribuiscono fra le rarità presenti mantenendo le
+// proporzioni fra loro. Con un roster 3/4/5 i pesi 14 : 6,5 : 1,5
+// diventano circa 64% / 30% / 6%: le comuni restano comuni e le
+// leggendarie restano rare. E il giorno che si aggiungeranno carte a 1 o
+// 2 stelle si riprenderanno da sole la loro fetta, senza toccare niente.
+function raritaDisponibili(catalogo) {
+  const presenti = new Set((catalogo || []).map((c) => Number(c.rarita)));
+  return [1, 2, 3, 4, 5].filter((r) => presenti.has(r));
+}
+
+function estraiRarita(rng, disponibili) {
+  if (!disponibili || !disponibili.length) return 1;
+  const totale = disponibili.reduce((s, r) => s + PROBABILITA[r], 0);
+  let r = rng() * totale;
+  for (const rarita of disponibili) {
     r -= PROBABILITA[rarita];
     if (r <= 0) return rarita;
   }
-  return 1;
+  return disponibili[disponibili.length - 1];
 }
 
 function pescaDiRarita(catalogo, rarita, rng) {
@@ -532,10 +573,11 @@ function apriPacchetto(catalogo, posseduto = {}, contatore = 0, rng = Math.rando
   const pityScattato = garanzie > 0;
 
   // rarità delle carte: prima le garantite, poi il resto a sorte
+  const disponibili = raritaDisponibili(catalogo);
   const rarita = [];
   for (let g = 0; g < garanzie; g++) rarita.push(5, 4, 4);
   rarita.splice(quante);                                   // se il taglio è piccolo, si tiene il meglio
-  while (rarita.length < quante) rarita.push(estraiRarita(rng));
+  while (rarita.length < quante) rarita.push(estraiRarita(rng, disponibili));
 
   // le copie possedute vanno contate mano a mano: due copie della stessa
   // carta nello stesso pacchetto non sono entrambe "nuova"
@@ -571,9 +613,9 @@ function rimborsoTotale(risultato) {
   return risultato.carte.reduce((t, c) => t + c.rimborso, 0);
 }
 
-return {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, apriPacchetto, rimborsoTotale};
+return {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, raritaDisponibili, apriPacchetto, rimborsoTotale};
 })();
-const {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, apriPacchetto, rimborsoTotale} = __PAC;
+const {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, raritaDisponibili, apriPacchetto, rimborsoTotale} = __PAC;
 
 
 

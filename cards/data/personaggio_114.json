@@ -1,0 +1,24 @@
+{
+  "id": "personaggio_114",
+  "seme": "♥",
+  "rarita": 4,
+  "vita": 130,
+  "att": 130,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "15",
+        "target": "tutti_avversari"
+      },
+      {
+        "effect": "riduci_punti_magia",
+        "parametro": "2",
+        "target": "avversario"
+      }
+    ]
+  }
+}

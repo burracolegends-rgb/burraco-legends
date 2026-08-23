@@ -1,5 +1,6 @@
 {
   "id": "personaggio_001",
+  "fuoriCommercio": true,
   "seme": "♥",
   "rarita": 2,
   "vita": 100,

@@ -1,5 +1,6 @@
 {
   "id": "trappola_002",
+  "fuoriCommercio": true,
   "tipo": "trappola",
   "rarita": 5,
   "effect": "riflette_danno",

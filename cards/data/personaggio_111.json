@@ -1,0 +1,25 @@
+{
+  "id": "personaggio_111",
+  "seme": "♦",
+  "rarita": 4,
+  "vita": 120,
+  "att": 140,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "20",
+        "target": "avversario"
+      },
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "20",
+        "target": "avversario"
+      }
+    ],
+    "_nota": "Il foglio dice \"due cariche da 20% ognuna\" senza dire se sullo stesso nemico: qui sono due colpi indipendenti, quindi possono finire su due nemici diversi."
+  }
+}

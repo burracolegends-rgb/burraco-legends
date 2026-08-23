@@ -17,6 +17,7 @@ import {
 } from './vocabolario.js';
 import { infliggiDanno } from './core-rules.js';
 import { dotazioneIniziale, EROI_DI_PARTENZA, MAGICHE_DI_PARTENZA } from './dotazione.js';
+import { carteInVendita, raritaDisponibili, apriPacchetto } from './pacchetti.js';
 
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const RADICE = path.resolve(QUI, '..');
@@ -132,6 +133,44 @@ check('ci sono carte da controllare', carte.length > 0);
   const nonMagiche = MAGICHE_DI_PARTENZA.filter((id) => !perId[id] || perId[id].seme);
   check('le Carte Magiche di partenza sono davvero Carte Magiche', nonMagiche.length === 0,
     nonMagiche.join(', '));
+}
+
+// --- 4quater. CHE COSA ESCE DAVVERO DAI PACCHETTI ---
+// Due guasti silenziosi, tutti e due già capitati:
+//  1. le carte della dotazione finivano anche nei pacchetti, quindi si
+//     comprava quello che si era già ricevuto gratis;
+//  2. la tabella delle probabilità chiedeva rarità che nel roster non
+//     esistono (il 50% puntava a 1 stella, che nessuna carta ha), e la
+//     pescata ripiegava su una carta a caso fra TUTTE — leggendarie
+//     comprese. I pacchetti si aprivano lo stesso: nessuno protestava.
+{
+  const perId = Object.fromEntries(carte.map(({ dati }) => [dati.id, dati]));
+  const inVendita = carteInVendita(carte.map((c) => c.dati));
+  check('c\'è qualcosa da comprare', inVendita.length > 0);
+
+  const regalate = Object.keys(dotazioneIniziale()).filter((id) => perId[id] && !perId[id].fuoriCommercio);
+  check('le carte della dotazione NON si comprano anche nei pacchetti', regalate.length === 0,
+    'sono in vendita pur essendo regalate: ' + regalate.join(', '));
+
+  // ogni rarità che il motore può estrarre deve avere almeno una carta,
+  // altrimenti si ricade nella pescata piatta
+  const disponibili = raritaDisponibili(inVendita);
+  const vuote = disponibili.filter((r) => !inVendita.some((c) => Number(c.rarita) === r));
+  check('ogni rarità estraibile ha almeno una carta in vendita', vuote.length === 0, vuote.join(', '));
+
+  // e la prova sul campo: le leggendarie devono restare rare. Con la
+  // pescata piatta uscivano intorno al 20%, che è quanto pesano nel
+  // mucchio — non quanto dovrebbero pesare in un pacchetto.
+  let rng = 1; const finto = () => ((rng = (rng * 1103515245 + 12345) % 2147483648) / 2147483648);
+  let cinque = 0, totale = 0, pity = 0;
+  for (let i = 0; i < 600; i++) {
+    const r = apriPacchetto(inVendita, {}, pity, finto, 5);
+    pity = r.contatore;
+    for (const c of r.carte) { totale++; if (c.rarita === 5) cinque++; }
+  }
+  const quota = cinque / totale;
+  check('le leggendarie restano rare (sotto il 15% delle carte estratte)', quota < 0.15,
+    'ne escono il ' + (quota * 100).toFixed(1) + '%');
 }
 
 // --- 5. IL CONTROLLO PIÙ IMPORTANTE ---

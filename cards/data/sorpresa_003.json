@@ -1,12 +1,28 @@
 {
   "id": "sorpresa_003",
+  "fuoriCommercio": true,
   "tipo": "sorpresa",
   "rarita": 4,
   "trigger": "on_activate",
   "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.",
   "effetti": [
-    { "effect": "danno_diretto", "parametro": "25", "target": "avversario", "durata_turni": 0 },
-    { "effect": "cura_diretta",  "parametro": "15", "target": "se_stesso",  "durata_turni": 0 },
-    { "effect": "pesca_extra",   "parametro": "1",  "target": "se_stesso",  "durata_turni": 1 }
+    {
+      "effect": "danno_diretto",
+      "parametro": "25",
+      "target": "avversario",
+      "durata_turni": 0
+    },
+    {
+      "effect": "cura_diretta",
+      "parametro": "15",
+      "target": "se_stesso",
+      "durata_turni": 0
+    },
+    {
+      "effect": "pesca_extra",
+      "parametro": "1",
+      "target": "se_stesso",
+      "durata_turni": 1
+    }
   ]
 }

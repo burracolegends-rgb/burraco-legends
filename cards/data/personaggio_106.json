@@ -1,0 +1,19 @@
+{
+  "id": "personaggio_106",
+  "seme": "♥",
+  "rarita": 3,
+  "vita": 90,
+  "att": 110,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 3,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "30",
+        "target": "avversario"
+      }
+    ]
+  }
+}

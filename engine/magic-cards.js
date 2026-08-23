@@ -554,9 +554,19 @@ export function checkTrapTrigger(magicState, eventName, card, ctx) {
 
 // Da chiamare a ogni turno: fa scadere i buff/debuff con durata (boost_att,
 // boost_difesa, ...) e ne annulla l'effetto quando finiscono.
-export function tickActiveEffects(magicState, casterCharacters, opponentCharacters) {
+//
+// IL PRIMO PARAMETRO NON È UNO STATO MAGICO, È UN CONTENITORE.
+// Di questa funzione serve una cosa sola: un oggetto con dentro
+// `effettiAttivi`. Prima si chiamava `magicState` perché i buff a tempo
+// nascevano tutti dalle Carte Magiche — ma anche le ABILITÀ degli eroi
+// ne producono (Tonho +25% difesa per 3 turni, Mula +100% attacco per
+// 2), e quelle vivono sul giocatore, che può benissimo non avere nessuno
+// stato magico. Il nome diceva una cosa più stretta della verità, e per
+// starci dentro si sarebbe dovuto inventare uno stato magico finto.
+export function tickActiveEffects(contenitore, casterCharacters, opponentCharacters) {
   const scaduti = [];
-  magicState.effettiAttivi = magicState.effettiAttivi.filter((e) => {
+  if (!contenitore || !Array.isArray(contenitore.effettiAttivi)) return scaduti;
+  contenitore.effettiAttivi = contenitore.effettiAttivi.filter((e) => {
     e.turniRimasti -= 1;
     if (e.turniRimasti > 0) return true;
     // revert dell'effetto se era una modifica diretta a un personaggio

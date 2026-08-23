@@ -1,0 +1,22 @@
+{
+  "id": "personaggio_101",
+  "seme": "♦",
+  "rarita": 5,
+  "vita": 140,
+  "att": 180,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "distruggi_trappole"
+      },
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "30",
+        "target": "avversario"
+      }
+    ]
+  }
+}

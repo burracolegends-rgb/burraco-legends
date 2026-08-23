@@ -180,7 +180,18 @@ export const BERSAGLI = {
   se_stesso:             'il personaggio che agisce (o tutti i propri, se nessuno agisce)',
   alleato_casuale:       'un proprio personaggio, a caso fra quelli vivi',
   tutti_alleati:         'tutti i propri personaggi ancora vivi',
-  personaggio_specifico: 'un personaggio scelto dal giocatore — SOLO nelle abilità speciali'
+  personaggio_specifico: 'un personaggio scelto dal giocatore — SOLO nelle abilità speciali',
+  // "l'avversario COLPITO": non se ne estrae uno nuovo, si riusa quello
+  // che il colpo di QUESTA stessa abilità ha appena preso. Serve alle
+  // carte che picchiano e poi infieriscono sullo stesso bersaglio
+  // (Onça-Pintada, Boitatá): senza, il malus finirebbe su un nemico a
+  // caso, magari nemmeno quello ferito.
+  //
+  // SOLO NELLE ABILITÀ, e non per una regola di stile: chi tiene il
+  // conto di "chi ho appena colpito" è `usaAbilitaSpeciale`, mentre una
+  // Carta Magica non ha nessun colpo proprio da cui ereditare. Su una
+  // Carta Magica non colpirebbe nessuno — in silenzio.
+  bersaglio_colpito:     'il personaggio che il colpo di questa stessa abilità ha appena ferito — SOLO nelle abilità speciali'
 };
 export const BERSAGLI_CARTE_MAGICHE = ['avversario', 'tutti_avversari', 'se_stesso', 'alleato_casuale', 'tutti_alleati'];
 
@@ -272,9 +283,14 @@ export function controllaCartaMagica(carta) {
     if (e.target && !BERSAGLI[e.target]) {
       errori.push('bersaglio sconosciuto: "' + e.target + '"' + dove + '. Ammessi: ' + Object.keys(BERSAGLI).join(', '));
     }
-    // il bersaglio a scelta è riservato alle abilità speciali
-    if (e.target === 'personaggio_specifico') {
-      errori.push('"personaggio_specifico"' + dove + ' non si può usare su una Carta Magica: il bersaglio a scelta è riservato alle abilità speciali degli eroi. Usa ' + BERSAGLI_CARTE_MAGICHE.join(', ') + '.');
+    // ALCUNI BERSAGLI SONO RISERVATI ALLE ABILITÀ DEGLI EROI.
+    // L'elenco non si ripete qui: si ricava da BERSAGLI_CARTE_MAGICHE,
+    // così il giorno che se ne aggiunge uno nuovo riservato alle abilità
+    // questo controllo lo boccia da solo. Prima era scritto a mano un
+    // nome solo ("personaggio_specifico") e "bersaglio_colpito" — che su
+    // una Carta Magica non colpisce nessuno — sarebbe passato liscio.
+    if (e.target && BERSAGLI[e.target] && !BERSAGLI_CARTE_MAGICHE.includes(e.target)) {
+      errori.push('"' + e.target + '"' + dove + ' non si può usare su una Carta Magica: è riservato alle abilità speciali degli eroi e qui non colpirebbe nessuno. Usa ' + BERSAGLI_CARTE_MAGICHE.join(', ') + '.');
     }
     if (e.durata_turni !== undefined && (typeof e.durata_turni !== 'number' || e.durata_turni < 0)) {
       errori.push('"durata_turni" deve essere un numero maggiore o uguale a zero' + dove);

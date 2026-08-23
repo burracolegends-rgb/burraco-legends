@@ -1,0 +1,19 @@
+{
+  "id": "personaggio_107",
+  "seme": "♦",
+  "rarita": 3,
+  "vita": 80,
+  "att": 120,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "15",
+        "target": "tutti_avversari"
+      }
+    ]
+  }
+}

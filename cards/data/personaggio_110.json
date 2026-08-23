@@ -1,0 +1,19 @@
+{
+  "id": "personaggio_110",
+  "seme": "♥",
+  "rarita": 4,
+  "vita": 160,
+  "att": 110,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "cura_diretta",
+        "parametro": "50",
+        "target": "tutti_alleati"
+      }
+    ]
+  }
+}

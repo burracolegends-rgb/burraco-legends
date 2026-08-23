@@ -1,0 +1,16 @@
+{
+  "id": "sorpresa_103",
+  "tipo": "sorpresa",
+  "rarita": 4,
+  "trigger": "on_activate",
+  "effetti": [
+    {
+      "effect": "pesca_extra",
+      "parametro": "2",
+      "target": "se_stesso",
+      "durata_turni": 1
+    }
+  ],
+  "durata_turni": 0,
+  "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."
+}

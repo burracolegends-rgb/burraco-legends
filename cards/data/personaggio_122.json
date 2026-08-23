@@ -1,0 +1,31 @@
+{
+  "id": "personaggio_122",
+  "seme": "♥",
+  "rarita": 5,
+  "vita": 160,
+  "att": 160,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 4,
+    "effetti": [
+      {
+        "effect": "boost_att_percentuale",
+        "parametro": "30",
+        "target": "alleato_casuale",
+        "durata_turni": 2
+      },
+      {
+        "effect": "cura_percentuale",
+        "parametro": "30",
+        "target": "alleato_casuale"
+      },
+      {
+        "effect": "boost_difesa",
+        "parametro": "30",
+        "target": "alleato_casuale",
+        "durata_turni": 2
+      }
+    ]
+  }
+}

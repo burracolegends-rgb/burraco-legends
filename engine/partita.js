@@ -42,7 +42,7 @@
 
 import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } from './core-rules.js';
 import { attachAbility, tickCharacterAbility, checkAbilityTrigger } from './character-abilities.js';
-import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata, risolviBersaglio } from './magic-cards.js';
+import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata, risolviBersaglio, tickActiveEffects } from './magic-cards.js';
 import { elencoEffetti, CONDIZIONI, EFFETTI_DIFFERITI } from './vocabolario.js';
 
 export const TURN_SECONDS = 60;      // spec §2: 1 minuto per turno a giocatore
@@ -186,6 +186,43 @@ function consumaEffetto(player, nome) {
 export function imponiEffetto(player, effect, parametro, turniRimasti = 1) {
   player.effettiSubiti = player.effettiSubiti || [];
   player.effettiSubiti.push({ effect, parametro, turniRimasti });
+}
+
+// ------------------------------------------------------------
+// I BUFF A TEMPO SCADONO DAVVERO
+//
+// Un buff con durata (boost_att, boost_difesa, boost_att_percentuale,
+// riduci_difesa) non è un effetto "di flusso": cambia SUBITO un numero
+// sul personaggio, e per scadere qualcuno deve rimettere quel numero
+// com'era. Quel qualcuno è `tickActiveEffects`, che esisteva, era
+// provata da sola... e non veniva chiamata da nessuna parte in partita.
+// Risultato: "+25% difesa per 3 turni" era +25% PER SEMPRE, e il +100%
+// di attacco della Mula non se ne andava più. Nessuno se n'era accorto
+// perché finora nessuna carta usava davvero le durate.
+//
+// I buff stanno in DUE posti, e non è un caso:
+//   - quelli delle Carte Magiche nello stato magico di chi le gioca
+//     (ce li mette activateSorpresa);
+//   - quelli delle ABILITÀ sul giocatore, perché un giocatore può
+//     benissimo non avere carte magiche in mano e l'abilità funziona
+//     lo stesso.
+// Un effetto sta sempre in uno solo dei due, quindi invecchiano insieme
+// senza rischio di essere annullati due volte.
+function invecchiaBuffATempo(player, opponent) {
+  const scaduti = [];
+  scaduti.push(...tickActiveEffects(player.magic, player.characters, opponent.characters));
+  scaduti.push(...tickActiveEffects(player, player.characters, opponent.characters));
+  return scaduti;
+}
+
+// Registra un buff a tempo prodotto da un'ABILITÀ, così che scada.
+// Durata zero (o assente) vuol dire "istantaneo": non c'è niente da far
+// scadere e non va messo in lista, o resterebbe lì per sempre in attesa
+// di un turno che non lo consuma mai.
+function registraBuffAbilita(player, effettoAttivo, cardId) {
+  if (!effettoAttivo || !(effettoAttivo.turniRimasti > 0)) return;
+  player.effettiAttivi = player.effettiAttivi || [];
+  player.effettiAttivi.push({ ...effettoAttivo, cardId });
 }
 // A ogni turno del giocatore gli effetti che lo riguardano invecchiano.
 function invecchiaEffetti(player) {
@@ -558,6 +595,11 @@ function nextTurn(state, nowMs) {
   if (player.magic) resetTurnoMagie(player.magic);
   if (opponent.magic) tickTrapExpiry(opponent.magic);
   invecchiaEffetti(opponent);
+  // I buff a tempo di chi comincia adesso invecchiano di un turno: una
+  // durata "2 turni" vuol dire due TUOI turni, che è come la legge chi
+  // gioca. Valgono anche per i malus che hai messo tu addosso all'altro
+  // (li tieni tu, con la sponda già segnata dentro l'effetto).
+  invecchiaBuffATempo(player, opponent);
   // Le abilità cicliche del giocatore di turno avanzano di un passo
   // all'inizio del proprio turno (spec §7: cicliche a turni fissi).
   const ctx = {
@@ -1137,6 +1179,22 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
       continue;
     }
 
+    // EFFETTI CHE CAMBIANO IL FLUSSO DI GIOCO.
+    // Non si "applicano" a un personaggio: si depositano addosso a un
+    // giocatore e il motore li rispetta più tardi, nel punto giusto
+    // (pesca, attacco, calcolo del danno). Le Carte Magiche lo facevano
+    // già; le abilità no, e passavano da applyEffect — che per questi
+    // non ha un caso e rispondeva "effetto non riconosciuto". In pratica
+    // l'abilità spendeva i punti magia e non faceva niente: è il guasto
+    // che il vocabolario esiste apposta per impedire, e qui era rientrato
+    // dalla finestra perché le due strade non erano la stessa.
+    if (EFFETTI_DI_FLUSSO.includes(e.effect)) {
+      const suDiMe = e.target === 'se_stesso' || e.target === 'alleato_casuale' || e.target === 'tutti_alleati';
+      imponiEffetto(suDiMe ? player : defender, e.effect, e.parametro, e.durata_turni || 1);
+      esiti.push({ effect: e.effect, differito: true, su: suDiMe ? 'io' : 'avversario' });
+      continue;
+    }
+
     const ctxEffetto = {
       casterCharacters: player.characters, opponentCharacters: defender.characters,
       casterHand: player.hand, opponentHand: defender.hand,
@@ -1151,6 +1209,9 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
       rng: state.rng
     };
     const res = applyEffect(e, ctxEffetto);
+    // Se l'effetto ha una durata, va messo in lista o non scadrà mai:
+    // "+100% attacco per 2 turni" senza questa riga è +100% per sempre.
+    registraBuffAbilita(player, res.effettoAttivo, eroe.cardId);
     const reazioni = avvisaChiGuardaLeDifese(state, playerIndex, e, { ...res, lato: res.effettoAttivo && res.effettoAttivo.pool });
     esiti.push({ effect: e.effect, ...res, ...(reazioni.length ? { trappoleScattate: reazioni } : {}) });
   }

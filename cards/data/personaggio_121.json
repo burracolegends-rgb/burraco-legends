@@ -1,0 +1,24 @@
+{
+  "id": "personaggio_121",
+  "seme": "♣",
+  "rarita": 5,
+  "vita": 130,
+  "att": 180,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 4,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "20",
+        "target": "avversario"
+      },
+      {
+        "effect": "costo_abilita_extra",
+        "parametro": "1",
+        "target": "bersaglio_colpito"
+      }
+    ]
+  }
+}

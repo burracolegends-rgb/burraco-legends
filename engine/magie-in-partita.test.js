@@ -605,5 +605,94 @@ function partita(magiche) {
   check('E il colpo e comunque arrivato', r.damage > 0 && r.colpi.length === 1);
 }
 
+// ============================================================
+// LE DURATE SCADONO DAVVERO
+//
+// Tre buchi trovati insieme, tutti dello stesso tipo: un effetto veniva
+// APPLICATO ma nessuno se lo riprendeva indietro, o non veniva applicato
+// affatto. Nessun test li copriva perché finora nessuna carta usava le
+// durate: col roster vero (Tonho +25% difesa per 3 turni, Mula +100%
+// attacco per 2) sarebbero diventati subito visibili come "il buff non
+// se ne va più".
+// ============================================================
+
+// Passa il turno per davvero, come farebbe un giocatore: pesca e scarta.
+// Serve perché le durate invecchiano dentro nextTurn, che non è esportata
+// — e provarla scavalcandola vorrebbe dire non provare il gioco vero.
+function passaIlTurno(state, chi, t) {
+  if (!state.players[chi].hasDrawnThisTurn) actionDraw(state, chi, t);
+  const carta = state.players[chi].hand[0];
+  return actionDiscard(state, chi, carta.id, t + 100);
+}
+
+// --- 15. un buff a tempo di un'ABILITÀ scade (Mula Sem Cabeça) ---
+{
+  const RABBIA = { trigger: 'attivazione_manuale', costo: 4, effetti: [
+    { effect: 'boost_att_percentuale', parametro: '100', target: 'se_stesso', durata_turni: 2 }
+  ] };
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, abilities: [{ '♦': RABBIA }, {}] });
+  state.players[0].puntiMagia = 15;
+  state.players[0].characters['♦'].att = 100;
+
+  const r = usaAbilitaSpeciale(state, 0, '♦', null, T0 + 1000);
+  check('la Rabbia parte', r.ok === true, r.reason);
+  check('l\'attacco raddoppia subito (100 → 200)', state.players[0].characters['♦'].att === 200);
+
+  let t = T0 + 2000;
+  passaIlTurno(state, 0, t); t += 1000;
+  passaIlTurno(state, 1, t); t += 1000;      // torna a me: primo invecchiamento
+  check('dopo un giro il buff regge ancora', state.players[0].characters['♦'].att === 200);
+
+  passaIlTurno(state, 0, t); t += 1000;
+  passaIlTurno(state, 1, t); t += 1000;      // torna a me: secondo invecchiamento
+  check('dopo due giri l\'attacco torna com\'era (100)',
+    Math.abs(state.players[0].characters['♦'].att - 100) < 1e-9);
+}
+
+// --- 16. un effetto DI FLUSSO chiesto da un'abilità viene depositato ---
+// (Cão-do-Mato, "Ricerca del bersaglio": +25% al danno di calate e abilità)
+// Prima passava da applyEffect, che per gli effetti di flusso non ha un
+// caso: rispondeva "effetto non riconosciuto" e l'abilità spendeva i
+// punti magia senza fare niente.
+{
+  const RICERCA = { trigger: 'attivazione_manuale', costo: 4, effetti: [
+    { effect: 'boost_danno', parametro: '25', target: 'se_stesso', durata_turni: 2 }
+  ] };
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, abilities: [{ '♠': RICERCA }, {}] });
+  state.players[0].puntiMagia = 15;
+
+  const r = usaAbilitaSpeciale(state, 0, '♠', null, T0 + 1000);
+  check('la Ricerca del bersaglio parte', r.ok === true, r.reason);
+  check('il bonus al danno è depositato sul giocatore', !!haEffetto(state.players[0], 'boost_danno'));
+  check('e l\'abilità dichiara di averlo differito',
+    r.effettiAbilita.some((e) => e.effect === 'boost_danno' && e.differito === true));
+}
+
+// --- 17. un malus a tempo messo SULL'AVVERSARIO scade (Onça-Pintada) ---
+{
+  const MORSO = { trigger: 'attivazione_manuale', costo: 4, effetti: [
+    { effect: 'danno_da_attacco', parametro: '25', target: 'avversario' },
+    { effect: 'riduci_difesa', parametro: '20', target: 'bersaglio_colpito', durata_turni: 2 }
+  ] };
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5, abilities: [{ '♣': MORSO }, {}] });
+  state.players[0].puntiMagia = 15;
+  state.players[0].characters['♣'].att = 100;
+
+  const r = usaAbilitaSpeciale(state, 0, '♣', null, T0 + 1000);
+  check('il Morso feroce parte', r.ok === true, r.reason);
+  const colpito = r.colpi[0] && r.colpi[0].suit;
+  check('ha colpito qualcuno', !!colpito);
+  check('e proprio a QUELLO ha abbassato la difesa',
+    state.players[1].characters[colpito].difesaPercent === -20);
+
+  let t = T0 + 2000;
+  passaIlTurno(state, 0, t); t += 1000;
+  passaIlTurno(state, 1, t); t += 1000;
+  passaIlTurno(state, 0, t); t += 1000;
+  passaIlTurno(state, 1, t); t += 1000;
+  check('dopo due giri la difesa del colpito torna a posto',
+    (state.players[1].characters[colpito].difesaPercent || 0) === 0);
+}
+
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));
 process.exit(failures === 0 ? 0 : 1);

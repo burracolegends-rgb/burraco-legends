@@ -1,0 +1,24 @@
+{
+  "id": "personaggio_102",
+  "seme": "♥",
+  "rarita": 3,
+  "vita": 120,
+  "att": 80,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 1,
+    "effetti": [
+      {
+        "effect": "riduci_punti_magia",
+        "parametro": "1",
+        "target": "avversario"
+      },
+      {
+        "effect": "danno_diretto",
+        "parametro": "10",
+        "target": "se_stesso"
+      }
+    ]
+  }
+}

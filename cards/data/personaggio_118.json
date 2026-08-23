@@ -1,0 +1,26 @@
+{
+  "id": "personaggio_118",
+  "seme": "♠",
+  "rarita": 5,
+  "vita": 150,
+  "att": 170,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "20",
+        "target": "tutti_avversari"
+      },
+      {
+        "effect": "boost_difesa",
+        "parametro": "20",
+        "target": "tutti_alleati",
+        "durata_turni": 2
+      }
+    ],
+    "_nota": "Il foglio non dice per quanti turni duri il bonus di difesa: presa la durata predefinita."
+  }
+}

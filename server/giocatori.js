@@ -31,7 +31,7 @@ import {
   SERIE_NUOVA, statoSerie, ritiraPremio as ritiraDalMotore,
   saldoPuoPagare, spendi, RICARICHE
 } from '../engine/sharkini.js';
-import { OFFERTE, offertaPerCarte, apriPacchetto, SOGLIA_PITY } from '../engine/pacchetti.js';
+import { OFFERTE, offertaPerCarte, apriPacchetto, SOGLIA_PITY, carteInVendita } from '../engine/pacchetti.js';
 import { dotazioneIniziale, aggiungiDotazione } from '../engine/dotazione.js';
 
 const gettoneNuovo = () => randomBytes(32).toString('hex');
@@ -58,6 +58,11 @@ function giocatoreNuovo(nome, quando) {
 export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = Math.random }) {
   if (!archivio) throw new Error('L\'anagrafe ha bisogno di un magazzino.');
   if (!Array.isArray(catalogo) || !catalogo.length) throw new Error('L\'anagrafe ha bisogno del catalogo delle carte.');
+
+  // Dai pacchetti esce solo quello che è in vendita: i segnaposto della
+  // dotazione di benvenuto restano fuori (vedi carteInVendita).
+  const inVendita = carteInVendita(catalogo);
+  if (!inVendita.length) throw new Error('Nessuna carta in vendita: i pacchetti uscirebbero vuoti.');
 
   const chiaveDi = (gettone) => 'giocatore:' + gettone;
 
@@ -187,7 +192,7 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
       };
     }
 
-    const risultato = apriPacchetto(catalogo, g.collezione, g.contatorePity, caso, offerta.carte);
+    const risultato = apriPacchetto(inVendita, g.collezione, g.contatorePity, caso, offerta.carte);
 
     // il conto si aggiorna tutto insieme
     const dopo = spendi(g.serie.saldo, offerta.costo);

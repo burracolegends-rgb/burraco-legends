@@ -1,0 +1,20 @@
+{
+  "id": "personaggio_108",
+  "seme": "♠",
+  "rarita": 3,
+  "vita": 120,
+  "att": 85,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 3,
+    "effetti": [
+      {
+        "effect": "boost_difesa",
+        "parametro": "25",
+        "target": "tutti_alleati",
+        "durata_turni": 3
+      }
+    ]
+  }
+}

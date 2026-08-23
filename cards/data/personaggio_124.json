@@ -1,0 +1,26 @@
+{
+  "id": "personaggio_124",
+  "seme": "♠",
+  "rarita": 5,
+  "vita": 160,
+  "att": 160,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 4,
+    "effetti": [
+      {
+        "effect": "riduci_punti_magia",
+        "parametro": "3",
+        "target": "avversario"
+      },
+      {
+        "effect": "riduci_difesa",
+        "parametro": "30",
+        "target": "tutti_avversari",
+        "durata_turni": 2
+      }
+    ],
+    "_nota": "Il foglio dice \"la difesa avversaria\" senza dire se uno o tutti: preso \"tutti gli avversari\"."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "trappola_102",
+  "tipo": "trappola",
+  "rarita": 4,
+  "trigger": "avversario_tocca_difesa",
+  "effetti": [
+    {
+      "effect": "converti_difesa",
+      "target": "se_stesso"
+    }
+  ],
+  "durata_turni": 0,
+  "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."
+}

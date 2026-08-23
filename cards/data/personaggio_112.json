@@ -1,0 +1,21 @@
+{
+  "id": "personaggio_112",
+  "seme": "♠",
+  "rarita": 4,
+  "vita": 140,
+  "att": 120,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 4,
+    "effetti": [
+      {
+        "effect": "boost_danno",
+        "parametro": "25",
+        "target": "se_stesso",
+        "durata_turni": 2
+      }
+    ],
+    "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."
+  }
+}

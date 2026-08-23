@@ -1,0 +1,24 @@
+{
+  "id": "personaggio_119",
+  "seme": "♣",
+  "rarita": 5,
+  "vita": 145,
+  "att": 175,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 5,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "40",
+        "target": "avversario"
+      },
+      {
+        "effect": "riduci_punti_magia",
+        "parametro": "1",
+        "target": "avversario"
+      }
+    ]
+  }
+}

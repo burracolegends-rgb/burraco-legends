@@ -1,5 +1,6 @@
 {
   "id": "trappola_001",
+  "fuoriCommercio": true,
   "tipo": "trappola",
   "rarita": 2,
   "effect": "scarto_forzato",

@@ -1,0 +1,19 @@
+{
+  "id": "personaggio_117",
+  "seme": "♣",
+  "rarita": 4,
+  "vita": 140,
+  "att": 120,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 6,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "40",
+        "target": "avversario"
+      }
+    ]
+  }
+}

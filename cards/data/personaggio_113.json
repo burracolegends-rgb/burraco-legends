@@ -1,0 +1,25 @@
+{
+  "id": "personaggio_113",
+  "seme": "♣",
+  "rarita": 4,
+  "vita": 120,
+  "att": 140,
+  "difesa": 1,
+  "abilita": {
+    "trigger": "attivazione_manuale",
+    "costo": 4,
+    "effetti": [
+      {
+        "effect": "danno_da_attacco",
+        "parametro": "25",
+        "target": "avversario"
+      },
+      {
+        "effect": "riduci_difesa",
+        "parametro": "20",
+        "target": "bersaglio_colpito",
+        "durata_turni": 2
+      }
+    ]
+  }
+}

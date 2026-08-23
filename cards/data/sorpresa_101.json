@@ -1,0 +1,15 @@
+{
+  "id": "sorpresa_101",
+  "tipo": "sorpresa",
+  "rarita": 3,
+  "trigger": "on_activate",
+  "effetti": [
+    {
+      "effect": "danno_diretto",
+      "parametro": "50",
+      "target": "avversario"
+    }
+  ],
+  "durata_turni": 0,
+  "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."
+}
