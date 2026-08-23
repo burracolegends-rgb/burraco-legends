@@ -309,7 +309,10 @@ const TIPI = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
-  '.png': 'image/png'
+  '.png': 'image/png',
+  // le illustrazioni e le cornici delle carte: WebP, lo stesso formato
+  // che il tavolo usa gia' per le carte da burraco
+  '.webp': 'image/webp'
 };
 
 function serviFile(res, richiesto) {

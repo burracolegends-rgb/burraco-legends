@@ -9,6 +9,9 @@
 import re, io, os, json, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ponte import PONTE
+# La carta illustrata (cornice + arte + testi) e' la stessa in album,
+# apertura pacchetti e tavolo: sta in un posto solo.
+from carta_illustrata import CSS_CARTA_ILLUSTRATA, JS_CARTA_ILLUSTRATA, dati_illustrazioni
 
 # Il percorso del progetto si ricava da dove sta questo file, non si
 # scrive a mano: così la cartella si può rinominare o spostare senza
@@ -156,16 +159,18 @@ PAGINA = r'''<!DOCTYPE html>
 
   /* La figurina. Quella che hai è a colori e ha il numero di copie;
      quella che manca resta al suo posto, spenta, col nome coperto. */
+  /* La figurina e' solo il PORTAFOTO: la carta vera (cornice, arte,
+     nome, numeri) la disegna .carta-illustrata, che e' la stessa in
+     tutte le pagine. Qui restano le cose che valgono solo nell'album:
+     l'inclinazione da album, il sollevarsi al passaggio, i bollini
+     "nuova" e "xN". Il bordo colorato per rarita' non c'e' piu' — con
+     la cornice sopra non si vedrebbe — e al suo posto c'e' l'alone,
+     che si accende quando la carta si solleva. */
   .figurina {
-    position: relative; aspect-ratio: 0.7; border-radius: 11px; overflow: hidden; cursor: pointer;
-    border: 1.5px solid var(--bordo, var(--r1));
-    background:
-      radial-gradient(ellipse at 50% 18%, var(--velo, rgba(255,255,255,0.1)), transparent 62%),
-      linear-gradient(168deg, #2a2140 0%, #1a1428 60%, #120d1c 100%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 5px; padding: 9px 7px; text-align: center;
+    position: relative; aspect-ratio: 0.71; border-radius: 9px; overflow: hidden; cursor: pointer;
     transition: transform 0.16s cubic-bezier(.2,.9,.3,1), box-shadow 0.16s;
   }
+  .figurina .carta-illustrata { border-radius: 9px; }
   /* Un album di figurine non è una tabella: le figurine si attaccano a
      mano e stanno un po' storte, ognuna a modo suo. L'inclinazione è
      minima (meno di due gradi) e sempre la stessa per la stessa carta,
@@ -176,11 +181,6 @@ PAGINA = r'''<!DOCTYPE html>
     box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 20px var(--alone, transparent);
     z-index: 2;
   }
-
-  .figurina .simbolo { font-size: 2.4rem; line-height: 1; text-shadow: 0 0 18px currentColor; }
-  .figurina .nome { font-family: Georgia, serif; font-size: 0.78rem; line-height: 1.2; color: var(--oro-chiaro); }
-  .figurina .stelle { font-size: 0.68rem; color: var(--bordo, var(--r1)); letter-spacing: 1px; }
-  .figurina .stat { font-size: 0.66rem; color: var(--tenue); }
 
   .figurina .copie {
     position: absolute; top: 6px; right: 6px; font-size: 0.64rem; font-weight: 900;
@@ -193,16 +193,12 @@ PAGINA = r'''<!DOCTYPE html>
     background: linear-gradient(180deg, #9dffc4, var(--verde)); color: #05301a;
   }
 
-  /* la sagoma di quello che manca */
-  .figurina.manca {
-    border-style: dashed; border-color: rgba(255,255,255,0.16);
-    background: rgba(255,255,255,0.026);
-  }
-  .figurina.manca .simbolo { color: rgba(255,255,255,0.13); text-shadow: none; }
-  .figurina.manca .nome { color: rgba(255,255,255,0.2); letter-spacing: 2px; }
-  .figurina.manca .stelle { color: rgba(255,255,255,0.16); }
-  .figurina.manca .stat { visibility: hidden; }
-  .figurina.manca:hover { transform: none; box-shadow: none; }
+  /* quello che manca resta al suo posto, ma spento: e' il buco
+     nell'album, e si deve vedere che e' un buco (lo spegnimento vero
+     lo fa .carta-illustrata.manca, qui si toglie solo la reazione al
+     passaggio: non c'e' niente da guardare piu' da vicino) */
+  .figurina.manca { opacity: 0.72; }
+  .figurina.manca:hover { transform: rotate(var(--storta, 0deg)) translateY(var(--sbalzo, 0px)); box-shadow: none; }
 
   /* ---------- la carta ingrandita ---------- */
   .lente {
@@ -212,27 +208,26 @@ PAGINA = r'''<!DOCTYPE html>
   }
   .lente.viva { display: flex; animation: entraLente 0.25s ease-out; }
   @keyframes entraLente { from { opacity: 0; } to { opacity: 1; } }
+  /* Ingrandita, la carta si legge tutta: nome, stelle, numeri e testo
+     dell'abilita' stanno gia' dentro la cornice. Qui intorno resta solo
+     quello che la cornice non dice — quante copie ne hai, e per le
+     carte che ti mancano dove trovarle. */
   .lente .grande {
-    width: min(330px, 86vw); aspect-ratio: 0.7; border-radius: 18px; padding: 22px 18px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-    text-align: center; border: 2px solid var(--bordo, var(--r1));
-    background:
-      radial-gradient(ellipse at 50% 18%, var(--velo, rgba(255,255,255,0.14)), transparent 62%),
-      linear-gradient(168deg, #2a2140 0%, #1a1428 60%, #120d1c 100%);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 60px var(--alone, transparent);
+    width: min(330px, 86vw);
+    display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
     animation: arrivaLente 0.4s cubic-bezier(.2,1.3,.4,1) both;
   }
+  .lente .carta-illustrata {
+    width: 100%; border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 60px var(--alone, transparent);
+  }
   @keyframes arrivaLente { 0% { transform: scale(0.7) rotateY(-18deg); opacity: 0; } 100% { transform: scale(1) rotateY(0); opacity: 1; } }
-  .lente .simbolo { font-size: 5rem; line-height: 1; text-shadow: 0 0 34px currentColor, 0 0 8px #fff; }
-  .lente .nome { font-family: Georgia, serif; font-size: 1.5rem; color: var(--oro-chiaro); line-height: 1.15; }
-  .lente .stelle { font-size: 1.1rem; color: var(--bordo, var(--r1)); letter-spacing: 3px; }
-  .lente .desc { font-size: 0.83rem; color: var(--tenue); line-height: 1.5; max-width: 90%; }
-  .lente .numeri { display: flex; gap: 16px; font-size: 0.9rem; color: #d9cdf2; }
-  .lente .numeri b { color: var(--oro-chiaro); }
-  .lente .quante { font-size: 0.78rem; color: var(--verde); }
+  .lente .quante { font-size: 0.82rem; color: var(--verde); }
+  .lente .dove-si-trova { font-size: 0.78rem; color: var(--tenue); line-height: 1.5; max-width: 92%; }
 
   .vuoto { font-size: 0.85rem; color: var(--tenue); text-align: center; padding: 30px 0; }
   .nota { max-width: 640px; font-size: 0.72rem; color: #8a7e68; line-height: 1.55; text-align: center; }
+__CSS_CARTA__
 </style>
 </head>
 <body>
@@ -274,6 +269,7 @@ PAGINA = r'''<!DOCTYPE html>
 "use strict";
 __MOTORE__
 __DATI__
+__JS_CARTA__
 
 const $ = (id) => document.getElementById(id);
 
@@ -374,22 +370,18 @@ function figurina(c) {
   const stile = 'style="--bordo:' + st.colore + ';--velo:' + st.velo + ';--alone:' + st.alone +
                 ';--storta:' + storta + 'deg;--sbalzo:' + sbalzo + 'px"';
 
+  // La carta la disegna il pezzo condiviso; qui intorno restano solo i
+  // bollini dell'album. Nella griglia la descrizione non entra (il CSS
+  // la nasconde sotto una certa larghezza), quindi non la si passa
+  // nemmeno: sarebbero byte scritti per niente in ognuna delle carte.
+  const dentro = cartaIllustrata(c, { nome: t.nome }, { posseduta: !!n, stelle: stelle(r) });
+
   if (!n) {
-    return '<div class="figurina manca" ' + stile + ' data-id="' + c.id + '">' +
-      '<span class="simbolo">' + simboloDi(c) + '</span>' +
-      '<span class="nome">? ? ?</span>' +
-      '<span class="stelle">' + stelle(r) + '</span>' +
-      '<span class="stat">—</span>' +
-    '</div>';
+    return '<div class="figurina manca" ' + stile + ' data-id="' + c.id + '">' + dentro + '</div>';
   }
-  return '<div class="figurina" ' + stile + ' data-id="' + c.id + '">' +
+  return '<div class="figurina" ' + stile + ' data-id="' + c.id + '">' + dentro +
     (viste[c.id] ? '' : '<span class="nuova">nuova</span>') +
     (n > 1 ? '<span class="copie">×' + n + '</span>' : '') +
-    '<span class="simbolo" style="color:' + st.colore + '">' + simboloDi(c) + '</span>' +
-    '<span class="nome">' + t.nome + '</span>' +
-    '<span class="stelle">' + stelle(r) + '</span>' +
-    // Difesa non si mostra (richiesta del committente): conta nel motore, non a schermo.
-    '<span class="stat">' + (c.seme ? c.vita + ' PV · ' + c.att + ' ATT' : (c.tipo === 'trappola' ? 'Trappola' : 'Sorpresa')) + '</span>' +
   '</div>';
 }
 
@@ -463,18 +455,14 @@ function ingrandisci(id) {
     ';--velo:' + (n ? st.velo : 'transparent') +
     ';--alone:' + (n ? st.alone : 'transparent'));
 
-  $('grande').innerHTML = n
-    ? '<span class="simbolo" style="color:' + st.colore + '">' + simboloDi(c) + '</span>' +
-      '<span class="nome">' + t.nome + '</span>' +
-      '<span class="stelle">' + stelle(r) + '</span>' +
-      (t.desc ? '<span class="desc">' + t.desc + '</span>' : '') +
-      (c.seme ? '<span class="numeri"><span><b>' + c.vita + '</b> PV</span><span><b>' + c.att + '</b> ATT</span></span>' : '') +
-      (n > 1 ? '<span class="quante">Ne hai ' + n + ' copie</span>' : '<span class="quante">La tua unica copia</span>')
-    : '<span class="simbolo" style="color:rgba(255,255,255,0.16)">' + simboloDi(c) + '</span>' +
-      '<span class="nome" style="color:rgba(255,255,255,0.3)">? ? ?</span>' +
-      '<span class="stelle">' + stelle(r) + '</span>' +
-      '<span class="desc">Questa carta non ce l\'hai ancora. Si trova nei pacchetti: ' +
-        'a ' + stelle(r).slice(0, r) + ' esce nel ' + (PROBABILITA[r] || 0).toString().replace('.', ',') + '% dei casi.</span>';
+  // Ingrandita la carta ci sta tutta: qui si passa anche la descrizione,
+  // che nella griglia piccola sarebbe stata illeggibile.
+  const carta = cartaIllustrata(c, t, { posseduta: !!n, stelle: stelle(r) });
+
+  $('grande').innerHTML = carta + (n
+    ? '<div class="quante">' + (n > 1 ? 'Ne hai ' + n + ' copie' : 'La tua unica copia') + '</div>'
+    : '<div class="dove-si-trova">Questa carta non ce l\'hai ancora. Si trova nei pacchetti: ' +
+      'a ' + stelle(r).slice(0, r) + ' esce nel ' + (PROBABILITA[r] || 0).toString().replace('.', ',') + '% dei casi.</div>');
 
   $('lente').classList.add('viva');
   disegna();
@@ -530,8 +518,10 @@ window.__prova = {
 </html>
 '''
 
-pagina = PAGINA.replace('__PONTE__', PONTE).replace('__MOTORE__', motore).replace('__DATI__', DATI)
-for segnaposto in ('__MOTORE__', '__DATI__', '__PONTE__'):
+pagina = (PAGINA.replace('__PONTE__', PONTE).replace('__MOTORE__', motore).replace('__DATI__', DATI)
+                .replace('__CSS_CARTA__', CSS_CARTA_ILLUSTRATA)
+                .replace('__JS_CARTA__', dati_illustrazioni(PROG) + JS_CARTA_ILLUSTRATA))
+for segnaposto in ('__MOTORE__', '__DATI__', '__PONTE__', '__CSS_CARTA__', '__JS_CARTA__'):
     assert segnaposto not in pagina, 'segnaposto non sostituito: ' + segnaposto
 
 # newline='\n' NON e' un dettaglio: senza, su Windows Python traduce

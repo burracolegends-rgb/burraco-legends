@@ -14,9 +14,11 @@ illustrazioni/pulite/*
 !illustrazioni/LEGGIMI.txt
 
 # Prove ed esperimenti sulle cornici delle carte: pesanti e non definitivi.
-cards/frames/_prove/
-cards/frames/_prove*.png
-cards/frames/_debug_*.png
+# Tutto quello che comincia per _ dentro cards/frames e' materiale di
+# lavoro (prove, verifiche, ritagli di controllo): la regola sta sul
+# trattino basso invece che sui singoli nomi, cosi' vale anche per le
+# prove che verranno.
+cards/frames/_*
 
 __pycache__/
 *.pyc
