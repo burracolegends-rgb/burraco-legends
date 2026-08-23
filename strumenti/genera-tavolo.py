@@ -3513,6 +3513,7 @@ out = []
 out.append('<!DOCTYPE html>\n<html lang="it">\n<head>\n<meta charset="UTF-8">\n')
 out.append('<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n')
 out.append('<title>Burraco Legends — Tavolo</title>\n')
+out.append('<link rel="manifest" href="manifest.json">\n<meta name="theme-color" content="#2a1e12">\n<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">\n')
 out.append('<style>')
 out.append(css)
 out.append(BATTLE_CSS)
@@ -3522,7 +3523,16 @@ out.append(BODY)
 # Il pannello va PRIMA dello script: lo script cerca i suoi bottoni
 # appena parte, e se l'HTML venisse dopo non li troverebbe.
 out.append(PANNELLO_IMPOSTAZIONI)
-out.append('\n<script>\n(function(){\n"use strict";\n')
+out.append('\n<script>\n(function(){\n"use strict";\n'
+  # Tentativo di bloccare l'orientamento in orizzontale: l'API risponde
+  # solo quando il gioco gira come app installata (standalone) su
+  # Android/Chrome. Altrove non c'e', o rifiuta: resta allora il
+  # riquadro #ruotaAvviso a chiedere di ruotare il telefono a mano.
+  "try {\n"
+  "  if (screen.orientation && screen.orientation.lock) {\n"
+  "    screen.orientation.lock('landscape').catch(function(){});\n"
+  "  }\n"
+  "} catch (e) {}\n")
 out.append(motore)
 out.append(DATI)
 out.append(SCRIPT)

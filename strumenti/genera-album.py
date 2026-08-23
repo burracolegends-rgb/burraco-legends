@@ -44,6 +44,9 @@ PAGINA = r'''<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Burraco Legends — Album</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a1e12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
   :root {
     --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;

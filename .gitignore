@@ -13,6 +13,11 @@ illustrazioni/grezze/*
 illustrazioni/pulite/*
 !illustrazioni/LEGGIMI.txt
 
+# Prove ed esperimenti sulle cornici delle carte: pesanti e non definitivi.
+cards/frames/_prove/
+cards/frames/_prove*.png
+cards/frames/_debug_*.png
+
 __pycache__/
 *.pyc
 

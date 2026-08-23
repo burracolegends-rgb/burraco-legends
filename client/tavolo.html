@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Burraco Legends — Tavolo</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a1e12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
     :root {
         /* FATTORE DI ADATTAMENTO ALLO SCHERMO.
@@ -2466,6 +2469,11 @@
 <script>
 (function(){
 "use strict";
+try {
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('landscape').catch(function(){});
+  }
+} catch (e) {}
 
 // ===== engine/vocabolario.js (incorporato) =====
 const __M_vocabolario = (function(){
