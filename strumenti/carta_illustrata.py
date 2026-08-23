@@ -130,6 +130,12 @@ CSS_CARTA_ILLUSTRATA = r'''
     text-shadow: 0 1px 2px rgba(0,0,0,0.9);
   }
 
+  /* TUTTE LE CLASSI QUI DENTRO COMINCIANO PER "ci-", e non e' pignoleria:
+     questo pezzo viene incollato dentro pagine che hanno un CSS loro, e
+     un nome comune si scontra. E' successo davvero: "etichetta" e'
+     anche il bollino NUOVA/DOPPIONE dell'apertura pacchetti, che e'
+     position:absolute — l'etichetta VITA se lo prendeva e finiva
+     sopra al proprio numero. Con il prefisso non puo' piu' capitare. */
   /* VITA / ATT: l'etichetta SOPRA, il numero SOTTO, e devono restare
      due righe separate. Prima l'altezza del riquadro era fissata al
      riquadro della cornice e il contenuto, se cresceva, ci finiva
@@ -143,11 +149,11 @@ CSS_CARTA_ILLUSTRATA = r'''
   }
   .ci-stat.sx { left: var(--statsx-x); width: var(--statsx-w); }
   .ci-stat.dx { left: var(--statdx-x); width: var(--statdx-w); }
-  .ci-stat .etichetta {
+  .ci-stat .ci-et {
     color: #cfc3a6; font-size: 5px; font-size: 2.5cqw;
     letter-spacing: 0.5px; line-height: 1.1; display: block;
   }
-  .ci-stat .numero {
+  .ci-stat .ci-num {
     font-family: Georgia, serif; font-weight: 800; color: #f7ecd2;
     font-size: 10px; font-size: 5.2cqw; line-height: 1.1;
     text-shadow: 0 1px 2px #000; display: block;
@@ -221,8 +227,8 @@ function cartaIllustrata(carta, testi, opzioni) {
 
   // I numeri solo per i personaggi: una Carta Magica non ha vita ne' attacco.
   const numeri = (!magica && posseduta)
-    ? '<div class="ci-stat sx"><span class="etichetta">VITA</span><span class="numero">' + carta.vita + '</span></div>' +
-      '<div class="ci-stat dx"><span class="etichetta">ATT</span><span class="numero">' + carta.att + '</span></div>'
+    ? '<div class="ci-stat sx"><span class="ci-et">VITA</span><span class="ci-num">' + carta.vita + '</span></div>' +
+      '<div class="ci-stat dx"><span class="ci-et">ATT</span><span class="ci-num">' + carta.att + '</span></div>'
     : '';
 
   const descrizione = (posseduta && testi.descrizione)

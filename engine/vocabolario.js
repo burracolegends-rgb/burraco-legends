@@ -241,7 +241,11 @@ export function elencoEffetti(carta) {
 export const LIMITI = {
   costoMin: 0,
   costoMax: 15,      // quanto sta al massimo nella riserva di punti magia
-  rarita: [1, 2, 3, 4, 5],
+  // TRE LIVELLI, NON CINQUE: 3 comuni, 4 rare, 5 leggendarie. Carte a
+  // 1 o 2 stelle non ne esistono e non ne esisteranno (decisione del
+  // committente), quindi qui vengono rifiutate: una carta scritta con
+  // una rarita' che il gioco non usa non uscirebbe mai da un pacchetto.
+  rarita: [3, 4, 5],
   lingue: ['it', 'en', 'es', 'pt'],
   tipiCarta: ['sorpresa', 'trappola'],
   semi: ['♥', '♦', '♣', '♠'],

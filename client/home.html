@@ -1135,10 +1135,32 @@ function carteInVendita(catalogo) {
 // ------------------------------------------------------------
 const SOGLIA_PITY = 60;   // carte fra una garanzia e l'altra
 
-// Probabilità per rarità, in percentuale. La somma deve fare 100: c'è un
-// controllo che lo verifica, perché una tabella sbagliata qui si nota
-// solo dopo migliaia di estrazioni.
-const PROBABILITA = { 1: 50, 2: 28, 3: 14, 4: 6.5, 5: 1.5 };
+// ------------------------------------------------------------
+// PROBABILITÀ PER RARITÀ, in percentuale.
+//
+// IL GIOCO HA TRE LIVELLI, NON CINQUE: 3 stelle le comuni, 4 le rare, 5
+// le leggendarie. Carte a 1 e 2 stelle non ne esistono e non ne
+// esisteranno (decisione del committente), quindi la tabella parla di
+// quello che c'è davvero.
+//
+// Prima erano cinque livelli, con il grosso della probabilità su 1 e 2
+// stelle: due righe che non potevano mai uscire. Quel peso finiva
+// ridistribuito sulle altre e faceva salire le leggendarie dall'1,5%
+// all'8% — una carta su dodici, quattro in un pacchetto da cinquanta.
+// Il problema non era come si ridistribuiva: era che si ridistribuiva
+// e basta, perché la tabella descriveva un gioco diverso da questo.
+//
+// I numeri sotto sono quelli di un pacchetto che si apre volentieri:
+// tre carte su quattro comuni, una rara ogni cinque, una leggendaria
+// ogni quaranta. Alla percentuale sotto si somma la GARANZIA del pity
+// (una ★5 ogni 60 carte, vedi SOGLIA_PITY), che porta le leggendarie
+// realmente estratte intorno al 3-4%: la garanzia è lì apposta perché
+// nessuno resti a secco per sfortuna, e va contata nel totale.
+//
+// NUMERI DA TARARE COL PLAYTEST: sono il posto giusto dove girare la
+// manopola se i pacchetti sembrano avari o troppo generosi.
+// ------------------------------------------------------------
+const PROBABILITA = { 3: 76, 4: 21.5, 5: 2.5 };
 
 // Quante monete vale un doppione: le carte non si scambiano fra utenti
 // (spec §10), quindi un doppione deve valere comunque qualcosa.
@@ -1160,22 +1182,57 @@ function verificaProbabilita() {
 // contava più niente. Un guasto invisibile: i pacchetti si aprivano,
 // le carte uscivano, e sembrava tutto a posto.
 //
-// Adesso i pesi si ridistribuiscono fra le rarità presenti mantenendo le
-// proporzioni fra loro. Con un roster 3/4/5 i pesi 14 : 6,5 : 1,5
-// diventano circa 64% / 30% / 6%: le comuni restano comuni e le
-// leggendarie restano rare. E il giorno che si aggiungeranno carte a 1 o
-// 2 stelle si riprenderanno da sole la loro fetta, senza toccare niente.
+// LA PRIMA CORREZIONE NON BASTAVA, E SI VEDEVA APRENDO I PACCHETTI.
+// Ridistribuire il peso delle rarità mancanti IN PROPORZIONE fra quelle
+// presenti sembra equo, ma regala la fetta più grossa a chi non deve
+// averla: il 50% della rarità 1 e il 28% della 2, spartiti in
+// proporzione, portavano le leggendarie dall'1,5% al 6,8% — e con la
+// garanzia del pity sopra, all'8%. Una carta su dodici era una ★5, in un
+// pacchetto da 50 ne uscivano quattro. Di leggendario non restava niente.
+//
+// La regola giusta è un'altra: quando una rarità non esiste, la sua
+// fetta va a quella COMUNE più bassa disponibile, non a tutti. È anche
+// il senso della parola: se non c'è una carta comune da dare, si dà la
+// più comune che c'è — non si promuove il giocatore a una leggendaria.
+// Così l'1,5% delle ★5 resta l'1,5% qualunque sia il roster, oggi e
+// quando arriveranno carte a 1 e 2 stelle.
+//
+// I livelli di rarità che il gioco conosce, dal più comune al più raro.
+// Si ricavano dalla tabella: sono la stessa cosa detta una volta sola.
+const LIVELLI_RARITA = Object.keys(PROBABILITA).map(Number).sort((a, b) => a - b);
+
 function raritaDisponibili(catalogo) {
   const presenti = new Set((catalogo || []).map((c) => Number(c.rarita)));
-  return [1, 2, 3, 4, 5].filter((r) => presenti.has(r));
+  return LIVELLI_RARITA.filter((r) => presenti.has(r));
+}
+
+// I pesi da usare DAVVERO, dato quello che c'è nel catalogo.
+//
+// Di norma sono quelli della tabella. Ma se un livello non ha ancora
+// nessuna carta — succede quando si prepara un'uscita nuova e le carte
+// arrivano poche alla volta — la sua fetta va alla più COMUNE fra
+// quelle presenti, mai spartita fra tutte. È il senso della parola: se
+// non c'è una carta comune da dare, si dà la più comune che c'è; non si
+// promuove il giocatore a una leggendaria.
+// Verificato da un test apposta (engine/pacchetti.test.js).
+function pesiEffettivi(disponibili) {
+  const pesi = {};
+  for (const r of disponibili) pesi[r] = PROBABILITA[r];
+  if (!disponibili.length) return pesi;
+  const piuComune = disponibili[0];
+  for (const r of LIVELLI_RARITA) {
+    if (!disponibili.includes(r)) pesi[piuComune] += PROBABILITA[r];
+  }
+  return pesi;
 }
 
 function estraiRarita(rng, disponibili) {
   if (!disponibili || !disponibili.length) return 1;
-  const totale = disponibili.reduce((s, r) => s + PROBABILITA[r], 0);
+  const pesi = pesiEffettivi(disponibili);
+  const totale = disponibili.reduce((s, r) => s + pesi[r], 0);
   let r = rng() * totale;
   for (const rarita of disponibili) {
-    r -= PROBABILITA[rarita];
+    r -= pesi[rarita];
     if (r <= 0) return rarita;
   }
   return disponibili[disponibili.length - 1];
@@ -1261,9 +1318,9 @@ function rimborsoTotale(risultato) {
   return risultato.carte.reduce((t, c) => t + c.rimborso, 0);
 }
 
-return {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, raritaDisponibili, apriPacchetto, rimborsoTotale};
+return {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, LIVELLI_RARITA, raritaDisponibili, pesiEffettivi, apriPacchetto, rimborsoTotale};
 })();
-const {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, raritaDisponibili, apriPacchetto, rimborsoTotale} = __PAC;
+const {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, LIVELLI_RARITA, raritaDisponibili, pesiEffettivi, apriPacchetto, rimborsoTotale} = __PAC;
 
 
 // ============================================================

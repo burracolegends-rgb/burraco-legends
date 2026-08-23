@@ -4,8 +4,7 @@
 import {
   apriPacchetto, rimborsoTotale, verificaProbabilita,
   PROBABILITA, SOGLIA_PITY, CARTE_PER_PACCHETTO, RIMBORSO_DOPPIONE,
-  OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte
-} from './pacchetti.js';
+  OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, LIVELLI_RARITA } from './pacchetti.js';
 import { formattaSharkini, giorniPerRaccogliere } from './sharkini.js';
 
 let failures = 0;
@@ -26,8 +25,16 @@ function rngFinto(seme = 12345) {
 
 // --- la tabella delle probabilità è coerente ---
 check('le probabilità sommano a 100', verificaProbabilita());
-check('ogni rarità ha una probabilità', [1, 2, 3, 4, 5].every((r) => PROBABILITA[r] > 0));
-check('più è rara, meno esce', PROBABILITA[1] > PROBABILITA[2] && PROBABILITA[2] > PROBABILITA[3] && PROBABILITA[3] > PROBABILITA[4] && PROBABILITA[4] > PROBABILITA[5]);
+// IL GIOCO HA TRE LIVELLI: 3 comuni, 4 rare, 5 leggendarie. Carte a 1 o
+// 2 stelle non ne esistono e non ne esisteranno, e la tabella lo dice.
+check('i livelli di rarita sono 3, 4 e 5', LIVELLI_RARITA.join(',') === '3,4,5');
+check('ogni livello ha una sua probabilita', LIVELLI_RARITA.every((r) => PROBABILITA[r] > 0));
+check('piu e rara, meno esce',
+  LIVELLI_RARITA.every((r, i) => i === 0 || PROBABILITA[r] < PROBABILITA[LIVELLI_RARITA[i - 1]]));
+// LE LEGGENDARIE DEVONO RESTARE LEGGENDARIE. E il numero che si e rotto
+// una volta (erano arrivate all 8%, una carta su dodici) e che nessuno
+// guardava: qui sta scritto quanto ci si aspetta.
+check('una stella 5 ogni venti carte al massimo, prima della garanzia', PROBABILITA[5] <= 5);
 
 // --- un pacchetto contiene il numero giusto di carte ---
 {
@@ -105,7 +112,7 @@ check('più è rara, meno esce', PROBABILITA[1] > PROBABILITA[2] && PROBABILITA[
     else for (const c of r.carte) conteggio[c.rarita]++;
   }
   const totale = Object.values(conteggio).reduce((a, b) => a + b, 0);
-  const scarti = [1, 2, 3, 4, 5].map((r) => {
+  const scarti = LIVELLI_RARITA.map((r) => {
     const attesa = PROBABILITA[r];
     const vera = (conteggio[r] / totale) * 100;
     return { r, attesa, vera, scarto: Math.abs(vera - attesa) };

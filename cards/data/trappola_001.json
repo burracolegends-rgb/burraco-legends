@@ -2,7 +2,7 @@
   "id": "trappola_001",
   "fuoriCommercio": true,
   "tipo": "trappola",
-  "rarita": 2,
+  "rarita": 3,
   "effect": "scarto_forzato",
   "parametro": "1",
   "trigger": "avversario_pesca",
