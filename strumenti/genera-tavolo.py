@@ -697,12 +697,20 @@ BATTLE_CSS = r'''
        colpo d'occhio chi lo ha ancora da prendere. */
     .pozzetto-card.preso { opacity: 0.25; filter: grayscale(1); }
 
-    /* Nel tavolo di Burraco Legends questa riga porta gia' le 7 carte e
-       la barra magia dopo di se': il margine automatico di game.html
-       (pensato per un rigo che finiva con lui) qui lo spingerebbe a
-       contendersi lo spazio col resto. Resta dov'e', giusto dopo gli
-       scarti. */
-    .table-resources-row .sort-controls-mobile { margin-left: 0; flex-shrink: 0; }
+    /* IL VECCHIO "SCIVOLAMENTO" DI game.html QUI FA PIÙ DANNO CHE BENE.
+       Su cellulare, game.html abbassa .table-resources-row di un sesto
+       di carta (position:relative + top) e compensa con un margine
+       negativo della stessa misura, cosi' la riga sotto non si sposta.
+       Un nudge innocuo quando quella riga era solo pozzetti+mazzo+scarti,
+       alta poco più di una carta. Da quando ci sono passate anche le 7
+       carte Battle e la barra magia, la riga è alta il doppio o più: lo
+       stesso scivolamento (il top verso il basso, il margine negativo
+       che tira su la mano sotto) si somma ed ecco una sovrapposizione
+       vera — misurata: ~17px di .bottom-shelf finiti dentro
+       .table-resources-row su un telefono in orizzontale. Qui si
+       annulla: con carte già alte quanto bastano, il nudge di un sesto
+       di carta non serve più a nessuno. */
+    .table-resources-row { position: static; top: auto; margin-bottom: 0; }
 
     /* --- BARRA DEI PUNTI MAGIA ---
        Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
@@ -1242,12 +1250,21 @@ BODY = r'''
     <div class="pozzetti-cross" id="pozzettiCross"></div>
     <div class="pile mazzo-tallone" id="palTallone" onclick="ui.pesca()">MAZZO<div class="pile-count" id="talloneCount">0</div></div>
     <div class="discard-pile" id="palScarti" onclick="ui.clicScarti()"></div>
-    <!-- Su desktop il riordino sta in basso vicino alla mano
-         (.sort-controls-desktop, sotto): li' c'e' spazio. Su cellulare
-         quello spazio non c'e', quindi i due bottoni stanno qui — ed e'
-         proprio questo blocco che nel tavolo di Burraco Legends non era
-         mai stato copiato da game.html: i bottoni restavano nel file
-         sorgente ma non arrivavano mai sulla pagina. -->
+    <div class="battle-strip" id="battleGiocatore"></div>
+    <div class="barra-magia" id="magiaGiocatore"></div>
+</div>
+
+<!-- ============ FASCIA INFERIORE: la mia mano ============ -->
+<div class="bottom-shelf">
+    <div class="hand-center-box" id="handBox"></div>
+    <!-- C'ERA UNA SCRITTA "11 carte" QUI, DOPPIA CON QUELLA DENTRO
+         .hud-controls due passi più in là (stesso numero, stesso testo,
+         calcolato dalla stessa riga di script): due volte la stessa
+         informazione e zero motivo per i pulsanti di riordino, che
+         restavano relegati nella fascia in alto affollata di tutto il
+         resto. Il conteggio unico resta nel hud-controls; questo posto
+         lo prendono i pulsanti — su cellulare è lo spazio naturale,
+         proprio accanto alla mano che riordinano. -->
     <div class="sort-controls-mobile">
         <button class="btn-sort-premium" title="Ordina per Seme" onclick="ui.ordina('suit')">
             <div class="suit-grid"><span class="red">♥</span><span class="red">♦</span><span class="black">♣</span><span class="black">♠</span></div>
@@ -1256,14 +1273,6 @@ BODY = r'''
             <div class="value-flow">3→A</div>
         </button>
     </div>
-    <div class="battle-strip" id="battleGiocatore"></div>
-    <div class="barra-magia" id="magiaGiocatore"></div>
-</div>
-
-<!-- ============ FASCIA INFERIORE: la mia mano ============ -->
-<div class="bottom-shelf">
-    <div class="hand-center-box" id="handBox"></div>
-    <div class="conta-carte mia" id="mieCarteLato">11 carte</div>
 
     <div class="sort-controls-desktop">
         <div class="sort-buttons-row">
@@ -1926,15 +1935,22 @@ function disegnaTutto() {
   ).join('');
   const etichettaCarte = (n) => n + (n === 1 ? ' carta' : ' carte');
   $('mieCarte').textContent = etichettaCarte(io.hand.length);
-  $('mieCarteLato').textContent = etichettaCarte(io.hand.length);
   $('oppConta').textContent = etichettaCarte(avv.hand.length);
 
   // mano avversario: solo dorsi, non si vede mai cosa ha
+  // QUANTE CARTE HA L'AVVERSARIO NON SI PUÒ VEDERLE UNA A UNA: sono
+  // coperte, e non importa se sono 2 o 11 — il numero esatto lo dice già
+  // #oppConta, scritto lì accanto. Un ventaglio di undici dorsi che si
+  // accavallano non aggiungeva nessuna informazione in più, solo un
+  // pacchetto di carte disegnato più largo. Bastano tre dorsi fissi,
+  // sempre la stessa mucchietta, a dire "ha delle carte in mano" — la
+  // stessa idea di un mazziere che mostra un ventaglio simbolico.
+  const DORSI_SIMBOLICI = 3;
   const ocw = misuraCarta('--opp-card-w', 19);
-  const olargh = misuraCarta('--larghezza-ventaglio', 96);
-  const oov = fanOverlap(avv.hand.length, ocw, 2, olargh, 5);
-  $('oppHandBox').innerHTML = new Array(avv.hand.length).fill(0).map((_, i) =>
-    '<div style="margin-right:' + (i === avv.hand.length - 1 ? 0 : oov) + 'px"><div class="card back"></div></div>'
+  const quanteMostrare = Math.min(avv.hand.length, DORSI_SIMBOLICI);
+  const oov = Math.round(ocw * 0.42);
+  $('oppHandBox').innerHTML = new Array(quanteMostrare).fill(0).map((_, i) =>
+    '<div style="margin-right:' + (i === quanteMostrare - 1 ? 0 : oov) + 'px"><div class="card back"></div></div>'
   ).join('');
 
   // colonne dei giochi calati, precedute dallo spazio riservato alle Trappole
@@ -3874,15 +3890,21 @@ out.append(BODY)
 # appena parte, e se l'HTML venisse dopo non li troverebbe.
 out.append(PANNELLO_IMPOSTAZIONI)
 out.append('\n<script>\n(function(){\n"use strict";\n'
-  # Tentativo di bloccare l'orientamento in orizzontale: l'API risponde
-  # solo quando il gioco gira come app installata (standalone) su
-  # Android/Chrome. Altrove non c'e', o rifiuta: resta allora il
+  # ORDINE OBBLIGATO: prima lo schermo intero, POI il blocco
+  # dell'orientamento. Su Chrome/Android screen.orientation.lock()
+  # RIFIUTA se la pagina non è già a schermo intero — provarlo prima,
+  # come si faceva, falliva sempre in silenzio (il catch lo copriva, ma
+  # non scattava mai). Ora si prova il blocco SOLO dopo che lo schermo
+  # intero è stato concesso (o comunque tentato): nei contesti che lo
+  # permettono l'orientamento si blocca davvero, altrove resta il
   # riquadro #ruotaAvviso a chiedere di ruotare il telefono a mano.
-  "try {\n"
-  "  if (screen.orientation && screen.orientation.lock) {\n"
-  "    screen.orientation.lock('landscape').catch(function(){});\n"
-  "  }\n"
-  "} catch (e) {}\n"
+  "function provaOrientamento() {\n"
+  "  try {\n"
+  "    if (screen.orientation && screen.orientation.lock) {\n"
+  "      screen.orientation.lock('landscape').catch(function(){});\n"
+  "    }\n"
+  "  } catch (e) {}\n"
+  "}\n"
   # LA BARRA DI SISTEMA (ora, batteria, rete) NON È LA BARRA DEL
   # BROWSER. Quella del browser spariva già installando l'app
   # (manifest "standalone"); questa è dell'operatore Android/iOS e resta
@@ -3894,13 +3916,16 @@ out.append('\n<script>\n(function(){\n"use strict";\n'
   # tavolo, che è il gesto che serve.
   "function provaSchermoIntero() {\n"
   "  var el = document.documentElement;\n"
-  "  var giaIntero = document.fullscreenElement || document.webkitFullscreenElement;\n"
-  "  if (giaIntero) return;\n"
+  "  if (document.fullscreenElement || document.webkitFullscreenElement) { provaOrientamento(); return; }\n"
   "  try {\n"
   "    var richiesta = el.requestFullscreen ? el.requestFullscreen()\n"
   "                  : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);\n"
-  "    if (richiesta && richiesta.catch) richiesta.catch(function(){});\n"
-  "  } catch (e) {}\n"
+  "    if (richiesta && richiesta.then) richiesta.then(provaOrientamento).catch(provaOrientamento);\n"
+  # webkitRequestFullscreen (Safari/vecchio Android) non restituisce una
+  # promise: si prova comunque il blocco un attimo dopo, dandogli il
+  # tempo di entrare in modalita' schermo intero.
+  "    else setTimeout(provaOrientamento, 60);\n"
+  "  } catch (e) { provaOrientamento(); }\n"
   "}\n"
   "provaSchermoIntero();\n"
   "document.addEventListener('pointerdown', provaSchermoIntero, { once: true, passive: true });\n")
