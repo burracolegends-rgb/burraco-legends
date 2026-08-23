@@ -716,43 +716,51 @@ BATTLE_CSS = r'''
        Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
        a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
        Carta Magica o un'abilità speciale. Ha preso il posto delle vecchie
-       barre azzurre che stavano su ogni singolo eroe. */
-    .barra-magia { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-    .barra-magia .etichetta { font-size: 9px; color: #9adcff; letter-spacing: 0.5px; white-space: nowrap; }
-    .barra-magia .tacche { display: flex; gap: 1px; }
+       barre azzurre che stavano su ogni singolo eroe.
+       VERTICALE, non orizzontale: nelle fasce del tavolo lo spazio che
+       manca è quello in LARGHEZZA (sette carte per parte, mazzo, scarti,
+       pozzetti...), mentre in altezza la riga ha già lo spazio delle
+       carte Battle da riempire. Una colonna di tacche occupa una
+       frazione della larghezza di prima. Si riempie dal basso verso
+       l'alto, come un termometro: è la lettura più naturale per una
+       riserva che "sale". */
+    .barra-magia { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 0 0 auto; }
+    .barra-magia .etichetta { font-size: 8px; color: #9adcff; letter-spacing: 0.5px; white-space: nowrap; }
+    .barra-magia .tacche { display: flex; flex-direction: column-reverse; gap: 1px; }
     .barra-magia .tacca {
-      width: 5px; height: 13px; border-radius: 1.5px;
+      width: 13px; height: 4px; border-radius: 1.5px;
       background: rgba(0,0,0,0.55); border: 1px solid rgba(69,182,255,0.28); box-sizing: border-box;
     }
     .barra-magia .tacca.piena {
-      background: linear-gradient(180deg, #9adcff, var(--charge));
+      background: linear-gradient(90deg, #9adcff, var(--charge));
       border-color: var(--charge); box-shadow: 0 0 4px rgba(69,182,255,0.8);
     }
     .barra-magia .conta { font-size: 11px; font-weight: 800; color: var(--charge); font-variant-numeric: tabular-nums; }
     .barra-magia.piena .conta { animation: caricaPiena 1.2s ease-in-out infinite; }
 
-    /* LA BARRA DEI PUNTI MAGIA PRENDEVA TROPPA LARGHEZZA SU TELEFONO.
-       15 tacche più etichetta e conteggio sono comode su un monitor; in
-       mezzo a sette carte per parte e a tutto il resto della fascia,
-       diventano centimetri che mancano altrove. Si stringe: le tacche
-       restano leggibili come andamento (piena/vuota), che è l'unica
-       cosa che serve d'un colpo d'occhio — il numero preciso resta
-       scritto lì accanto.
+    /* SU TELEFONO ANCHE UNA COLONNA VA STRETTA.
+       15 tacche in verticale, più etichetta e conteggio, sono comode su
+       un monitor dove la riga ha decine di pixel di margine; in mezzo a
+       sette carte per parte e a tutto il resto della fascia, ogni pixel
+       di altezza in più si contende spazio con le carte stesse. Si
+       stringe: le tacche restano leggibili come andamento (quota
+       riempita), che è l'unica cosa che serve d'un colpo d'occhio — il
+       numero preciso resta scritto lì accanto.
        DEVE STARE QUI, DOPO le regole base sopra: stessa regola di
        cascata di .turni-box qualche riga più giù — a parità di
        specificità vince chi è scritto dopo, e messa nel primo blocco
        @media (più in alto nel foglio) perdeva contro queste. */
     @media (max-height: 480px) {
-      .barra-magia { gap: 3px; }
-      .barra-magia .etichetta { font-size: 7px; }
-      .barra-magia .tacca { width: 3px; height: 9px; }
+      .barra-magia { gap: 1px; }
+      .barra-magia .etichetta { font-size: 6.5px; }
+      .barra-magia .tacca { width: 10px; height: 2.5px; }
       .barra-magia .conta { font-size: 9px; }
       /* Quella dell'avversario si guarda ancora meno da vicino — serve
          solo a sapere se sta per potersi permettere qualcosa, non il
          numero esatto tacca per tacca. Via l'etichetta "MAGIA" (la
          posizione in alto lo dice già), tacche più strette ancora. */
       #magiaAvversario .etichetta { display: none; }
-      #magiaAvversario .tacca { width: 2px; height: 7px; }
+      #magiaAvversario .tacca { width: 8px; height: 2px; }
       #magiaAvversario .conta { font-size: 8px; }
     }
 
@@ -1946,11 +1954,21 @@ function disegnaTutto() {
   // sempre la stessa mucchietta, a dire "ha delle carte in mano" — la
   // stessa idea di un mazziere che mostra un ventaglio simbolico.
   const DORSI_SIMBOLICI = 3;
-  const ocw = misuraCarta('--opp-card-w', 19);
+  // Un po' più grandi delle carte "vere" del ventaglio (che tanto non
+  // esiste più): sono solo tre, c'è spazio, e il mucchietto si legge
+  // meglio se le carte si vedono bene invece di restare minuscole.
+  const dorsoW = Math.round(misuraCarta('--opp-card-w', 19) * 1.35);
+  const dorsoH = Math.round(misuraCarta('--opp-card-h', 27.7) * 1.35);
   const quanteMostrare = Math.min(avv.hand.length, DORSI_SIMBOLICI);
-  const oov = Math.round(ocw * 0.42);
+  // Sovrapposte per davvero: margine NEGATIVO, non uno spazio fra loro.
+  // Ogni carta successiva viene disegnata dopo nel DOM, quindi copre da
+  // sola un pezzo di quella prima — l'aspetto di un mucchietto di carte
+  // appoggiate una sull'altra, non un ventaglio aperto.
+  const sovrapposizione = -Math.round(dorsoW * 0.55);
   $('oppHandBox').innerHTML = new Array(quanteMostrare).fill(0).map((_, i) =>
-    '<div style="margin-right:' + (i === quanteMostrare - 1 ? 0 : oov) + 'px"><div class="card back"></div></div>'
+    '<div style="margin-right:' + (i === quanteMostrare - 1 ? 0 : sovrapposizione) + 'px">' +
+      '<div class="card back" style="width:' + dorsoW + 'px; height:' + dorsoH + 'px;"></div>' +
+    '</div>'
   ).join('');
 
   // colonne dei giochi calati, precedute dallo spazio riservato alle Trappole
