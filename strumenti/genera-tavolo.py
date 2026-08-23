@@ -66,15 +66,6 @@ PANNELLO_IMPOSTAZIONI = r'''
     <h2>Impostazioni</h2>
 
     <div class="riga-imp">
-      <span class="etichetta">Stile delle carte</span>
-      <div class="scelte-stile" id="scelteStile"></div>
-      <p class="spiega-imp">
-        A ventaglio le carte si coprono e resta visibile solo la striscia di sinistra:
-        gli stili "angolo" mettono lì valore e seme, ed è per questo che sono i predefiniti.
-      </p>
-    </div>
-
-    <div class="riga-imp">
       <span class="etichetta">Suoni</span>
       <div class="scelte-stile">
         <button class="bottone-imp" id="suoniSi">Accesi</button>
@@ -136,7 +127,13 @@ BATTLE_CSS = r'''
        l'altezza — su un monitor stretto ma alto (finestra ridimensionata)
        non deve succedere niente, il problema è un altro. */
     @media (max-height: 480px), (hover: none) and (orientation: portrait) {
-      :root { --battle-w: 46px; --battle-h: 67px; }
+      /* Le carte Battle restano leggibili anche un po' più piccole di
+         prima (46/67 → 40/58, circa -13%): quello che si guadagna va
+         tutto all'area centrale del tavolo, dove si gioca davvero — le
+         due fasce sopra e sotto sono informazione di corredo, il centro
+         è dove succede la partita. */
+      :root { --battle-w: 40px; --battle-h: 58px; }
+      .top-shelf, .bottom-shelf, .table-resources-row { padding-top: 2px; padding-bottom: 2px; }
 
       /* IL CRONOMETRO STRABORDAVA DALLO SCHERMO.
          .tabellone (il suo contenitore) sa restringersi — min-width:0,
@@ -172,6 +169,17 @@ BATTLE_CSS = r'''
         --battle-h: calc(var(--battle-h) * 0.68);
       }
     }
+
+    /* IL RIQUADRO DEL VENTAGLIO AVVERSARIO ERA LARGO A PRESCINDERE.
+       game.html lo tiene a larghezza fissa (--larghezza-ventaglio) per
+       un motivo preciso: undici dorsi accavallati cambiano larghezza
+       "vera" a ogni carta pescata o calata, e senza un riquadro fisso
+       il tavolo ballava. Da quando i dorsi mostrati sono sempre TRE,
+       fissi, quel motivo non c'è più — e il riquadro restava largo lo
+       stesso, con dello spazio vuoto fra le carte (poche, piccole) e il
+       numero scritto lì accanto, che sembrava sganciato da loro. Ora si
+       stringe intorno al mucchietto vero. */
+    .opp-hand-box { width: auto; flex: 0 0 auto; }
 
     /* --- Striscia delle 7 carte Battle (4 personaggi + 3 magiche) --- */
     .battle-strip { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
@@ -1513,6 +1521,51 @@ let bersaglioAttivo = null;
 const $ = (id) => document.getElementById(id);
 const testo = (id) => (dati.i18n[id] || { nome: id, descrizione: '' });
 
+// ============================================================
+// GLI OVERLAY "A COORDINATE" SOTTO L'ORIZZONTALE FORZATO
+//
+// Popup, numeri di danno, pastiglie degli effetti, il colpo che vola da
+// una carta all'altra: tutti calcolano un punto con getBoundingClientRect
+// (che resta sempre giusto, in coordinate del vero schermo) e poi lo
+// scrivono in style.left/top su un elemento "position:fixed".
+//
+// Il guaio nasce quando <html> è ruotato (vedi il trucco dell'orizzontale
+// forzato, più sopra nel CSS): un antenato con transform diventa il
+// "containing block" di chi dentro di lui usa position:fixed — non è più
+// il vero schermo, è il riquadro LOCALE di quell'antenato. E siccome
+// l'elemento eredita la STESSA rotazione, anche il suo angolo in
+// alto-a-sinistra locale finisce per apparire altrove sullo schermo (gli
+// angoli scorrono di un passo per ogni 90°: alto-sx diventa alto-dx).
+// Scrivere lì dentro le stesse coordinate calcolate per uno schermo
+// normale mandava i popup "in finestre sparse a caso".
+//
+// Le funzioni qui sotto fanno il conto al contrario una volta sola,
+// verificato per davvero in un browser (non solo sulla carta): il resto
+// del codice continua a pensare in coordinate normali, come se la pagina
+// non fosse mai stata ruotata, e chiama queste invece di scrivere
+// style.left/top direttamente.
+function paginaRuotata() {
+  return getComputedStyle(document.documentElement).transform !== 'none';
+}
+// Piazza l'angolo in alto a sinistra di un elemento fixed nel punto
+// visivo (vx,vy). larghezzaVisiva è quella dell'elemento COSÌ COME SI
+// VEDE (cioè quella che restituirebbe già oggi getBoundingClientRect,
+// prima ancora di spostarlo) — sotto rotazione è la sua ALTEZZA locale,
+// quella che serve al conto, quindi va passata quando la si ha già a
+// portata di mano da un gBCR fatto per altri motivi.
+function puntoFissoVisivo(vx, vy, larghezzaVisiva) {
+  if (!paginaRuotata()) return { left: vx, top: vy };
+  return { left: vy, top: window.innerWidth - larghezzaVisiva - vx };
+}
+// Stessa correzione, ma per uno SPOSTAMENTO (un translate d'animazione)
+// invece che per un punto fisso: un vettore locale (dx,dy) appare sullo
+// schermo come (−dy,dx), quindi per ottenere lo spostamento VISIVO
+// (vdx,vdy) voluto va chiesto quello locale che, ruotato, ci arriva.
+function spostamentoVisivo(vdx, vdy) {
+  if (!paginaRuotata()) return { dx: vdx, dy: vdy };
+  return { dx: vdy, dy: -vdx };
+}
+
 function squadra(ids) {
   const characters = {}, abilities = {};
   for (const id of ids) {
@@ -1557,25 +1610,16 @@ function costoAbilita(ch) {
 // quello che serve — valore e seme, grandi — mentre gli stili che
 // puntano sul centro della carta lo perdono proprio quando servirebbe.
 // ------------------------------------------------------------
-const STILI_CARTE = {
-  angolo:       { nome: 'Angolo grande' },
-  angolocolori: { nome: 'Angolo grande a colori' },
-  striscia:     { nome: 'Striscia laterale' },
-  colori:       { nome: 'Striscia a colori' },
-  filigrana:    { nome: 'Filigrana' },
-  numero:       { nome: 'Numero solo' }
-};
-const STILE_PREDEFINITO = 'angolo';
-
-let stileCarteScelto = null;
-function stileCarte() {
-  if (stileCarteScelto === null) {
-    let salvato = null;
-    try { salvato = localStorage.getItem('bb_stile_carte'); } catch (e) {}
-    stileCarteScelto = (salvato && STILI_CARTE[salvato]) ? salvato : STILE_PREDEFINITO;
-  }
-  return stileCarteScelto;
-}
+// SEI STILI ERANO TROPPI: la scelta stessa era un problema, non solo
+// quale fosse la migliore. Chi apriva le impostazioni doveva decidere
+// fra sei anteprime senza sapere qual e' quella "giusta", e uno stile
+// mai provato a fondo (gli altri cinque restavano "in prova" fin dal
+// primo giorno) poteva finire scelto per sbaglio e restare lì, salvato
+// in locale, a far sembrare rotto qualcosa che non lo era.
+// Resta un solo stile, fisso: l'angolo grande, l'unico pensato apposta
+// per il ventaglio (a carte accavallate resta visibile solo la striscia
+// di sinistra, ed è lì che l'angolo grande mette valore e seme).
+function stileCarte() { return 'angolo'; }
 
 // Il corpo della carta, senza il riquadro esterno.
 function corpoCarta(valore, seme, stile) {
@@ -1868,8 +1912,9 @@ function agganciaPannello() {
     let left = r.left + r.width / 2 - pr.width / 2;
     left = Math.max(6, Math.min(left, window.innerWidth - pr.width - 6));
     top = Math.max(6, Math.min(top, window.innerHeight - pr.height - 6));
-    pop.style.left = left + 'px';
-    pop.style.top = top + 'px';
+    const punto = puntoFissoVisivo(left, top, pr.width);
+    pop.style.left = punto.left + 'px';
+    pop.style.top = punto.top + 'px';
   });
   document.addEventListener('mouseout', (e) => {
     const c = e.target.closest ? e.target.closest('.bcard') : null;
@@ -3155,25 +3200,33 @@ function volaColpo(idStrisciaPartenza, elBersaglio, magico, poiFai) {
   const p = document.createElement('div');
   p.className = 'proiettile' + (magico ? ' magico' : '');
   p.innerHTML = '<div class="scia"></div>';
-  p.style.left = x0 + 'px';
-  p.style.top = y0 + 'px';
+  const puntoPartenza = puntoFissoVisivo(x0, y0, 0);
+  p.style.left = puntoPartenza.left + 'px';
+  p.style.top = puntoPartenza.top + 'px';
   document.body.appendChild(p);
 
   const DURATA = 380;
+  // Il tragitto e' un translate, non un punto fermo: sotto l'orizzontale
+  // forzato uno spostamento locale appare ruotato sullo schermo esattamente
+  // come un punto fermo — va corretto allo stesso modo, con l'altra meta'
+  // dell'aiuto (spostamentoVisivo invece di puntoFissoVisivo).
+  const meta = spostamentoVisivo((x1 - x0) * 0.5, (y1 - y0) * 0.5 - 46);
+  const fine = spostamentoVisivo(x1 - x0, y1 - y0);
   // un arco, non una linea dritta: il colpo si vede partire e cadere
   const anim = p.animate([
     { transform: 'translate(0px, 0px) scale(0.6)' },
-    { transform: 'translate(' + ((x1 - x0) * 0.5) + 'px, ' + ((y1 - y0) * 0.5 - 46) + 'px) scale(1.15)', offset: 0.55 },
-    { transform: 'translate(' + (x1 - x0) + 'px, ' + (y1 - y0) + 'px) scale(0.85)' }
+    { transform: 'translate(' + meta.dx + 'px, ' + meta.dy + 'px) scale(1.15)', offset: 0.55 },
+    { transform: 'translate(' + fine.dx + 'px, ' + fine.dy + 'px) scale(0.85)' }
   ], { duration: DURATA, easing: 'cubic-bezier(0.3, 0, 0.7, 1)' });
 
   const schianta = () => {
     p.remove();
+    const puntoImpatto = puntoFissoVisivo(x1, y1, 0);
     for (const classe of ['impatto', 'squarcio']) {
       const e = document.createElement('div');
       e.className = classe;
-      e.style.left = x1 + 'px';
-      e.style.top = y1 + 'px';
+      e.style.left = puntoImpatto.left + 'px';
+      e.style.top = puntoImpatto.top + 'px';
       document.body.appendChild(e);
       setTimeout(() => e.remove(), 800);
     }
@@ -3293,8 +3346,12 @@ function numeroDanno(cardEl, valore) {
 
   const onda = document.createElement('div');
   onda.className = 'dmg-onda';
-  onda.style.left = cx + 'px';
-  onda.style.top = cy + 'px';
+  // centrato con translate(-50%,-50%) in CSS: un punto solo, nessuna
+  // larghezza da compensare — la correzione dell'orizzontale forzato
+  // vale anche qui, senza il terzo argomento.
+  const puntoOnda = puntoFissoVisivo(cx, cy, 0);
+  onda.style.left = puntoOnda.left + 'px';
+  onda.style.top = puntoOnda.top + 'px';
   if (cura) onda.style.borderColor = 'rgba(107,240,165,0.9)';
   document.body.appendChild(onda);
   setTimeout(() => onda.remove(), 700);
@@ -3314,8 +3371,11 @@ function numeroDanno(cardEl, valore) {
                  (versoGiu ? ' verso-giu' : '');
   el.textContent = (cura ? '+' : '−') + n;
   // e nemmeno di lato: sui semi ai bordi il numero usciva dalla finestra
-  el.style.left = Math.min(larghezza - 52, Math.max(52, cx)) + 'px';
-  el.style.top = (versoGiu ? r.bottom + 6 : r.top - 6) + 'px';
+  const puntoNum = puntoFissoVisivo(
+    Math.min(larghezza - 52, Math.max(52, cx)),
+    (versoGiu ? r.bottom + 6 : r.top - 6), 0);
+  el.style.left = puntoNum.left + 'px';
+  el.style.top = puntoNum.top + 'px';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2000);
 }
@@ -3376,8 +3436,11 @@ function segnoEffetto(ancora, def, valore) {
   const el = document.createElement('div');
   el.className = 'segno-eff' + (versoGiu ? ' verso-giu' : '');
   el.style.color = def.colore;
-  el.style.left = Math.min(larghezza - 72, Math.max(72, cx)) + 'px';
-  el.style.top = (versoGiu ? r.bottom + 6 : r.top - 6) + 'px';
+  const puntoSegno = puntoFissoVisivo(
+    Math.min(larghezza - 72, Math.max(72, cx)),
+    (versoGiu ? r.bottom + 6 : r.top - 6), 0);
+  el.style.left = puntoSegno.left + 'px';
+  el.style.top = puntoSegno.top + 'px';
   const etichetta = def.soloGlifo || valore === null || valore === undefined || valore === ''
     ? '' : '<span class="val">' + (def.segno || '') + valore + (def.percento ? '%' : (def.suffisso || '')) + '</span>';
   el.innerHTML = '<span class="glifo">' + def.glifo + '</span>' + etichetta;
@@ -3492,27 +3555,6 @@ const ui = {
   // IMPOSTAZIONI
   // ------------------------------------------------------------
   impostazioni() {
-    // Le anteprime sono CARTE VERE in miniatura, costruite con la
-    // stessa funzione del tavolo. Se un giorno cambio come si disegna
-    // una carta, l'anteprima cambia da sola: un disegnino a parte
-    // finirebbe per mentire nel giro di un mese.
-    const eSempio = { id: 'ant', suit: '♥', value: 7, isJolly: false, isPinella: false };
-    $('scelteStile').innerHTML = Object.keys(STILI_CARTE).map((k) => {
-      const anteprima = '<div class="card cuori disegnata st-' + k + ' anteprima">' +
-                        corpoCarta('7', '♥', k) + '</div>';
-      return '<button class="scelta-stile' + (stileCarte() === k ? ' scelto' : '') +
-             '" data-stile="' + k + '">' + anteprima +
-             '<span>' + STILI_CARTE[k].nome + '</span></button>';
-    }).join('');
-
-    for (const b of document.querySelectorAll('[data-stile]')) {
-      b.addEventListener('click', () => {
-        stileCarteScelto = b.getAttribute('data-stile');
-        try { localStorage.setItem('bb_stile_carte', stileCarteScelto); } catch (e) {}
-        disegna();              // il tavolo cambia sotto, subito
-        ui.impostazioni();      // e le anteprime si riaggiornano
-      });
-    }
     $('veloImpostazioni').classList.add('aperto');
   },
 

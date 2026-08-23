@@ -346,6 +346,23 @@ PAGINA = r'''<!DOCTYPE html>
 
   .suggerimento { font-size: 0.86rem; color: var(--tenue); letter-spacing: 1.4px; min-height: 1.3em; }
 
+  /* SALTA LO SPETTACOLO. Un pacchetto grande (50 carte) vuol dire 50
+     tocchi uno per uno per chi non ha voglia di aspettare stavolta: il
+     riepilogo con tutte le figurine c'è comunque, si può arrivarci
+     subito invece di passarci in mezzo per forza. Visibile solo mentre
+     le carte si stanno ancora rivelando — sul riepilogo non c'è più
+     niente da saltare. */
+  .salta-apertura {
+    position: fixed; bottom: 2vh; right: 2vh; z-index: 9; display: none;
+    padding: 7px 16px; border-radius: 999px; cursor: pointer;
+    font-family: inherit; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--tenue); border: 1px solid rgba(232,196,106,0.35);
+    background: rgba(20,15,9,0.72); backdrop-filter: blur(3px);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .salta-apertura:hover, .salta-apertura:active { color: var(--oro-chiaro); border-color: var(--oro); }
+  .salta-apertura.mostra { display: block; }
+
   /* ---------- 3. RIEPILOGO ---------- */
   .riepilogo { display: none; flex-direction: column; align-items: center; gap: 2vh; animation: entraRiep 0.5s ease-out; }
   .riepilogo.viva { display: flex; }
@@ -455,6 +472,7 @@ PAGINA = r'''<!DOCTYPE html>
 
   <div class="segnaposti" id="segnaposti"></div>
   <div class="suggerimento" id="suggerimento"></div>
+  <button class="salta-apertura" id="saltaApertura">Salta ▶▶</button>
 
   <!-- 3. riepilogo -->
   <div class="riepilogo" id="riepilogo">
@@ -658,6 +676,11 @@ function scuotiSchermo(forza) {
 // se il saldo non basta il pacchetto non è nemmeno stato disegnato:
 // non c'è niente da toccare
 if ($('pacchetto')) $('pacchetto').addEventListener('click', apriIlPacchetto, { once: true });
+// SALTA: chi non vuole aspettare tocca/tira/gira una carta alla volta
+// passa dritto al riepilogo con tutte le figurine — mostraRiepilogo
+// legge solo risultato.carte, quindi funziona a qualunque punto della
+// sequenza ci si trovi, anche prima di aver girato la prima carta.
+if ($('saltaApertura')) $('saltaApertura').addEventListener('click', mostraRiepilogo);
 
 // LE CARTE LE ESTRAE IL SERVER, non questa pagina. Qui si chiede di
 // aprire un pacchetto e si mette in scena quello che risponde: se
@@ -697,6 +720,7 @@ async function apriIlPacchetto() {
 
   setTimeout(() => {
     $('fase-chiuso').style.display = 'none';
+    $('saltaApertura').classList.add('mostra');
     mostraCarta(0);
   }, 1050);   // il tempo che linguetta e corpo escano di scena
 }
@@ -816,6 +840,7 @@ function mostraRiepilogo() {
   $('segnaposti').style.display = 'none';
   $('suggerimento').textContent = '';
   $('palco').classList.remove('attivo');
+  $('saltaApertura').classList.remove('mostra');
 
   const migliore = risultato.carte[risultato.carte.length - 1];
   $('titoloRiep').textContent = risultato.pityScattato
