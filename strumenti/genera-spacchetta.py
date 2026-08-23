@@ -4,6 +4,8 @@
 import re, io, os, json, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ponte import PONTE
+# La carta illustrata e' la stessa in album, pacchetti e tavolo.
+from carta_illustrata import CSS_CARTA_ILLUSTRATA, JS_CARTA_ILLUSTRATA, dati_illustrazioni
 
 QUI = os.path.dirname(os.path.abspath(__file__))
 # Il percorso del progetto si ricava da dove sta questo file, non si
@@ -287,23 +289,23 @@ PAGINA = r'''<!DOCTYPE html>
   .dorso .marchio { width: 40%; opacity: 0.9; }
 
   /* fronte */
+  /* Il fronte non si disegna piu' da se': lo riempie la carta
+     illustrata. Niente padding ne' sfondo — coprirebbero la cornice —
+     ma l'alone per rarita' resta, ed e' quello che fa capire di che
+     livello e' la carta appena girata prima ancora di leggerla. */
   .fronte {
-    transform: rotateY(180deg); padding: 3vh 2.4vh; gap: 1.2vh; text-align: center;
-    border: 0.45vh solid var(--bordo, var(--r1));
-    background: radial-gradient(ellipse at 50% 20%, var(--velo, rgba(255,255,255,0.12)), transparent 62%),
-                linear-gradient(168deg, #2a2140 0%, #1a1428 60%, #120d1c 100%);
-    box-shadow: inset 0 0 4vh rgba(0,0,0,0.6), 0 0 6vh var(--alone, transparent);
+    transform: rotateY(180deg); padding: 0;
+    box-shadow: 0 0 6vh var(--alone, transparent);
   }
-  .fronte .simbolo { font-size: 9vh; line-height: 1; text-shadow: 0 0 4vh currentColor, 0 0 1vh #fff; }
-  .fronte .nome { font-family: Georgia, serif; font-size: 3vh; font-weight: 700; line-height: 1.15; color: var(--oro-chiaro); }
-  .fronte .stelle-carta { font-size: 2.4vh; color: var(--bordo, var(--r1)); letter-spacing: 0.3vh; }
-  .fronte .desc { font-size: 1.65vh; color: var(--tenue); line-height: 1.4; max-width: 94%; }
-  .fronte .stat { font-size: 1.8vh; color: #d9cdf2; }
+  /* NUOVA / DOPPIONE: sta SOPRA la carta, come una fascetta appiccicata.
+     Lo z-index serve: la cornice e' un'immagine dentro la carta, e senza
+     ordine dichiarato la fascetta ci finirebbe sotto. */
   .fronte .etichetta {
-    position: absolute; top: 1.4vh; left: 50%; transform: translateX(-50%);
+    position: absolute; top: 1.4vh; left: 50%; transform: translateX(-50%); z-index: 4;
     font-size: 1.35vh; font-weight: 900; letter-spacing: 0.25vh; text-transform: uppercase;
     padding: 0.5vh 1.6vh; border-radius: 2vh; white-space: nowrap;
   }
+  .mini .tag { z-index: 4; }
   .etichetta.nuova { background: linear-gradient(180deg, #9dffc4, #35c46f); color: #05301a; box-shadow: 0 0 2.4vh rgba(53,196,111,0.85); }
   .etichetta.doppia { background: rgba(0,0,0,0.55); color: var(--tenue); border: 1px solid rgba(255,255,255,0.22); }
 
@@ -369,18 +371,14 @@ PAGINA = r'''<!DOCTYPE html>
   @keyframes entraRiep { from { opacity: 0; transform: translateY(2.4vh); } to { opacity: 1; } }
   .riepilogo h2 { margin: 0; font-family: Georgia, serif; font-size: 3.4vh; color: var(--oro-chiaro); letter-spacing: 0.3vh; }
   .griglia { display: flex; gap: 1.4vh; flex-wrap: wrap; justify-content: center; }
+  /* La figurina del riepilogo e' il portafoto: dentro c'e' la carta
+     illustrata, qui restano solo l'alone per rarita' e il bollino. */
   .mini {
-    width: 13vh; height: 18.5vh; border-radius: 1.2vh; padding: 1.2vh 0.8vh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5vh;
-    text-align: center; border: 2px solid var(--bordo); position: relative;
-    background: linear-gradient(168deg, #2a2140, #14101f);
+    width: 13vh; height: 18.5vh; border-radius: 1.2vh; position: relative;
     box-shadow: 0 0 2.4vh var(--alone, transparent);
     animation: miniEntra 0.4s backwards;
   }
   @keyframes miniEntra { from { opacity: 0; transform: translateY(2vh) scale(0.9); } }
-  .mini .sim { font-size: 3.4vh; line-height: 1; }
-  .mini .nm { font-size: 1.35vh; font-weight: 700; line-height: 1.15; }
-  .mini .st { font-size: 1.2vh; color: var(--bordo); }
   .mini .tag { position: absolute; top: -0.9vh; font-size: 1vh; font-weight: 900; padding: 0.25vh 0.9vh; border-radius: 1vh; letter-spacing: 0.1vh; }
   .mini .tag.nuova { background: #35c46f; color: #05301a; }
   .mini .tag.doppia { background: #3b3550; color: var(--tenue); }
@@ -401,6 +399,16 @@ PAGINA = r'''<!DOCTYPE html>
 
   .torna { position: fixed; top: 2vh; left: 2vh; z-index: 8; font-size: 0.85rem; color: var(--tenue); text-decoration: none; }
   .torna:hover { color: var(--oro); }
+__CSS_CARTA__
+  /* La carta illustrata riempie la faccia che si gira e le figurine del
+     riepilogo: qui la sua proporzione la decide chi la ospita, quindi
+     l'aspect-ratio suo va tolto (altrimenti si contende l'altezza con
+     il contenitore e ne esce una carta schiacciata). */
+  .fronte .carta-illustrata, .mini .carta-illustrata {
+    width: 100%; height: 100%; aspect-ratio: auto;
+  }
+  .fronte .carta-illustrata { border-radius: 2.2vh; }
+  .mini .carta-illustrata { border-radius: 1.2vh; }
 </style>
 </head>
 <body>
@@ -493,6 +501,7 @@ PAGINA = r'''<!DOCTYPE html>
 "use strict";
 __MOTORE__
 __DATI__
+__JS_CARTA__
 
 // ------------------------------------------------------------
 // COLORI DELLE RARITÀ
@@ -757,23 +766,17 @@ function mostraCarta(i) {
     s.className = 'segnaposto' + (k < i ? ' fatto' : (k === i ? ' corrente' : ''));
   });
 
-  // prepara il fronte, ancora nascosto
-  const simbolo = c.carta.seme || (c.carta.tipo === 'sorpresa' ? '✦' : '⚡');
-  const stat = c.carta.vita
-    ? 'VITA ' + c.carta.vita + ' · ATT ' + c.carta.att
-    : 'Costa ' + (c.carta.costo != null ? c.carta.costo : 4) + ' punti magia';
-
+  // prepara il fronte, ancora nascosto.
+  // La carta la disegna il pezzo condiviso — la stessa che si vede
+  // nell'album e al tavolo: chi apre un pacchetto deve riconoscere
+  // subito quello che ritrovera' poi in collezione.
   $('fronte').style.setProperty('--bordo', st.colore);
   $('fronte').style.setProperty('--alone', st.alone);
   $('fronte').style.setProperty('--velo', st.velo);
   $('fronte').innerHTML =
+    cartaIllustrata(c.carta, t, { stelle: stelle(c.rarita) }) +
     '<div class="etichetta ' + (c.nuova ? 'nuova' : 'doppia') + '">' +
-      (c.nuova ? 'NUOVA' : 'DOPPIONE · +' + c.rimborso + ' monete') + '</div>' +
-    '<div class="simbolo" style="color:' + st.colore + '">' + simbolo + '</div>' +
-    '<div class="nome">' + t.nome + '</div>' +
-    '<div class="stelle-carta">' + stelle(c.rarita) + ' ' + st.nome + '</div>' +
-    '<div class="stat">' + stat + '</div>' +
-    '<div class="desc">' + t.descrizione + '</div>';
+      (c.nuova ? 'NUOVA' : 'DOPPIONE · +' + c.rimborso + ' monete') + '</div>';
 
   const scena = $('scena');
   const carta = $('carta3d');
@@ -850,13 +853,12 @@ function mostraRiepilogo() {
   $('griglia').innerHTML = risultato.carte.map((c, i) => {
     const st = STILE_RARITA[c.rarita] || STILE_RARITA[1];
     const t = testo(c.carta.id);
-    const sim = c.carta.seme || (c.carta.tipo === 'sorpresa' ? '✦' : '⚡');
+    // Nel riepilogo le carte sono piccole: si passa il nome ma non la
+    // descrizione, che a quella misura il CSS nasconde comunque.
     return '<div class="mini" style="--bordo:' + st.colore + ';--alone:' + st.alone +
            ';animation-delay:' + (i * 0.09).toFixed(2) + 's">' +
+      cartaIllustrata(c.carta, { nome: t.nome }, { stelle: stelle(c.rarita) }) +
       '<div class="tag ' + (c.nuova ? 'nuova' : 'doppia') + '">' + (c.nuova ? 'NUOVA' : 'DOPPIA') + '</div>' +
-      '<div class="sim" style="color:' + st.colore + '">' + sim + '</div>' +
-      '<div class="nm">' + t.nome + '</div>' +
-      '<div class="st">' + stelle(c.rarita) + '</div>' +
     '</div>';
   }).join('');
 
@@ -889,8 +891,11 @@ pagina = (PAGINA
           .replace('__DATI__', DATI)
           .replace('__TAGLIO_ALTO__', TAGLIO_ALTO)
           .replace('__TAGLIO_BASSO__', TAGLIO_BASSO)
-          .replace('__INVOLUCRO__', INVOLUCRO))
-for segnaposto in ('__MOTORE__', '__DATI__', '__PONTE__', '__TAGLIO_ALTO__', '__TAGLIO_BASSO__', '__INVOLUCRO__'):
+          .replace('__INVOLUCRO__', INVOLUCRO)
+          .replace('__CSS_CARTA__', CSS_CARTA_ILLUSTRATA)
+          .replace('__JS_CARTA__', dati_illustrazioni(PROG) + JS_CARTA_ILLUSTRATA))
+for segnaposto in ('__MOTORE__', '__DATI__', '__PONTE__', '__TAGLIO_ALTO__', '__TAGLIO_BASSO__', '__INVOLUCRO__',
+                   '__CSS_CARTA__', '__JS_CARTA__'):
     assert segnaposto not in pagina, 'segnaposto non sostituito: ' + segnaposto
 # newline='\n' NON e' un dettaglio: senza, su Windows Python traduce
 # ogni a-capo in CR+LF e la pagina esce diversa da quella generata su

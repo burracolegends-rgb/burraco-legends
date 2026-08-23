@@ -2,7 +2,11 @@
 # Burraco Pulito (game.html): il <style> viene copiato VERBATIM, così
 # l'aspetto del tavolo resta identico. Cambia solo il corpo (due nuove
 # zone per le 7 carte Battle) e lo script (collegato al motore Battle).
-import re, io, os
+import re, io, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# L'elenco delle carte che hanno davvero un'illustrazione: si legge
+# dalla cartella vera, cosi' non puo' andare fuori sincrono con i file.
+from carta_illustrata import dati_illustrazioni
 
 # game.html di Burraco Pulito: da qui si prende SOLO il foglio di stile.
 # Metti il file accanto a questo script, oppure indica il suo percorso.
@@ -213,6 +217,38 @@ BATTLE_CSS = r'''
       font-size: calc(var(--battle-w) * 0.78); line-height: 1;
       color: rgba(255,255,255,0.06); pointer-events: none;
     }
+
+    /* ------------------------------------------------------------
+       IL RITRATTO SULLA CARTA DA COMBATTIMENTO
+       Al tavolo le carte sono larghe 40-74px: la cornice ornata, che
+       nell'album e' bellissima, a quella misura diventa un ricamo
+       illeggibile e per giunta si porta via meta' della carta in
+       riquadri vuoti — riquadri che qui non servono, perche' vita e
+       difesa hanno gia' la loro barra e il loro scudo, molto piu'
+       leggibili di un numero da tre pixel.
+       Quindi al tavolo l'illustrazione NON sta dentro una finestra:
+       riempie la carta. Cosi' l'eroe si riconosce a colpo d'occhio,
+       che e' l'unica cosa che serve mentre si gioca. La cornice resta
+       dov'e' utile: album e apertura pacchetti, dove la carta e' grande
+       e la si guarda invece di usarla.
+       ------------------------------------------------------------ */
+    .bcard .ritratto {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: 0; pointer-events: none;
+    }
+    /* Sopra il ritratto ci vanno nome, stelle e barra della vita: senza
+       una velatura finirebbero su un disegno chiaro e non si
+       leggerebbero piu'. Scura sopra e sotto, trasparente in mezzo —
+       dove sta la faccia del personaggio. */
+    .bcard .velo-ritratto {
+      position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background: linear-gradient(180deg,
+        rgba(12,9,20,0.82) 0%, rgba(12,9,20,0.25) 26%,
+        rgba(12,9,20,0.12) 52%, rgba(12,9,20,0.88) 100%);
+    }
+    /* col ritratto, il semone sfumato di sfondo non serve piu': sarebbe
+       solo sporco sopra il disegno */
+    .bcard.con-ritratto::after { display: none; }
     .bcard:hover { transform: translateY(-3px); box-shadow: inset 0 0 0 1px rgba(232,196,106,0.5), 0 6px 16px rgba(0,0,0,0.65), 0 0 14px rgba(232,196,106,0.35); }
 
     .bcard .seme {
@@ -1057,6 +1093,53 @@ BATTLE_CSS = r'''
       100% { opacity: 0; transform: translate(-50%, 78px) scale(0.9); }
     }
 
+    /* ------------------------------------------------------------
+       IL LAMPO DELLA CARTA MAGICA
+       Una Carta Magica finora si vedeva solo come una carta grande al
+       centro dello schermo: poi spariva e i punti vita cambiavano da
+       soli, senza che niente collegasse le due cose. Il lampo e' quel
+       collegamento — parte da dove stava la carta e arriva sul
+       bersaglio, cosi' si vede CHI ha colpito CHI.
+       Disegnato in SVG e non in CSS perche' un fulmine e' una linea
+       spezzata: con dei rettangoli non si fa.
+       ------------------------------------------------------------ */
+    .lampo-magico {
+      position: fixed; inset: 0; z-index: 878; pointer-events: none;
+      overflow: visible;
+    }
+    .lampo-magico path {
+      fill: none; stroke-linecap: round; stroke-linejoin: round;
+      /* si "disegna" da sola: la linea tratteggiata lunga quanto tutto
+         il percorso, e lo scostamento che va a zero */
+      stroke-dasharray: var(--lung); stroke-dashoffset: var(--lung);
+      animation: lampoCorre 0.5s cubic-bezier(.2,.7,.3,1) forwards;
+    }
+    /* il tratto largo e sfocato sotto: e' il bagliore */
+    .lampo-magico path.alone {
+      stroke: rgba(255,214,120,0.55); stroke-width: 9;
+      filter: blur(4px);
+    }
+    .lampo-magico path.nucleo { stroke: #fff6d8; stroke-width: 2.4; }
+    .lampo-magico path.oro    { stroke: #ffd36b; stroke-width: 4.4; opacity: 0.95; }
+    @keyframes lampoCorre {
+      0%   { stroke-dashoffset: var(--lung); opacity: 1; }
+      42%  { stroke-dashoffset: 0; opacity: 1; }
+      66%  { opacity: 0.85; }
+      100% { stroke-dashoffset: 0; opacity: 0; }
+    }
+    /* lo schiocco sul bersaglio, quando il lampo arriva */
+    .lampo-botto {
+      position: fixed; z-index: 879; pointer-events: none;
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2.5px solid rgba(255,214,120,0.95);
+      box-shadow: 0 0 18px 4px rgba(255,196,80,0.75);
+      animation: lampoBotto 0.5s ease-out 0.34s forwards; opacity: 0;
+    }
+    @keyframes lampoBotto {
+      0%   { opacity: 1; transform: translate(-50%,-50%) scale(0.3); }
+      100% { opacity: 0; transform: translate(-50%,-50%) scale(7); }
+    }
+
     /* alone che si espande dal punto colpito */
     .dmg-onda {
       position: fixed; z-index: 870; pointer-events: none;
@@ -1775,8 +1858,17 @@ function bcardPersonaggio(ch, seme, mio) {
   const mirabile = !mio && bersaglioAttivo && ch.pv > 0;
   // I dati per il pannello viaggiano negli attributi: così il riquadro si
   // riempie senza dover ricercare la carta a ogni passaggio del cursore.
+  // IL RITRATTO. Non tutte le carte hanno un'illustrazione (i segnaposto
+  // storici no): quelle restano com'erano, col semone sfumato di sfondo.
+  const haRitratto = ILLUSTRAZIONI.indexOf(ch.cardId) !== -1;
+  const ritratto = haRitratto
+    ? '<img class="ritratto" src="immagini/' + ch.cardId + '.webp" alt="" draggable="false">' +
+      '<div class="velo-ritratto"></div>'
+    : '';
+
   return '<div class="bcard' + (ch.pv <= 0 ? ' ko' : '') + (pronta ? ' pronta' : '') +
       (giaUsata && ch.pv > 0 ? ' esausta' : '') + (mirabile ? ' mirabile' : '') +
+      (haRitratto ? ' con-ritratto' : '') +
       '" data-seme="' + seme + '" data-lato="' + (mio ? 'mio' : 'avv') + '"' +
       (pronta ? ' onclick="ui.attivaAbilita(\'' + seme + '\')"' : '') +
       (mirabile ? ' onclick="ui.colpisci(\'' + seme + '\')"' : '') +
@@ -1789,6 +1881,7 @@ function bcardPersonaggio(ch, seme, mio) {
       ' data-carica="Abilità speciale: costa ' + costoAbilita(ch) + ' punti magia' +
         (giaUsata ? ' · ha già colpito in questo turno' : '') +
         (ch.pv <= 0 ? ' · eroe caduto: i suoi colpi valgono l\'80%' : '') + '">' +
+      ritratto +
       (pronta ? '<div class="pronta-tag">USA</div>' : '') +
       '<div class="seme ' + (rosso ? 'rosso' : 'nero') + '">' + seme + '</div>' +
       '<div class="nome">' + t.nome + '</div>' +
@@ -3331,6 +3424,81 @@ function apriCartaMagica({ tipo, chi, nome, descrizione, esito, costo, durata = 
 }
 
 // ------------------------------------------------------------
+// IL LAMPO DORATO DELLA CARTA MAGICA
+// Parte da un punto (dove stava la carta magica) e arriva su una carta
+// bersaglio. Se i bersagli sono piu' d'uno partono piu' lampi, sfalsati
+// di un soffio: un ventaglio di scariche invece di un colpo solo.
+// ------------------------------------------------------------
+function spezzata(x0, y0, x1, y1, quanti) {
+  // I punti stanno sulla linea fra partenza e arrivo, ma scostati di
+  // lato a caso: e' quello che rende un fulmine un fulmine invece di
+  // una freccia. Lo scostamento e' massimo a meta' strada e nullo agli
+  // estremi, altrimenti il lampo non toccherebbe ne' la carta di
+  // partenza ne' quella di arrivo.
+  const dx = x1 - x0, dy = y1 - y0;
+  const lunghezza = Math.hypot(dx, dy) || 1;
+  const nx = -dy / lunghezza, ny = dx / lunghezza;   // perpendicolare
+  const ampiezza = Math.min(34, lunghezza * 0.16);
+  let d = 'M' + x0.toFixed(1) + ' ' + y0.toFixed(1);
+  for (let i = 1; i < quanti; i++) {
+    const t = i / quanti;
+    const smorza = Math.sin(t * Math.PI);           // 0 ai capi, 1 a meta'
+    const scarto = (Math.random() * 2 - 1) * ampiezza * smorza;
+    d += ' L' + (x0 + dx * t + nx * scarto).toFixed(1) +
+         ' ' + (y0 + dy * t + ny * scarto).toFixed(1);
+  }
+  return d + ' L' + x1.toFixed(1) + ' ' + y1.toFixed(1);
+}
+
+function lampoMagico(daVisivo, aElemento, ritardo) {
+  if (!aElemento || !aElemento.isConnected) return;
+  const r = aElemento.getBoundingClientRect();
+  // le coordinate si convertono come per ogni altro strato "fisso":
+  // sotto l'orizzontale forzato il riferimento non e' lo schermo vero
+  const p0 = puntoFissoVisivo(daVisivo.x, daVisivo.y, 0);
+  const p1 = puntoFissoVisivo(r.left + r.width / 2, r.top + r.height / 2, 0);
+
+  segnaAnimazione((ritardo || 0) + 900);
+  setTimeout(() => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'lampo-magico');
+    document.body.appendChild(svg);
+
+    const d = spezzata(p0.left, p0.top, p1.left, p1.top, 9);
+    // la lunghezza del tratteggio dev'essere almeno quanto il percorso,
+    // o il lampo si "disegnerebbe" solo a meta'
+    const lung = Math.hypot(p1.left - p0.left, p1.top - p0.top) * 1.6;
+    for (const classe of ['alone', 'oro', 'nucleo']) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('class', classe);
+      path.setAttribute('d', d);
+      path.style.setProperty('--lung', lung.toFixed(0));
+      svg.appendChild(path);
+    }
+    setTimeout(() => svg.remove(), 700);
+
+    const botto = document.createElement('div');
+    botto.className = 'lampo-botto';
+    botto.style.left = p1.left + 'px';
+    botto.style.top = p1.top + 'px';
+    document.body.appendChild(botto);
+    setTimeout(() => botto.remove(), 900);
+  }, ritardo || 0);
+}
+
+// Tutti i lampi di una carta magica: dal centro dello schermo (dove la
+// carta si e' appena mostrata) verso ogni bersaglio.
+function lampiSuBersagli(bersagli) {
+  if (!bersagli || !bersagli.length) return;
+  SUONI.colpoParte(true);
+  const partenza = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  bersagli.forEach((b, i) => {
+    const el = $(b.striscia) && $(b.striscia).querySelector('.bcard[data-seme="' + b.seme + '"]');
+    lampoMagico(partenza, el, i * 110);
+  });
+}
+
+// ------------------------------------------------------------
 // NUMERO DEL DANNO CHE SALE DALLA CARTA
 // Vedere la barra della vita accorciarsi non dice DI QUANTO: il numero
 // che parte dalla carta colpita lo dice subito. Verde e col segno più se
@@ -3662,7 +3830,13 @@ const ui = {
         costo: r.costo
       });
       disegna();
-      // i numeri partono quando l'animazione grande si toglie di mezzo
+      // PRIMA IL LAMPO, POI I NUMERI.
+      // Il lampo parte da dove la carta si e' appena tolta di mezzo e
+      // arriva sui bersagli: e' quello che collega la carta giocata ai
+      // punti vita che cambiano. Senza, la carta spariva e i numeri
+      // comparivano da soli, come due cose scollegate.
+      setTimeout(() => lampiSuBersagli(numeri.map((n) => ({ striscia: n.striscia, seme: n.seme }))), 3050);
+      // i numeri partono quando il lampo e' arrivato
       setTimeout(() => {
         numeri.forEach((n, i) => setTimeout(() => {
           const el = $(n.striscia).querySelector('.bcard[data-seme="' + n.seme + '"]');
@@ -3670,7 +3844,7 @@ const ui = {
           if (n.valore > 0) { el.classList.add('colpita'); setTimeout(() => el.classList.remove('colpita'), 440); }
           numeroDanno(el, n.valore);
         }, i * 130));
-      }, 3200);
+      }, 3450);
       // 3,2s: il tempo di vedere la carta ingrandirsi, restare ferma e leggerla
       clearTimeout(ui._sorpresaT);
       ui._sorpresaT = setTimeout(() => ov.classList.remove('mostra'), 3200);
@@ -4038,6 +4212,7 @@ out.append('\n<script>\n(function(){\n"use strict";\n'
   "document.addEventListener('pointerdown', provaSchermoIntero, { once: true, passive: true });\n")
 out.append(motore)
 out.append(DATI)
+out.append(dati_illustrazioni(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 out.append(SCRIPT)
 out.append('\n})();\n</script>\n</body>\n</html>\n')
 

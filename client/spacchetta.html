@@ -195,23 +195,23 @@
   .dorso .marchio { width: 40%; opacity: 0.9; }
 
   /* fronte */
+  /* Il fronte non si disegna piu' da se': lo riempie la carta
+     illustrata. Niente padding ne' sfondo — coprirebbero la cornice —
+     ma l'alone per rarita' resta, ed e' quello che fa capire di che
+     livello e' la carta appena girata prima ancora di leggerla. */
   .fronte {
-    transform: rotateY(180deg); padding: 3vh 2.4vh; gap: 1.2vh; text-align: center;
-    border: 0.45vh solid var(--bordo, var(--r1));
-    background: radial-gradient(ellipse at 50% 20%, var(--velo, rgba(255,255,255,0.12)), transparent 62%),
-                linear-gradient(168deg, #2a2140 0%, #1a1428 60%, #120d1c 100%);
-    box-shadow: inset 0 0 4vh rgba(0,0,0,0.6), 0 0 6vh var(--alone, transparent);
+    transform: rotateY(180deg); padding: 0;
+    box-shadow: 0 0 6vh var(--alone, transparent);
   }
-  .fronte .simbolo { font-size: 9vh; line-height: 1; text-shadow: 0 0 4vh currentColor, 0 0 1vh #fff; }
-  .fronte .nome { font-family: Georgia, serif; font-size: 3vh; font-weight: 700; line-height: 1.15; color: var(--oro-chiaro); }
-  .fronte .stelle-carta { font-size: 2.4vh; color: var(--bordo, var(--r1)); letter-spacing: 0.3vh; }
-  .fronte .desc { font-size: 1.65vh; color: var(--tenue); line-height: 1.4; max-width: 94%; }
-  .fronte .stat { font-size: 1.8vh; color: #d9cdf2; }
+  /* NUOVA / DOPPIONE: sta SOPRA la carta, come una fascetta appiccicata.
+     Lo z-index serve: la cornice e' un'immagine dentro la carta, e senza
+     ordine dichiarato la fascetta ci finirebbe sotto. */
   .fronte .etichetta {
-    position: absolute; top: 1.4vh; left: 50%; transform: translateX(-50%);
+    position: absolute; top: 1.4vh; left: 50%; transform: translateX(-50%); z-index: 4;
     font-size: 1.35vh; font-weight: 900; letter-spacing: 0.25vh; text-transform: uppercase;
     padding: 0.5vh 1.6vh; border-radius: 2vh; white-space: nowrap;
   }
+  .mini .tag { z-index: 4; }
   .etichetta.nuova { background: linear-gradient(180deg, #9dffc4, #35c46f); color: #05301a; box-shadow: 0 0 2.4vh rgba(53,196,111,0.85); }
   .etichetta.doppia { background: rgba(0,0,0,0.55); color: var(--tenue); border: 1px solid rgba(255,255,255,0.22); }
 
@@ -277,18 +277,14 @@
   @keyframes entraRiep { from { opacity: 0; transform: translateY(2.4vh); } to { opacity: 1; } }
   .riepilogo h2 { margin: 0; font-family: Georgia, serif; font-size: 3.4vh; color: var(--oro-chiaro); letter-spacing: 0.3vh; }
   .griglia { display: flex; gap: 1.4vh; flex-wrap: wrap; justify-content: center; }
+  /* La figurina del riepilogo e' il portafoto: dentro c'e' la carta
+     illustrata, qui restano solo l'alone per rarita' e il bollino. */
   .mini {
-    width: 13vh; height: 18.5vh; border-radius: 1.2vh; padding: 1.2vh 0.8vh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5vh;
-    text-align: center; border: 2px solid var(--bordo); position: relative;
-    background: linear-gradient(168deg, #2a2140, #14101f);
+    width: 13vh; height: 18.5vh; border-radius: 1.2vh; position: relative;
     box-shadow: 0 0 2.4vh var(--alone, transparent);
     animation: miniEntra 0.4s backwards;
   }
   @keyframes miniEntra { from { opacity: 0; transform: translateY(2vh) scale(0.9); } }
-  .mini .sim { font-size: 3.4vh; line-height: 1; }
-  .mini .nm { font-size: 1.35vh; font-weight: 700; line-height: 1.15; }
-  .mini .st { font-size: 1.2vh; color: var(--bordo); }
   .mini .tag { position: absolute; top: -0.9vh; font-size: 1vh; font-weight: 900; padding: 0.25vh 0.9vh; border-radius: 1vh; letter-spacing: 0.1vh; }
   .mini .tag.nuova { background: #35c46f; color: #05301a; }
   .mini .tag.doppia { background: #3b3550; color: var(--tenue); }
@@ -309,6 +305,119 @@
 
   .torna { position: fixed; top: 2vh; left: 2vh; z-index: 8; font-size: 0.85rem; color: var(--tenue); text-decoration: none; }
   .torna:hover { color: var(--oro); }
+
+  /* ---------- LA CARTA ILLUSTRATA (condivisa fra le pagine) ---------- */
+  .carta-illustrata {
+    position: relative; aspect-ratio: 0.71; overflow: hidden;
+    container-type: inline-size;
+    /* Lo sfondo si vede DENTRO la finestra, dietro l'illustrazione:
+       le illustrazioni hanno lo sfondo trasparente, quindi il colore
+       della carta traspare intorno al personaggio ed e' quello che le
+       fa sembrare disegnate dentro la cornice invece che incollate. */
+    background:
+      radial-gradient(ellipse at 50% 30%, var(--velo, rgba(255,255,255,0.10)), transparent 62%),
+      linear-gradient(168deg, #2a2140 0%, #1a1428 60%, #120d1c 100%);
+    --fin-x: 15.16%; --fin-y: 13.57%; --fin-w: 69.91%; --fin-h: 51.73%;
+    --nome-x: 17.36%; --nome-y: 4.52%; --nome-w: 64.24%; --nome-h: 7.81%;
+    --desc-x: 14.47%; --desc-y: 67.84%; --desc-w: 70.02%; --desc-h: 10.28%;
+    --statsx-x: 14.47%; --statdx-x: 50.93%; --stat-y: 81.83%;
+    --statsx-w: 31.25%; --statdx-w: 33.56%; --stat-h: 8.22%;
+  }
+  /* La cornice delle Carte Magiche ha proporzioni sue: finestra un
+     filo piu' bassa e UN SOLO riquadro in basso, piu' alto (niente
+     vita/attacco da scrivere, solo l'effetto). */
+  .carta-illustrata.magica {
+    --fin-y: 13.31%; --fin-h: 52.44%;
+    --nome-x: 19.68%; --nome-y: 4.87%; --nome-w: 61.34%; --nome-h: 7.71%;
+    --desc-x: 15.63%; --desc-y: 68.18%; --desc-w: 69.44%; --desc-h: 21.10%;
+  }
+
+  .ci-finestra {
+    position: absolute; overflow: hidden;
+    left: var(--fin-x); top: var(--fin-y); width: var(--fin-w); height: var(--fin-h);
+  }
+  /* "a coprire": l'illustrazione riempie tutta la finestra e quello che
+     avanza si taglia, invece di lasciare bordi vuoti ai lati. */
+  .ci-arte { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .ci-cornice {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; pointer-events: none;
+  }
+
+  /* --- i testi, ognuno nel suo spazio vuoto della cornice --- */
+  .ci-testata, .ci-desc, .ci-stat {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    text-align: center; overflow: hidden; pointer-events: none;
+  }
+  .ci-testata {
+    left: var(--nome-x); top: var(--nome-y); width: var(--nome-w); height: var(--nome-h);
+    flex-direction: column; gap: 0;
+  }
+  .ci-nome {
+    font-family: Georgia, 'Times New Roman', serif; font-weight: 700;
+    color: #f0e2c0; line-height: 1.05;
+    font-size: 11px; font-size: 6.2cqw;
+    text-shadow: 0 1px 2px #000; letter-spacing: 0.2px;
+    max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ci-stelle { color: #e2b43c; line-height: 1; font-size: 7px; font-size: 3.6cqw; }
+  .ci-seme { color: #c41e28; font-size: 8px; font-size: 4.6cqw; line-height: 1; }
+  .ci-seme.nero { color: #2a2830; }
+
+  .ci-desc {
+    left: var(--desc-x); top: var(--desc-y); width: var(--desc-w); height: var(--desc-h);
+    padding: 0 3%;
+    font-family: Georgia, 'Times New Roman', serif; color: #2a2118;
+    font-size: 7px; font-size: 3.5cqw; line-height: 1.25;
+  }
+  /* Sulla cornice magica il riquadro e' scuro, non pergamena */
+  .carta-illustrata.magica .ci-desc { color: #d2cde6; }
+
+  .ci-stat { top: var(--stat-y); height: var(--stat-h); flex-direction: column; gap: 0; }
+  .ci-stat.sx { left: var(--statsx-x); width: var(--statsx-w); }
+  .ci-stat.dx { left: var(--statdx-x); width: var(--statdx-w); }
+  .ci-stat .etichetta { color: #b6ab93; font-size: 5px; font-size: 2.6cqw; letter-spacing: 0.5px; line-height: 1; }
+  .ci-stat .numero {
+    font-family: Georgia, serif; font-weight: 800; color: #f0e2c0;
+    font-size: 10px; font-size: 5.4cqw; line-height: 1.1; text-shadow: 0 1px 2px #000;
+  }
+
+  /* SULLE CARTE PICCOLE il testo minuto non si legge: si toglie invece
+     di lasciarlo li' come sporco. Il nome resta — e' quello che serve a
+     riconoscere la carta — e i numeri si vedono ingrandendola. */
+  @container (max-width: 165px) {
+    .ci-desc, .ci-stat { display: none; }
+  }
+
+  /* la carta che non si possiede: sagoma spenta */
+  .carta-illustrata.manca .ci-arte { filter: grayscale(1) brightness(0.28); }
+  .carta-illustrata.manca .ci-cornice { filter: grayscale(0.85) brightness(0.55); }
+  .carta-illustrata.manca .ci-nome { color: rgba(255,255,255,0.34); }
+
+  /* SENZA ILLUSTRAZIONE.
+     I personaggi segnaposto (001-008) e le carte di esempio sono nati
+     prima delle illustrazioni e non ne hanno una: sono la dotazione di
+     benvenuto, fuori commercio, destinati a sparire. Mettere il tag
+     dell'immagine lo stesso vorrebbe dire l'icona di immagine rotta —
+     il modo peggiore di dire "questa carta non ha un disegno". Al suo
+     posto il seme, grande, nella finestra: si capisce che e' una carta
+     senza figura, non una figura che non si e' caricata. */
+  .ci-senza-arte {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 34px; font-size: 30cqw; line-height: 1;
+    color: rgba(255,255,255,0.13); text-shadow: 0 0 6cqw currentColor;
+  }
+
+  /* La carta illustrata riempie la faccia che si gira e le figurine del
+     riepilogo: qui la sua proporzione la decide chi la ospita, quindi
+     l'aspect-ratio suo va tolto (altrimenti si contende l'altezza con
+     il contenitore e ne esce una carta schiacciata). */
+  .fronte .carta-illustrata, .mini .carta-illustrata {
+    width: 100%; height: 100%; aspect-ratio: auto;
+  }
+  .fronte .carta-illustrata { border-radius: 2.2vh; }
+  .mini .carta-illustrata { border-radius: 1.2vh; }
 </style>
 </head>
 <body>
@@ -865,6 +974,69 @@ const CATALOGO = [{"id": "personaggio_001", "fuoriCommercio": true, "seme": "♥
 const TESTI = {"personaggio_001": {"nome": "Fiamma Ardente", "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo."}, "personaggio_002": {"nome": "Regina di Brace", "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta."}, "personaggio_003": {"nome": "Custode di Cristallo", "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile."}, "personaggio_004": {"nome": "Sovrano d'Ambra", "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa."}, "personaggio_005": {"nome": "Guardiano del Bosco", "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente."}, "personaggio_006": {"nome": "Spirito della Foresta Antica", "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso."}, "personaggio_007": {"nome": "Lama d'Ombra", "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista."}, "personaggio_008": {"nome": "Assassino delle Nebbie", "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte."}, "sorpresa_001": {"nome": "Fulmine Improvviso", "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita."}, "sorpresa_002": {"nome": "Furia di Battaglia", "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività."}, "trappola_001": {"nome": "Insidia nell'Ombra", "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare."}, "trappola_002": {"nome": "Specchio di Ritorsione", "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto."}, "sorpresa_003": {"nome": "Triplice Benedizione", "descrizione": "Un solo gesto e tre doni: colpisce l'avversario, risana un tuo eroe e ti concede una carta in più alla prossima pescata."}, "trappola_003": {"nome": "Sigillo del Disperato", "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."}, "personaggio_101": {"nome": "Papa Figo", "descrizione": "Attacco notturno: distrugge le carte trappola sul campo e infligge il 30% del danno spada"}, "personaggio_102": {"nome": "Zè l'Arara", "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"}, "personaggio_103": {"nome": "Sua Majestade o Papagaio", "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"}, "personaggio_104": {"nome": "Lorinho", "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"}, "personaggio_105": {"nome": "Zeca il Capibara", "descrizione": "Riposo curativo: Cura tutti gli alleati di 30 hp"}, "personaggio_106": {"nome": "Chico il Mico", "descrizione": "Colpo della scimmia: Infligge il 30% di danni ad un avversario casuale"}, "personaggio_107": {"nome": "Jão il Tamanduá", "descrizione": "Tremore del suolo: Infligge il 15% di danno a tutti i nemici"}, "personaggio_108": {"nome": "Tonho il Tatu", "descrizione": "Difesa coriacea: Tutti gli alleati per 3 turni hanno difesa aumentata del 25%"}, "personaggio_109": {"nome": "Boto Felipe", "descrizione": "Getto d'acqua: Infligge 20% di danno a un avversario. Per 2 turni tutti gli avversari hanno difesa ridotta del 20%"}, "personaggio_110": {"nome": "Vitoria-Regia", "descrizione": "Fiore curativo:Cura tutti gli alleati di 50 hp"}, "personaggio_111": {"nome": "Queixada della Caipora", "descrizione": "Carica: colpisce con due cariche da 20% di danno ognuna"}, "personaggio_112": {"nome": "Cão-do-Mato", "descrizione": "Ricerca del bersaglio: Aumenta del 25% il danno di carte calate e abilità"}, "personaggio_113": {"nome": "Onça-Pintada", "descrizione": "Morso feroce: fa il 25% di danno e l avversario colpito per 2 turni ha difesa ridotta del 20%"}, "personaggio_114": {"nome": "Anaconda Gigante", "descrizione": "Stritolamento:fa 15% di danno a tutti gli avversari e riduce di 2 i punti magia dell avversario"}, "personaggio_115": {"nome": "Pisadeira", "descrizione": "Terrore: Riduce del 25% la difesa di tutti gli avversari"}, "personaggio_116": {"nome": "Corpo-Seco", "descrizione": "Corteccia:Aumenta la difesa degli alleati del 25%"}, "personaggio_117": {"nome": "Mapinguari", "descrizione": "Colpo della bestia:infligge il 40% di danno a un avversario"}, "personaggio_118": {"nome": "Curupira", "descrizione": "Attacco furtivo: Fa il 20% di danno a tutti gli avversari e aumenta del 20% la difesa degli alleati"}, "personaggio_119": {"nome": "Caipora", "descrizione": "Carica: Fa il 40% di danno a un avversario e riduce i pm avversari di 1"}, "personaggio_120": {"nome": "Iara", "descrizione": "Canto curativo: Cura tutti gli alleati del 20% e cura tutti i disturbi della difesa"}, "personaggio_121": {"nome": "Boitatá", "descrizione": "Morso di boitata: fa il 20% di danno a un nemico, d ora in poi per attivare la skill del nemico colpito servirà 1 pm in piu fino a un massimo di 7 pm"}, "personaggio_122": {"nome": "Saci-Pererê", "descrizione": "Scherzo del folletto: Aumenta l'attacco di un alleato casuale del 30% per due turni, cura un alleato casuale del 30%, aumenta la difesa di un alleato casuale del 30%"}, "personaggio_123": {"nome": "Mula Sem Cabeça", "descrizione": "Rabbia: Aumenta il suo attacco del 100% per 2 turni"}, "personaggio_124": {"nome": "Cuca", "descrizione": "Maleficio della strega:Riduce i pm avversari di 3, riduce la difesa avversaria del 30%"}, "sorpresa_101": {"nome": "Fulmine Nero", "descrizione": "Infligge 50 danni diretti"}, "sorpresa_102": {"nome": "Pozione Magica", "descrizione": "Aumenta di 2 i punti magia"}, "trappola_101": {"nome": "Specchio riflesso", "descrizione": "Si attiva quando l avversario usa una abilità che fa danno diretto. Il danno viene restituito al mittente"}, "sorpresa_103": {"nome": "Mano sacra", "descrizione": "Ti permette di pescare altre due carte dal mazzo"}, "trappola_102": {"nome": "Conversione", "descrizione": "Carta coperta che si attiva quando l avversario attiva bonus o malus della difesa. Ruba i bonus e rispedisce al mittente i malus"}};
 
 
+const ILLUSTRAZIONI = ["personaggio_101", "personaggio_102", "personaggio_103", "personaggio_104", "personaggio_105", "personaggio_106", "personaggio_107", "personaggio_108", "personaggio_109", "personaggio_110", "personaggio_111", "personaggio_112", "personaggio_113", "personaggio_114", "personaggio_115", "personaggio_116", "personaggio_117", "personaggio_118", "personaggio_119", "personaggio_120", "personaggio_121", "personaggio_122", "personaggio_123", "personaggio_124", "sorpresa_101", "sorpresa_102", "sorpresa_103", "trappola_101", "trappola_102"];
+
+// Il seme si colora come sulla carta vera: rossi cuori e quadri.
+const SEMI_ROSSI = ['♥', '♦'];
+
+// Le carte magiche non hanno seme: il loro tipo si legge dall'id.
+function eMagica(carta) {
+  return !carta.seme;
+}
+
+function immagineCarta(idCarta) {
+  return 'immagini/' + idCarta + '.webp';
+}
+
+// La carta illustrata: cornice, finestra con l'arte, testi al loro posto.
+// `opzioni.posseduta` a false la spegne (sagoma di quello che manca).
+function cartaIllustrata(carta, testi, opzioni) {
+  const o = opzioni || {};
+  const magica = eMagica(carta);
+  const cornice = magica ? 'cornice-magica' : 'cornice-personaggio';
+  const posseduta = o.posseduta !== false;
+  const stelle = o.stelle || '';
+
+  const seme = carta.seme
+    ? '<span class="ci-seme' + (SEMI_ROSSI.includes(carta.seme) ? '' : ' nero') + '">' + carta.seme + '</span>'
+    : '';
+
+  // Il nome e le stelle stanno nella barra in cima; il seme accanto al nome.
+  const testata =
+    '<div class="ci-testata">' +
+      '<div class="ci-nome">' + (posseduta ? testi.nome : '? ? ?') + (seme ? ' ' + seme : '') + '</div>' +
+      (stelle ? '<div class="ci-stelle">' + stelle + '</div>' : '') +
+    '</div>';
+
+  // I numeri solo per i personaggi: una Carta Magica non ha vita ne' attacco.
+  const numeri = (!magica && posseduta)
+    ? '<div class="ci-stat sx"><span class="etichetta">VITA</span><span class="numero">' + carta.vita + '</span></div>' +
+      '<div class="ci-stat dx"><span class="etichetta">ATT</span><span class="numero">' + carta.att + '</span></div>'
+    : '';
+
+  const descrizione = (posseduta && testi.descrizione)
+    ? '<div class="ci-desc">' + testi.descrizione + '</div>' : '';
+
+  // Non tutte le carte hanno un'illustrazione: l'elenco di quelle che ce
+  // l'hanno lo scrive il generatore leggendo la cartella vera, cosi' non
+  // si puo' sbagliare (vedi dati_illustrazioni in carta_illustrata.py).
+  // loading="lazy": l'album puo' avere decine di carte, e scaricarle
+  // tutte insieme all'apertura vorrebbe dire aspettare per vedere le
+  // prime. Cosi' arrivano quelle che si guardano.
+  const haArte = typeof ILLUSTRAZIONI !== 'undefined' && ILLUSTRAZIONI.indexOf(carta.id) !== -1;
+  const dentroFinestra = haArte
+    ? '<img class="ci-arte" src="' + immagineCarta(carta.id) + '" alt="" loading="lazy" draggable="false">'
+    : '<div class="ci-senza-arte">' + (carta.seme || (carta.tipo === 'trappola' ? '⚡' : '✦')) + '</div>';
+
+  return '<div class="carta-illustrata' + (magica ? ' magica' : '') +
+           (posseduta ? '' : ' manca') + '">' +
+      '<div class="ci-finestra">' + dentroFinestra + '</div>' +
+      '<img class="ci-cornice" src="' + immagineCarta(cornice) + '" alt="" loading="lazy" draggable="false">' +
+      testata + numeri + descrizione +
+    '</div>';
+}
+
+
 // ------------------------------------------------------------
 // COLORI DELLE RARITÀ
 // Più stelle, più il colore è caldo e l'alone forte. È il segnale che
@@ -1265,23 +1437,17 @@ function mostraCarta(i) {
     s.className = 'segnaposto' + (k < i ? ' fatto' : (k === i ? ' corrente' : ''));
   });
 
-  // prepara il fronte, ancora nascosto
-  const simbolo = c.carta.seme || (c.carta.tipo === 'sorpresa' ? '✦' : '⚡');
-  const stat = c.carta.vita
-    ? 'VITA ' + c.carta.vita + ' · ATT ' + c.carta.att
-    : 'Costa ' + (c.carta.costo != null ? c.carta.costo : 4) + ' punti magia';
-
+  // prepara il fronte, ancora nascosto.
+  // La carta la disegna il pezzo condiviso — la stessa che si vede
+  // nell'album e al tavolo: chi apre un pacchetto deve riconoscere
+  // subito quello che ritrovera' poi in collezione.
   $('fronte').style.setProperty('--bordo', st.colore);
   $('fronte').style.setProperty('--alone', st.alone);
   $('fronte').style.setProperty('--velo', st.velo);
   $('fronte').innerHTML =
+    cartaIllustrata(c.carta, t, { stelle: stelle(c.rarita) }) +
     '<div class="etichetta ' + (c.nuova ? 'nuova' : 'doppia') + '">' +
-      (c.nuova ? 'NUOVA' : 'DOPPIONE · +' + c.rimborso + ' monete') + '</div>' +
-    '<div class="simbolo" style="color:' + st.colore + '">' + simbolo + '</div>' +
-    '<div class="nome">' + t.nome + '</div>' +
-    '<div class="stelle-carta">' + stelle(c.rarita) + ' ' + st.nome + '</div>' +
-    '<div class="stat">' + stat + '</div>' +
-    '<div class="desc">' + t.descrizione + '</div>';
+      (c.nuova ? 'NUOVA' : 'DOPPIONE · +' + c.rimborso + ' monete') + '</div>';
 
   const scena = $('scena');
   const carta = $('carta3d');
@@ -1358,13 +1524,12 @@ function mostraRiepilogo() {
   $('griglia').innerHTML = risultato.carte.map((c, i) => {
     const st = STILE_RARITA[c.rarita] || STILE_RARITA[1];
     const t = testo(c.carta.id);
-    const sim = c.carta.seme || (c.carta.tipo === 'sorpresa' ? '✦' : '⚡');
+    // Nel riepilogo le carte sono piccole: si passa il nome ma non la
+    // descrizione, che a quella misura il CSS nasconde comunque.
     return '<div class="mini" style="--bordo:' + st.colore + ';--alone:' + st.alone +
            ';animation-delay:' + (i * 0.09).toFixed(2) + 's">' +
+      cartaIllustrata(c.carta, { nome: t.nome }, { stelle: stelle(c.rarita) }) +
       '<div class="tag ' + (c.nuova ? 'nuova' : 'doppia') + '">' + (c.nuova ? 'NUOVA' : 'DOPPIA') + '</div>' +
-      '<div class="sim" style="color:' + st.colore + '">' + sim + '</div>' +
-      '<div class="nm">' + t.nome + '</div>' +
-      '<div class="st">' + stelle(c.rarita) + '</div>' +
     '</div>';
   }).join('');
 
