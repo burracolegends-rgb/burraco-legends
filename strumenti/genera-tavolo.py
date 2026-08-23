@@ -135,7 +135,7 @@ BATTLE_CSS = r'''
        altezza contro i 700-1000px di un monitor. Qui si guarda solo
        l'altezza — su un monitor stretto ma alto (finestra ridimensionata)
        non deve succedere niente, il problema è un altro. */
-    @media (max-height: 480px) {
+    @media (max-height: 480px), (hover: none) and (orientation: portrait) {
       :root { --battle-w: 46px; --battle-h: 67px; }
 
       /* IL CRONOMETRO STRABORDAVA DALLO SCHERMO.
@@ -486,6 +486,53 @@ BATTLE_CSS = r'''
        restano intatti (manipulation li lascia passare, blocca solo il
        resto). */
     html, body { touch-action: manipulation; }
+
+    /* ============================================================
+       ORIZZONTALE FORZATO ANCHE CON LA ROTAZIONE DEL TELEFONO BLOCCATA.
+       screen.orientation.lock() (script in fondo alla pagina) chiede al
+       sistema di ruotare da solo, ma SE la rotazione automatica del
+       telefono è disattivata, il sistema ignora la richiesta: nessuna
+       pagina web, nessuna app, può scavalcare quell'interruttore — è
+       una scelta di Android/iOS, non un limite di questo codice.
+       Qui si aggira il problema, non lo si risolve: si ruota il DISEGNO
+       della pagina di 90° con un transform, lasciando il telefono
+       fisicamente fermo in verticale. Al sistema operativo il telefono
+       resta "in verticale" (la barra di stato eccetera non si accorge
+       di niente): quello che cambia è solo cosa la pagina disegna
+       dentro quello spazio verticale — un rettangolo Wp×Hp che dentro
+       contiene un gioco disegnato come se fosse Hp×Wp, ruotato.
+       LA GEOMETRIA (per chi la deve ritoccare):
+         - <html> diventa largo quanto lo schermo è ALTO (100vh) e alto
+           quanto lo schermo è LARGO (100vw): le sue dimensioni vere,
+           prima di ruotare, sono già quelle "orizzontali" che vogliamo.
+         - transform-origin in alto a sinistra: il punto (0,0) resta
+           fermo mentre tutto il resto gira attorno a lui.
+         - ruotando 90° in senso orario, il rettangolo finisce spostato
+           a sinistra dell'origine (fuori schermo): "left:100%" lo
+           riporta esattamente al suo posto. La matematica è nei
+           commenti del changelog per chi vuole verificarla a mano.
+       COSA NON è PERFETTO: le tacche di sicurezza (env(safe-area-*))
+       restano calcolate sull'orientamento VERO del telefono, non su
+       quello disegnato — su un telefono col notch il margine potrebbe
+       non essere dal lato esatto. Accettabile: meglio un margine un
+       po' impreciso che nessun gioco giocabile affatto. */
+    @media (hover: none) and (orientation: portrait) {
+      html {
+        width: 100vh; height: 100vw;
+        transform: rotate(90deg); transform-origin: top left;
+        position: absolute; top: 0; left: 100%;
+        overflow: hidden;
+      }
+      /* body eredita la forma "orizzontale" del genitore, non i suoi
+         100vh originali (quelli sono l'altezza VERA del telefono, qui
+         diventerebbe uno stiramento fuori misura). */
+      html body { width: 100%; height: 100%; }
+      /* il riquadro "gira il telefono" non serve più: il gioco si è già
+         girato da solo. Resta nel documento (torna a servire se un
+         giorno questo trucco smettesse di funzionare da qualche parte)
+         ma non si mostra. */
+      #ruotaAvviso { display: none !important; }
+    }
     body {
       background:
         /* la luce che cade sul tavolo */
@@ -750,7 +797,7 @@ BATTLE_CSS = r'''
        cascata di .turni-box qualche riga più giù — a parità di
        specificità vince chi è scritto dopo, e messa nel primo blocco
        @media (più in alto nel foglio) perdeva contro queste. */
-    @media (max-height: 480px) {
+    @media (max-height: 480px), (hover: none) and (orientation: portrait) {
       .barra-magia { gap: 1px; }
       .barra-magia .etichetta { font-size: 6.5px; }
       .barra-magia .tacca { width: 10px; height: 2.5px; }
@@ -809,7 +856,7 @@ BATTLE_CSS = r'''
        QUESTA REGOLA VA SCRITTA QUI, DOPO quella sopra: a parità di
        specificità vince chi è scritto dopo nel foglio, e mettendola
        altrove (per esempio vicino a --battle-w) perdeva sempre. */
-    @media (max-height: 480px) {
+    @media (max-height: 480px), (hover: none) and (orientation: portrait) {
       .tabellone, .turni-box { min-width: 0; }
       .riga-turno {
         min-width: 0; padding: 2px 5px; gap: 4px; border-radius: 5px;
