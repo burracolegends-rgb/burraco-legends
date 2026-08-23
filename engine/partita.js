@@ -1213,7 +1213,11 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
     // "+100% attacco per 2 turni" senza questa riga è +100% per sempre.
     registraBuffAbilita(player, res.effettoAttivo, eroe.cardId);
     const reazioni = avvisaChiGuardaLeDifese(state, playerIndex, e, { ...res, lato: res.effettoAttivo && res.effettoAttivo.pool });
-    esiti.push({ effect: e.effect, ...res, ...(reazioni.length ? { trappoleScattate: reazioni } : {}) });
+    // `parametro` e `durata_turni` viaggiano con l'esito perché è il
+    // tavolo a doverli mostrare ("+25% per 3 turni"): senza, il client
+    // saprebbe che è successo qualcosa ma non di quanto.
+    esiti.push({ effect: e.effect, parametro: e.parametro, durata: e.durata_turni,
+                 ...res, ...(reazioni.length ? { trappoleScattate: reazioni } : {}) });
   }
 
   player.puntiMagia -= costoAbilita;
@@ -1340,7 +1344,7 @@ function applicaEffettiCarta(state, playerIndex, carta, ctx, dalPrimo = false) {
     }
     if (i === 0 && !dalPrimo) { esiti.push({ effect: e.effect, giaApplicato: true }); return; }
     const res = applyEffect(e, ctx);
-    esiti.push({ effect: e.effect, ...res });
+    esiti.push({ effect: e.effect, parametro: e.parametro, durata: e.durata_turni, ...res });
     const reazioni = avvisaChiGuardaLeDifese(state, playerIndex, e, { ...res, lato: res.effettoAttivo && res.effettoAttivo.pool });
     if (reazioni.length) esiti.push({ effect: e.effect, trappoleScattate: reazioni });
   });

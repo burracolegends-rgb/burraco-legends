@@ -926,6 +926,71 @@ BATTLE_CSS = r'''
       100% { opacity: 0; transform: translate(-50%,-50%) scale(11); }
     }
 
+    /* --- I SEGNI DI QUELLO CHE CAMBIA ---
+       Il danno aveva il suo numero rosso; tutto il RESTO non si vedeva
+       affatto. Una cura, uno scudo alzato, i punti magia rubati, la
+       difesa sfondata: la carta cambiava di nascosto e al giocatore
+       toccava fidarsi — o peggio, accorgersene tre turni dopo quando il
+       colpo arrivava piu' forte senza un motivo visibile.
+       Questi sono i segni di quelle cose. Hanno la forma di una
+       pastiglia, non di un numero nudo, e la differenza e' voluta: il
+       numero nudo vuol dire sempre e solo vita che se ne va, la
+       pastiglia vuol dire "e' cambiato qualcos'altro". Si distinguono
+       con la coda dell'occhio, senza doverli leggere. */
+    .segno-eff {
+      position: fixed; z-index: 885; pointer-events: none;
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px 5px 9px; border-radius: 999px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-weight: 800; font-size: 17px; line-height: 1; white-space: nowrap;
+      background: linear-gradient(180deg, rgba(22,17,30,0.97), rgba(9,7,14,0.97));
+      border: 1.5px solid currentColor;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.7), 0 0 20px -3px currentColor;
+      animation: segnoSale 2.3s cubic-bezier(.16,.84,.44,1) forwards;
+    }
+    .segno-eff .glifo { font-size: 18px; line-height: 1; filter: drop-shadow(0 0 7px currentColor); }
+    .segno-eff .val   { color: #fff; text-shadow: 0 0 9px currentColor, 0 1px 2px #000; }
+    /* sosta a mezz'aria come il numero del danno: sale, si ferma il
+       tempo di essere letto, poi svanisce */
+    @keyframes segnoSale {
+      0%   { opacity: 0; transform: translate(-50%, 12px) scale(0.5); }
+      14%  { opacity: 1; transform: translate(-50%, -8px)  scale(1.2); }
+      26%  { transform: translate(-50%, -15px) scale(0.97); }
+      36%  { transform: translate(-50%, -18px) scale(1.05); }
+      76%  { opacity: 1; transform: translate(-50%, -30px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -70px) scale(0.93); }
+    }
+    /* verso il basso quando la carta sta in cima allo schermo, per lo
+       stesso motivo del numero del danno: altrimenti esce dalla finestra */
+    .segno-eff.verso-giu { animation-name: segnoScende; }
+    @keyframes segnoScende {
+      0%   { opacity: 0; transform: translate(-50%, -12px) scale(0.5); }
+      14%  { opacity: 1; transform: translate(-50%, 8px)  scale(1.2); }
+      26%  { transform: translate(-50%, 15px) scale(0.97); }
+      36%  { transform: translate(-50%, 18px) scale(1.05); }
+      76%  { opacity: 1; transform: translate(-50%, 30px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, 70px) scale(0.93); }
+    }
+
+    /* L'ALONE SULLA CARTA TOCCATA.
+       Il segno che vola dice COSA e' successo; questo dice A CHI. Il
+       colore lo passa lo script, cosi' la stessa regola vale per tutte
+       le famiglie di effetto invece di sei regole quasi uguali. */
+    .bcard.aura-eff { animation: auraEff 1.1s ease-out; }
+    @keyframes auraEff {
+      0%   { box-shadow: 0 0 0 0 transparent; }
+      30%  { box-shadow: 0 0 24px 6px var(--c-eff, #fff), inset 0 0 28px -6px var(--c-eff, #fff); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    /* la barra dei punti magia che si accende quando qualcuno la tocca */
+    .barra-magia.tocca-magia { animation: magiaTocca 1.1s ease-out; }
+    @keyframes magiaTocca {
+      0%   { box-shadow: 0 0 0 0 transparent; }
+      30%  { box-shadow: 0 0 20px 4px var(--c-eff, #b98cff); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
     /* Fine partita */
 
     /* ============================================================
@@ -2405,6 +2470,10 @@ function raccontaLaMossaDellAltro(esito) {
     setTimeout(() => { mostraResoconto(colpo, 1); lampeggiaColpiti('battleGiocatore', colpo); }, attesa);
   }
   mostraRiflesso(esito, 1, attesa + 700);
+  // gli effetti non-danno dell'avversario: se non si vedessero, i suoi
+  // scudi e i suoi malus arriverebbero senza spiegazione
+  mostraEffetti(esito, 1, attesa + (esito.danno ? 1300 : 300));
+  if (!esito.danno) setTimeout(() => mostraResoconto(esito, 1), attesa + 300);
 }
 
 async function eseguiInRete(azione) {
@@ -2432,6 +2501,8 @@ async function eseguiInRete(azione) {
   if (r.dannoRaddoppiato) avviso('Danno raddoppiato!');
   if (r.damage) setTimeout(() => { mostraResoconto(r, 0); lampeggiaColpiti('battleAvversario', r); }, attesa);
   mostraRiflesso(r, 0, attesa + 700);
+  mostraEffetti(r, 0, attesa + (r.damage ? 1300 : 300));
+  if (!r.damage) setTimeout(() => mostraResoconto(r, 0), attesa + 300);
   if (S.status !== 'in_progress') mostraFine();
   return r;
 }
@@ -2531,12 +2602,16 @@ async function esegui(azione, fn) {
   if (r.dannoAnnullato) avviso('Una Trappola ha annullato il tuo danno!');
   if (r.dannoRaddoppiato) avviso('Danno raddoppiato!');
   if (r.damage) setTimeout(() => mostraResoconto(r, chiAgisce), attesaTrappole);
+  else setTimeout(() => mostraResoconto(r, chiAgisce), attesaTrappole + 300);
   mostraRiflesso(r, chiAgisce, attesaTrappole + 700);
   selezione.clear();
   // se il turno è passato, il nuovo giocatore torna a poter usare una magia
   if (S.currentPlayerIndex !== turnoPrima) resetTurnoMagie(magie[S.currentPlayerIndex]);
   disegna();
   if (r.damage) setTimeout(() => lampeggiaColpiti(chiAgisce === 0 ? 'battleAvversario' : 'battleGiocatore', r), attesaTrappole);
+  // DOPO il colpo, non insieme: il danno e gli effetti raccontano due
+  // cose diverse e sovrapposte non si leggono ne' l'una ne' l'altra.
+  mostraEffetti(r, chiAgisce, attesaTrappole + (r.damage ? 1300 : 300));
   // passato il turno, tocca al bot
   if (S.currentPlayerIndex === 1 && S.status === 'in_progress') setTimeout(turnoBot, 900);
   // l'esito torna a chi ha chiamato: abilità e carte magiche hanno da
@@ -2577,12 +2652,20 @@ function turnoBot() {
     // Invertendo l'ordine il ridisegno buttava via le carte appena
     // animate e il colpo restava invisibile.
     disegna();
+    const suo = { colpi: m.colpi, damage: m.danno, abilita: m.tipo === 'abilita',
+                  effettiAbilita: m.effettiAbilita || [] };
     if (m.danno) {
-      mostraResoconto({ colpi: m.colpi, damage: m.danno, abilita: m.tipo === 'abilita' }, 1);
+      mostraResoconto(suo, 1);
       lampeggiaColpiti('battleGiocatore', { colpi: m.colpi });
+    } else if (suo.effettiAbilita.length) {
+      setTimeout(() => mostraResoconto(suo, 1), 200);
     }
-    // con un colpo a schermo si aspetta di più: c'è da guardarlo
-    setTimeout(passo, m.danno ? 2600 : 850);
+    mostraEffetti(suo, 1, m.danno ? 1300 : 250);
+    // con un colpo a schermo si aspetta di più: c'è da guardarlo. E se
+    // l'abilità ha fatto solo effetti, servono comunque i secondi per
+    // vederli passare.
+    const conEffetti = suo.effettiAbilita.length > 0;
+    setTimeout(passo, m.danno ? 2600 : (conEffetti ? 2400 : 850));
   };
   passo();
 }
@@ -2651,16 +2734,52 @@ function mostraRiflesso(r, chiAgisce, ritardo) {
   }, ritardo || 0);
 }
 
+// LE PAROLE PER QUELLO CHE NON E' DANNO.
+// Le pastiglie che volano si vedono per un attimo; il resoconto resta li'
+// qualche secondo e serve a rileggere con calma cos'e' successo. Prima
+// elencava solo i colpi, quindi un'abilita' che non faceva danno non
+// compariva affatto: sembrava non fosse successo niente.
+function descriviEffetti(r, chiAgisce) {
+  const esiti = [].concat(r.effettiAbilita || [], r.esiti || []);
+  const righe = [];
+  esiti.forEach((e) => {
+    if (!e || e.applied === false || e.giaApplicato) return;
+    const def = SEGNI_EFFETTO[e.effect];
+    const cura = e.effect === 'cura_diretta' || e.effect === 'cura_percentuale';
+    if (!def && !cura) return;               // il danno ha gia' le sue righe
+
+    let riga;
+    if (cura) {
+      const tot = e.guarigione
+        ? Object.keys(e.guarigione).reduce((a, s) => a + e.guarigione[s], 0)
+        : Number(e.parametro || 0) * ((e.colpiti || []).length || 1);
+      riga = '✚ curati <span class="num">' + Math.round(tot) + '</span> PV su ' + (e.colpiti || []).join(' ');
+    } else if (def.suGiocatore) {
+      const mio = (chiAgisce === 0) === (e.lato !== 'opponent');
+      const q = e.tolti || e.dati || e.distrutte || e.parametro;
+      riga = def.glifo + ' ' + def.parola + (q ? ' <span class="num">' + q + '</span>' : '') +
+             ' · ' + (mio ? 'tu' : 'avversario');
+    } else {
+      const q = (def.segno || '') + e.parametro + (def.percento ? '%' : (def.suffisso || ''));
+      riga = def.glifo + ' ' + def.parola + ' <span class="num">' + q + '</span> su ' + (e.colpiti || []).join(' ');
+    }
+    if (e.durata) riga += ' · per ' + e.durata + ' turn' + (e.durata === 1 ? 'o' : 'i');
+    righe.push('<div class="riga" style="opacity:.92">' + riga + '</div>');
+  });
+  return righe.join('');
+}
+
 function mostraResoconto(r, chiAgisce) {
   const colpi = r.colpi || [];
-  if (!colpi.length) return;
+  const testoEffetti = descriviEffetti(r, chiAgisce);
+  if (!colpi.length && !testoEffetti) return;
   segnaAnimazione(2600);   // la fine partita aspetta che si sia visto
   const box = $('resoconto');
   const righe = colpi.map((c) => {
     const nome = c.cardId ? testo(c.cardId).nome : ('personaggio ' + c.suit);
     return '<div class="riga"><b>' + nome + '</b> (' + c.suit + ') subisce <span class="num">' +
            Math.round(c.damage) + '</span> danni · restano ' + Math.round(c.pvRimasti) + ' PV</div>';
-  }).join('');
+  }).join('') + testoEffetti;
   const titolo = r.abilita
     ? (chiAgisce === 0 && r.semeAttaccante
         ? 'Abilità speciale — ' + testo(S.players[0].characters[r.semeAttaccante].cardId).nome
@@ -3034,6 +3153,139 @@ function numeroDanno(cardEl, valore) {
   setTimeout(() => el.remove(), 2000);
 }
 
+// ============================================================
+// FAR VEDERE QUELLO CHE NON E' DANNO
+//
+// Il tavolo sapeva mostrare una cosa sola: la vita che se ne va. Tutto
+// il resto succedeva in silenzio. Le carte vere pero' fanno soprattutto
+// altro — alzano scudi, li sfondano, rubano punti magia, marchiano un
+// nemico per il resto della partita — e un gioco in cui meta' di quello
+// che fai non si vede non si capisce: si perde senza sapere perche'.
+//
+// LA REGOLA, una sola e valida ovunque:
+//   i NUMERI che volano sono la vita (rossi se cala, verdi se sale);
+//   le PASTIGLIE sono tutto il resto.
+// Cosi' con la coda dell'occhio si sa gia' di che si tratta, prima
+// ancora di leggere.
+// ============================================================
+const SEGNI_EFFETTO = {
+  boost_att:             { glifo: '⚔', colore: '#ffb057', segno: '+',                  parola: 'attacco' },
+  boost_att_percentuale: { glifo: '⚔', colore: '#ffb057', segno: '+', percento: true,  parola: 'attacco' },
+  boost_difesa:          { glifo: '🛡', colore: '#7ec8ff', segno: '+', percento: true,  parola: 'difesa' },
+  riduci_difesa:         { glifo: '🛡', colore: '#ff7ad9', segno: '−', percento: true,  parola: 'difesa' },
+  pulisci_malus_difesa:  { glifo: '✨', colore: '#ffe9a8', soloGlifo: true,             parola: 'difese risanate' },
+  costo_abilita_extra:   { glifo: '⛓', colore: '#d9a441', segno: '+', suffisso: ' PM', parola: 'abilità più cara' },
+  // questi non stanno su una carta: stanno sul giocatore
+  riduci_punti_magia:    { glifo: '🔮', colore: '#b98cff', segno: '−', suffisso: ' PM', suGiocatore: true, parola: 'magia drenata' },
+  aumenta_punti_magia:   { glifo: '🔮', colore: '#b98cff', segno: '+', suffisso: ' PM', suGiocatore: true, parola: 'magia recuperata' },
+  distruggi_trappole:    { glifo: '💥', colore: '#ff9f6b', soloGlifo: true, suGiocatore: true, parola: 'trappole distrutte' },
+  boost_danno:           { glifo: '🎯', colore: '#ffb057', segno: '+', percento: true, suGiocatore: true, parola: 'colpi potenziati' },
+  pesca_extra:           { glifo: '🂠', colore: '#a8d8ff', segno: '+', suGiocatore: true, parola: 'carte in più' }
+};
+// gli effetti che muovono i PV si raccontano col numero, non con la pastiglia
+const EFFETTI_VITA = ['danno_diretto', 'danno_percentuale', 'cura_diretta', 'cura_percentuale'];
+
+// Da che parte del tavolo e' finito un effetto. `lato` lo dice il motore
+// dal punto di vista di CHI AGISCE, qui si traduce nella striscia giusta.
+function strisciaPerLato(chiAgisce, lato) {
+  const daMe = (chiAgisce === 0) === (lato !== 'opponent');
+  return daMe ? 'battleGiocatore' : 'battleAvversario';
+}
+
+function segnoEffetto(ancora, def, valore) {
+  // "staccato dalla pagina" si chiede con isConnected, non guardando se
+  // ha larghezza zero: fra un ridisegno e l'altro la carta di prima non
+  // e' piu' nel documento, ed e' quello il caso da saltare. La misura a
+  // zero non vuol dire la stessa cosa — un elemento attaccato ma non
+  // ancora impaginato misura zero anche lui, e verrebbe scartato per
+  // sbaglio.
+  if (!ancora || !ancora.isConnected) return;
+  const r = ancora.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const altezza = (typeof window !== 'undefined' && window.innerHeight) || 800;
+  const larghezza = (typeof window !== 'undefined' && window.innerWidth) || 1200;
+  const versoGiu = (r.top + r.height / 2) < altezza * 0.45;
+
+  const el = document.createElement('div');
+  el.className = 'segno-eff' + (versoGiu ? ' verso-giu' : '');
+  el.style.color = def.colore;
+  el.style.left = Math.min(larghezza - 72, Math.max(72, cx)) + 'px';
+  el.style.top = (versoGiu ? r.bottom + 6 : r.top - 6) + 'px';
+  const etichetta = def.soloGlifo || valore === null || valore === undefined || valore === ''
+    ? '' : '<span class="val">' + (def.segno || '') + valore + (def.percento ? '%' : (def.suffisso || '')) + '</span>';
+  el.innerHTML = '<span class="glifo">' + def.glifo + '</span>' + etichetta;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2400);
+
+  // l'alone sull'elemento toccato: dice A CHI, mentre la pastiglia dice COSA
+  const classeAura = ancora.classList.contains('barra-magia') ? 'tocca-magia' : 'aura-eff';
+  ancora.style.setProperty('--c-eff', def.colore);
+  ancora.classList.remove(classeAura);
+  void ancora.offsetWidth;
+  ancora.classList.add(classeAura);
+  setTimeout(() => ancora.classList.remove(classeAura), 1200);
+}
+
+// Mostra, uno dopo l'altro, tutti gli effetti non-danno di una mossa.
+// Sfalsati nel tempo: tre pastiglie tutte insieme sono un pasticcio, in
+// fila si leggono. `r.effettiAbilita` arriva dalle abilita' degli eroi,
+// `r.esiti` dalle Carte Magiche: stessa forma, stesso trattamento.
+function mostraEffetti(r, chiAgisce, ritardo) {
+  const esiti = [].concat(r.effettiAbilita || [], r.esiti || []);
+  if (!esiti.length) return 0;
+  let passo = 0;
+  const base = ritardo || 0;
+
+  esiti.forEach((e) => {
+    if (!e || e.applied === false || e.giaApplicato) return;
+
+    // --- i PV si raccontano col numero che vola ---
+    if (EFFETTI_VITA.includes(e.effect)) {
+      const cura = e.effect.startsWith('cura');
+      const striscia = strisciaPerLato(chiAgisce, e.lato);
+      (e.colpiti || []).forEach((s) => {
+        const quando = base + passo * 260; passo++;
+        segnaAnimazione(quando + 2000);
+        setTimeout(() => {
+          const el = $(striscia) && $(striscia).querySelector('.bcard[data-seme="' + s + '"]');
+          if (!el) return;
+          const quanto = e.guarigione ? e.guarigione[s] : Number(e.parametro);
+          if (!quanto) return;
+          numeroDanno(el, cura ? -Math.abs(quanto) : Math.abs(quanto));
+        }, quando);
+      });
+      return;
+    }
+
+    const def = SEGNI_EFFETTO[e.effect];
+    if (!def) return;                       // effetto senza faccia: meglio niente che un simbolo a caso
+
+    // --- quelli del giocatore: sulla barra della magia ---
+    if (def.suGiocatore) {
+      const mio = (chiAgisce === 0) === (e.lato !== 'opponent');
+      const quando = base + passo * 260; passo++;
+      segnaAnimazione(quando + 2400);
+      setTimeout(() => {
+        const box = $(mio ? 'magiaGiocatore' : 'magiaAvversario');
+        segnoEffetto(box, def, e.tolti || e.dati || e.distrutte || e.parametro || null);
+      }, quando);
+      return;
+    }
+
+    // --- quelli sui personaggi: sulla carta toccata ---
+    const striscia = strisciaPerLato(chiAgisce, e.lato);
+    (e.colpiti || []).forEach((s) => {
+      const quando = base + passo * 220; passo++;
+      segnaAnimazione(quando + 2400);
+      setTimeout(() => {
+        const el = $(striscia) && $(striscia).querySelector('.bcard[data-seme="' + s + '"]');
+        segnoEffetto(el, def, e.parametro);
+      }, quando);
+    });
+  });
+  return passo * 260;
+}
+
 const ui = {
   tocca(cid) {
     if (selezione.has(cid)) selezione.delete(cid); else selezione.add(cid);
@@ -3290,6 +3542,12 @@ window.__tavolo = () => (S ? JSON.parse(JSON.stringify({
   }))
 })) : null);
 window.__inRete = ONLINE;
+// I segni degli effetti si vedono per due secondi e poi spariscono: per
+// provarli servirebbe una partita col personaggio giusto, il turno
+// giusto e i punti magia giusti. Questa porta di servizio li fa partire
+// da soli su un esito finto — la usa client/tavolo-vivo.test.js per
+// verificare che si disegnino davvero, invece di fidarsi.
+window.__mostraEffetti = (esito, chiAgisce) => mostraEffetti(esito, chiAgisce || 0, 0);
 
 // Clic nell'area delle mie calate:
 //  - su una colonna già in tavola → AGGANCIA lì le carte selezionate

@@ -212,6 +212,28 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
         suit: c.suit, damage: c.damage, cardId: c.cardId, pvRimasti: c.pvRimasti
       }));
     }
+    // COSA E' CAMBIATO OLTRE AI PUNTI VITA.
+    // Scudi alzati o sfondati, punti magia rubati, trappole distrutte:
+    // senza questo elenco chi sta dall'altra parte vede solo l'effetto
+    // ritardato — il colpo che due turni dopo arriva piu' forte senza un
+    // perche' visibile. Non e' informazione segreta: sono cambiamenti
+    // che stanno gia' scritti nella vista pubblica del tavolo, qui si
+    // dice soltanto come ci si e' arrivati.
+    //
+    // Si copiano SOLO i campi che servono a disegnarli. Un `...esito`
+    // qui dentro sarebbe comodo e sbagliato: alcuni effetti si portano
+    // dietro le carte vere che hanno toccato (scarto_forzato, per dirne
+    // uno) e finirebbero dritte all'avversario.
+    const effetti = [].concat(esito.effettiAbilita || [], esito.esiti || []);
+    if (effetti.length) {
+      const permessi = ['effect', 'parametro', 'durata', 'colpiti', 'lato', 'applied',
+                        'giaApplicato', 'guarigione', 'tolti', 'dati', 'distrutte', 'puliti'];
+      r.effettiAbilita = effetti.map((e) => {
+        const pulito = {};
+        for (const campo of permessi) if (e[campo] !== undefined) pulito[campo] = e[campo];
+        return pulito;
+      });
+    }
     if (esito.pozzettoPreso) r.pozzettoPreso = true;
     if (esito.semeAttaccante) r.semeAttaccante = esito.semeAttaccante;
     if (esito.semeBersaglio) r.semeBersaglio = esito.semeBersaglio;

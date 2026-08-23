@@ -259,6 +259,64 @@ if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 &&
 // coprira' da se' quando le carte vere prenderanno il posto dei
 // segnaposto, perche' diventera' la strada normale.
 
+// ---------- 6. SI VEDE QUELLO CHE NON E' DANNO ----------
+// Il tavolo sapeva mostrare solo la vita che cala. Le carte vere pero'
+// fanno soprattutto altro — alzano scudi, li sfondano, rubano punti
+// magia — e finora tutto questo succedeva in silenzio: la partita
+// cambiava di nascosto. Qui si controlla che ogni effetto lasci un
+// segno visibile e che sia il segno GIUSTO, sulla parte giusta del
+// tavolo.
+//
+// jsdom non impagina e non fa girare le animazioni: quello che si puo'
+// provare qui e' che gli elementi nascano, con il testo e il colore
+// giusti. Che stiano dentro allo schermo e si muovano bene e' stato
+// verificato a parte, in un browser vero.
+{
+  const prima = d.querySelectorAll('.segno-eff').length;
+  w.__mostraEffetti({
+    effettiAbilita: [
+      // uno su di me, uno sui suoi, uno sul giocatore: le tre strade diverse
+      { effect: 'boost_difesa',       parametro: '25', durata: 3, lato: 'caster',   applied: true, colpiti: ['♥'] },
+      { effect: 'riduci_difesa',      parametro: '20', durata: 2, lato: 'opponent', applied: true, colpiti: ['♠'] },
+      { effect: 'riduci_punti_magia', parametro: '3',             lato: 'opponent', applied: true, tolti: 3 },
+      // questo NON deve fare una pastiglia: i PV si raccontano col numero
+      { effect: 'cura_diretta',       parametro: '30',            lato: 'caster',   applied: true, colpiti: ['♦'] },
+      // e questo non deve fare niente del tutto: non e' andato a segno
+      { effect: 'distruggi_trappole',                             lato: 'opponent', applied: false }
+    ]
+  }, 0);
+
+  // i segni partono sfalsati nel tempo, quindi si aspetta
+  await attendi(1200);
+
+  const segni = [...d.querySelectorAll('.segno-eff')];
+  check('gli effetti lasciano un segno visibile', segni.length > prima,
+    'segni trovati: ' + segni.length);
+
+  const testi = segni.map((s) => s.textContent);
+  check('lo scudo alzato si vede col suo valore', testi.some((t) => t.indexOf('+25%') >= 0), testi.join(' / '));
+  check('lo scudo sfondato si vede col suo valore', testi.some((t) => t.indexOf('−20%') >= 0), testi.join(' / '));
+  check('i punti magia rubati si vedono', testi.some((t) => t.indexOf('−3 PM') >= 0), testi.join(' / '));
+
+  check('la cura NON diventa una pastiglia: e\' un numero',
+    !testi.some((t) => t.indexOf('✚') >= 0) && d.querySelectorAll('.dmg-float.cura').length > 0,
+    'pastiglie: ' + testi.join(' / '));
+
+  check('un effetto andato a vuoto non lascia segni',
+    !testi.some((t) => t.indexOf('💥') >= 0), testi.join(' / '));
+
+  // il colore distingue a colpo d'occhio scudo su (azzurro) da scudo giu' (rosa)
+  const su  = segni.find((s) => s.textContent.indexOf('+25%') >= 0);
+  const giu = segni.find((s) => s.textContent.indexOf('−20%') >= 0);
+  check('scudo su e scudo giu\' hanno colori diversi',
+    !!su && !!giu && su.style.color !== giu.style.color,
+    (su && su.style.color) + ' contro ' + (giu && giu.style.color));
+
+  // e il resoconto scritto racconta le stesse cose, per chi vuole rileggere
+  const resoconto = d.getElementById('resoconto');
+  check('il resoconto esiste', !!resoconto);
+}
+
 check('nessun errore JavaScript in tutta la partita', guasti.length === 0,
   (guasti[0] || '').split('\n').slice(0, 2).join(' | '));
 

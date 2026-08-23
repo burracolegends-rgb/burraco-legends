@@ -152,7 +152,13 @@ export function botGiocaTurno(state, playerIndex, nowMs = Date.now()) {
     const piuDebole = vivi.reduce((min, x) => (avv[x].pv < avv[min].pv ? x : min), vivi[0]);
     const r = usaAbilitaSpeciale(state, playerIndex, s, piuDebole, nowMs);
     if (r.ok) {
-      mosse.push({ tipo: 'abilita', danno: r.damage || 0, colpi: r.colpi || [], semeAttaccante: s, semeBersaglio: piuDebole });
+      // `effettiAbilita` viaggia col resoconto della mossa perche' il
+      // tavolo deve poter mostrare anche quello che NON e' danno: se il
+      // bot ti abbassa le difese o ti ruba punti magia e non si vede,
+      // il colpo che arriva due turni dopo sembra arrivato dal nulla.
+      mosse.push({ tipo: 'abilita', danno: r.damage || 0, colpi: r.colpi || [],
+                   effettiAbilita: r.effettiAbilita || [],
+                   semeAttaccante: s, semeBersaglio: piuDebole });
       if (r.matchEnded) return mosse;
     }
   }

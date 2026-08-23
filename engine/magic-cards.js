@@ -228,14 +228,14 @@ export function applyEffect(card, ctx) {
 
   switch (effect) {
     case 'danno_diretto': {
-      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) infliggiDanno(pool[s], param);
-      return { ok: true, applied: suits.length > 0, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato };
     }
     case 'danno_percentuale': {
-      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) infliggiDanno(pool[s], pool[s].pvMax * (param / 100));
-      return { ok: true, applied: suits.length > 0, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato };
     }
     // Danno calcolato sull'ATT di un PROPRIO eroe, non sui PV del bersaglio
     // né sui punti delle carte. È quello che usano le abilità speciali, ma
@@ -246,15 +246,15 @@ export function applyEffect(card, ctx) {
         SUITS.reduce((best, s) => (ctx.casterCharacters[s].att > ctx.casterCharacters[best].att ? s : best), SUITS[0]);
       const attaccante = ctx.casterCharacters[semeAtt];
       if (!attaccante) return { ok: true, applied: false, note: 'eroe attaccante non trovato' };
-      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       const danno = attaccante.att * (param / 100);
       for (const s of suits) infliggiDanno(pool[s], danno);
-      return { ok: true, applied: suits.length > 0, colpiti: suits, danno, semeAttaccante: semeAtt };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato, danno, semeAttaccante: semeAtt };
     }
     case 'cura_diretta': {
-      const { pool, suits } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].pv = Math.min(pool[s].pvMax, pool[s].pv + param);
-      return { ok: true, applied: suits.length > 0, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato };
     }
     case 'scarto_forzato': {
       const mia = BERSAGLI_RISOLTI[target || 'avversario'] && BERSAGLI_RISOLTI[target || 'avversario'].lato === 'mio';
@@ -288,12 +288,12 @@ export function applyEffect(card, ctx) {
     case 'boost_att': {
       const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].att += param;
-      return { ok: true, applied: suits.length > 0, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
     }
     case 'boost_difesa': {
       const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
       for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) + param;
-      return { ok: true, applied: suits.length > 0, colpiti: suits, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato, effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
     }
     // RECUPERA UNA CARTA GIÀ SPESA.
     // Prima rimetteva a "non usata" il flag della Sorpresa, quando il
@@ -330,7 +330,10 @@ export function applyEffect(card, ctx) {
       if (!chi) return { ok: true, applied: false, note: 'giocatore non disponibile nel contesto' };
       const prima = chi.puntiMagia || 0;
       chi.puntiMagia = Math.max(0, prima - param);     // mai sotto zero
-      return { ok: true, applied: prima > 0, tolti: prima - chi.puntiMagia, puntiRimasti: chi.puntiMagia };
+      // `lato` dice a chi è successo, così il tavolo sa dove disegnarlo:
+      // i punti magia non stanno su una carta, stanno sul giocatore.
+      return { ok: true, applied: prima > 0, lato: chi === ctx.casterPlayer ? 'caster' : 'opponent',
+               tolti: prima - chi.puntiMagia, puntiRimasti: chi.puntiMagia };
     }
     case 'aumenta_punti_magia': {
       const chi = (target === 'avversario' || target === 'tutti_avversari' || target === 'personaggio_specifico')
@@ -339,15 +342,21 @@ export function applyEffect(card, ctx) {
       const tetto = ctx.puntiMagiaMax || PUNTI_MAGIA_MAX_PREDEFINITO;
       const prima = chi.puntiMagia || 0;
       chi.puntiMagia = Math.min(tetto, prima + param); // il tetto resta quello del gioco
-      return { ok: true, applied: chi.puntiMagia > prima, dati: chi.puntiMagia - prima, puntiRimasti: chi.puntiMagia };
+      return { ok: true, applied: chi.puntiMagia > prima, lato: chi === ctx.casterPlayer ? 'caster' : 'opponent',
+               dati: chi.puntiMagia - prima, puntiRimasti: chi.puntiMagia };
     }
     // CURA IN PERCENTUALE dei PV massimi. Le carte vere parlano quasi
     // sempre cosi' ("cura tutti gli alleati del 20%"), e una cura fissa
     // non sa adattarsi a personaggi con VITA molto diversa fra loro.
     case 'cura_percentuale': {
-      const { pool, suits } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
-      for (const s of suits) pool[s].pv = Math.min(pool[s].pvMax, pool[s].pv + pool[s].pvMax * (param / 100));
-      return { ok: true, applied: suits.length > 0, colpiti: suits };
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'se_stesso', caso(ctx));
+      const guarigione = {};
+      for (const s of suits) {
+        const prima = pool[s].pv;
+        pool[s].pv = Math.min(pool[s].pvMax, pool[s].pv + pool[s].pvMax * (param / 100));
+        guarigione[s] = pool[s].pv - prima;
+      }
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato, guarigione };
     }
     // AUMENTO DELL'ATT IN PERCENTUALE.
     // Va tenuto separato da boost_att (che somma un numero fisso) per un
@@ -365,7 +374,7 @@ export function applyEffect(card, ctx) {
         aggiunti[s] = quanto;
         pool[s].att += quanto;
       }
-      return { ok: true, applied: suits.length > 0, colpiti: suits, aggiunti,
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato, aggiunti,
                effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, aggiunti, turniRimasti: durata_turni } };
     }
     // ABBASSA LA DIFESA: si incassa piu' danno finche' dura.
@@ -375,7 +384,7 @@ export function applyEffect(card, ctx) {
     case 'riduci_difesa': {
       const { pool, suits, lato } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) pool[s].difesaPercent = (pool[s].difesaPercent || 0) - param;
-      return { ok: true, applied: suits.length > 0, colpiti: suits,
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato,
                effettoAttivo: { effect, parametro: param, colpiti: suits, pool: lato, turniRimasti: durata_turni } };
     }
     // TOGLIE I MALUS DI DIFESA (il "cura tutti i disturbi della difesa"
@@ -383,12 +392,12 @@ export function applyEffect(card, ctx) {
     // curati. Il conto degli effetti a scadenza resta coerente perche'
     // qui si azzera solo la parte negativa gia' applicata.
     case 'pulisci_malus_difesa': {
-      const { pool, suits } = risolviBersaglio(target, ctx, 'tutti_alleati', caso(ctx));
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'tutti_alleati', caso(ctx));
       let puliti = 0;
       for (const s of suits) {
         if ((pool[s].difesaPercent || 0) < 0) { pool[s].difesaPercent = 0; puliti++; }
       }
-      return { ok: true, applied: puliti > 0, colpiti: suits, puliti };
+      return { ok: true, applied: puliti > 0, colpiti: suits, lato, puliti };
     }
     // UNA CICATRICE, NON UN MALUS A TEMPO.
     // Il morso del Boitata' rende piu' cara per sempre l'abilita' del
@@ -397,9 +406,9 @@ export function applyEffect(card, ctx) {
     // il sovrapprezzo, cosi' due morsi non si perdono per strada anche
     // se il tetto e' gia' stato raggiunto.
     case 'costo_abilita_extra': {
-      const { pool, suits } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
+      const { pool, suits, lato } = risolviBersaglio(target, ctx, 'avversario', caso(ctx));
       for (const s of suits) pool[s].costoExtra = (pool[s].costoExtra || 0) + param;
-      return { ok: true, applied: suits.length > 0, colpiti: suits };
+      return { ok: true, applied: suits.length > 0, colpiti: suits, lato };
     }
     // LA CONVERSIONE: ribalta l'ultimo intervento sulle difese.
     // Arriva sempre da una trappola, quindi qui "caster" e' chi ha
