@@ -397,6 +397,60 @@
     .insegna .motto, .fregio { display: none; }
     .modo .sotto { display: none; }
   }
+
+  /* ============================================================
+     SCHERMI STRETTI (i telefoni veri, non le finestre rimpicciolite)
+     Su un telefono da 300-360px la pagina si reggeva su misure pensate
+     per uno schermo largo: la scenetta illustrata di ogni voce si
+     prendeva 84px dei 303 disponibili — quasi un terzo per la sola
+     decorazione — e al testo ne restavano 153, dove "ACQUISTA
+     PACCHETTI" non ci sta e va a capo in mezzo alla parola. Stesso
+     effetto sul riquadro del premio, col titolo e il suo stato
+     affiancati che si contendevano la stessa riga.
+     Qui si toglie spazio a quello che decora e lo si da' a quello che
+     si legge. Nessun elemento sparisce: cambiano le proporzioni.
+     ============================================================ */
+  @media (max-width: 430px) {
+    body { padding-left: 11px; padding-right: 11px; gap: 12px; }
+
+    /* la scenetta resta, ma non si prende piu' un terzo della riga */
+    .modo .scena { width: 58px; }
+    .modo .testo { padding: 9px 6px 9px 10px; gap: 2px; }
+    /* Il titolo deve stare in UNA riga. Il piu' lungo e' "ACQUISTA
+       PACCHETTI": misurato, a queste dimensioni chiede ~172px e ne ha
+       181 — margine voluto, perche' un titolo che va a capo in mezzo a
+       una parola e' la cosa che si notava di piu' in tutta la pagina.
+       La spaziatura fra le lettere conta quanto il corpo: su diciotto
+       lettere, mezzo pixel l'una fa quasi un decimo della riga. */
+    .modo .titolo { font-size: 0.86rem; letter-spacing: 0.2px; line-height: 1.15; }
+    .modo .sotto { font-size: 0.68rem; line-height: 1.25; }
+    .modo .freccia { padding-right: 9px; }
+    .modo .freccia svg { width: 14px; height: 14px; }
+    /* il bollino "presto" non deve finire sopra al titolo */
+    .sigillo-presto { top: 6px; right: 6px; font-size: 0.5rem; padding: 2px 7px; }
+
+    /* PREMIO DEL GIORNO: titolo sopra, stato sotto. Affiancati, su
+       questa larghezza, il testo dello stato si spezzava in tre righe
+       strette accanto al titolo e sembrava buttato li'. */
+    .premio { padding: 10px 11px 12px; gap: 7px; }
+    .premio .riga-titolo { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .premio h2 { font-size: 0.84rem; letter-spacing: 1.4px; }
+    .premio .stato { flex: none; font-size: 0.7rem; line-height: 1.35; }
+    /* otto caselle su 280px: si stringono i margini, non il numero */
+    .scala .fila-giorni { gap: 3px; }
+    .giorno { padding: 5px 1px 4px; border-radius: 7px; }
+    .giorno .n { font-size: 0.5rem; letter-spacing: 0.2px; }
+    .giorno .q { font-size: 0.72rem; }
+    .giorno.oggi .q { font-size: 0.84rem; }
+    .scala-nota { font-size: 0.6rem; }
+
+    /* la barra in basso: sei voci in 300px, le etichette vanno strette */
+    .voce { font-size: 0.55rem; letter-spacing: 0.2px; padding: 7px 2px; gap: 3px; }
+    .voce svg { width: 20px; height: 20px; }
+
+    .insegna h1 { letter-spacing: 2px; }
+    .insegna .sotto { font-size: 0.72rem; }
+  }
 </style>
 </head>
 <body>
