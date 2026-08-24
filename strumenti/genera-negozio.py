@@ -68,8 +68,8 @@ PAGINA = r'''<!DOCTYPE html>
     width: 100%; max-width: 980px; display: flex; align-items: center;
     justify-content: space-between; gap: 12px;
   }
-  .torna { font-size: 0.85rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-  .torna .icona-torna { width: 20px; height: 20px; object-fit: contain; }
+  .torna { font-size: 2.55rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+  .torna .icona-torna { width: 60px; height: 60px; object-fit: contain; }
   .torna:hover { color: var(--oro); }
 
   .borsellino {
