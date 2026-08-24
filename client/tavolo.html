@@ -1977,6 +1977,19 @@
        di carta non serve più a nessuno. */
     .table-resources-row { position: static; top: auto; margin-bottom: 0; }
 
+    /* I MIEI GIOCHI CALATI CRESCONO DAL BASSO, non dall'alto.
+       .meld-side (di Burraco Pulito) ancora entrambe le colonne in cima
+       col contenitore: giusto per l'avversario, che sta in alto — sbagliato
+       per me, che sto in basso. All'inizio partita, con poche carte calate
+       e il campo che (giustamente) prende tutto lo spazio verticale che
+       avanza, la mia colonna restava appesa in cima e sotto si apriva un
+       vuoto enorme fino alla riga di mazzo/scarti e alla mano: sembrava
+       spazio sprecato proprio dove si gioca davvero. Ancorando la MIA
+       colonna in basso, i giochi che calo restano vicini alla mano da cui
+       arrivano, e il vuoto (quando c'è) finisce in alto, verso l'avversario
+       — dove già c'è la sua fascia a fare da cornice. */
+    .meld-side.mine { align-items: flex-end; }
+
     /* --- BARRA DEI PUNTI MAGIA ---
        Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
        a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
@@ -2509,14 +2522,10 @@
       text-shadow: 0 0 30px rgba(232,196,106,0.75), 0 6px 22px rgba(0,0,0,0.9);
     }
     #studio .numero.poco { color: #ff9db0; text-shadow: 0 0 30px rgba(255,120,150,0.8), 0 6px 22px rgba(0,0,0,0.9); animation: battito 1s ease-in-out infinite; }
-    #studio .dice {
-      margin-top: 6px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;
-      color: #f3e6c4; text-shadow: 0 2px 10px #000;
-    }
-    #studio .sotto {
-      margin-top: 4px; font-size: 12px; color: #cdbfa2; text-shadow: 0 2px 8px #000;
-      max-width: 340px; margin-left: auto; margin-right: auto; line-height: 1.5;
-    }
+    /* Il testo "Guarda il tavolo" e la spiegazione sotto sono spariti:
+       il riquadro sta al centro dello schermo, proprio sopra le carte
+       che dovrebbe far guardare — coprivano quello che c'era da vedere.
+       Resta solo il numero, che basta a dire "hai ancora questo tempo". */
     /* mentre si guarda, le carte dei personaggi si fanno notare */
     body.in-studio .bcard[data-seme] {
       animation: respiroStudio 2.2s ease-in-out infinite;
@@ -2887,9 +2896,6 @@
 
 <div id="studio">
   <div class="numero" id="studioNumero">30</div>
-  <div class="dice">Guarda il tavolo</div>
-  <div class="sotto">I quattro personaggi tuoi e i suoi: vita, attacco e abilità.
-    Passaci sopra per leggerli. Gli orologi partono alla fine.</div>
 </div>
 
 <div id="finePartita"><div class="box">
@@ -3617,6 +3623,18 @@ const DAMAGE_TIERS = {
   7: { multiplier: 1.6, target: 'aoe',     aoePercent: 0.35 }
 };
 
+// PREMIO PER LE 7 CARTE IN UN COLPO SOLO (regola del committente).
+// Le percentuali sopra sono soglie cumulative: chi ci arriva a gradini
+// (5→6→7, con un aggancio alla volta) paga solo la differenza a ogni
+// passo, e il totale delle differenze torna a essere 35% — mai di più.
+// Ma chi cala le 7 carte in UN'UNICA mossa, senza mai passare dalle
+// fasce sotto, guadagna 40% invece di 35%: un premio per la giocata
+// difficile, sopra al vantaggio che il danno delle carte dà già da solo.
+// Vale solo quando l'intera ondata matura in quella mossa (nessuna
+// percentuale ancora scaricata da questo gioco prima d'ora) — non per un
+// aggancio che completa un gioco già a metà strada.
+const ONDATA_BONUS_COLPO_SOLO = 0.40;
+
 // Accetta l'elenco delle carte oppure direttamente un numero: agli agganci
 // serve la fascia della lunghezza RAGGIUNTA dal gioco, non di un mazzetto.
 function meldLengthTier(cards) {
@@ -3846,7 +3864,7 @@ function infliggiDanno(character, danno) {
   return netto;
 }
 
-return {SUITS, makeCard, createFullDeck, shuffle, interoCasuale, isWildcard, valueLabel, cardLabel, cardPointValue, meldPointValue, isValidGroup, isValidSequence, validateMeld, DAMAGE_TIERS, meldLengthTier, computeMeldDamage, groupLengthMultiplier, PENALITA_EROE_CADUTO, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, rangoSorteggio, confrontaPerSorteggio, sorteggioPrimoTurno, DIFESA_RIDUZIONE_MASSIMA, DIFESA_AMPLIFICAZIONE_MASSIMA, riduzioneDifesa, infliggiDanno};
+return {SUITS, makeCard, createFullDeck, shuffle, interoCasuale, isWildcard, valueLabel, cardLabel, cardPointValue, meldPointValue, isValidGroup, isValidSequence, validateMeld, DAMAGE_TIERS, ONDATA_BONUS_COLPO_SOLO, meldLengthTier, computeMeldDamage, groupLengthMultiplier, PENALITA_EROE_CADUTO, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, rangoSorteggio, confrontaPerSorteggio, sorteggioPrimoTurno, DIFESA_RIDUZIONE_MASSIMA, DIFESA_AMPLIFICAZIONE_MASSIMA, riduzioneDifesa, infliggiDanno};
 })();
 
 // ===== engine/magic-cards.js (incorporato) =====
@@ -4661,7 +4679,7 @@ const __M_partita = (function(){
 //    stesso principio già usato per i trigger delle Carte Trappola.
 // ============================================================
 
-const { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } = __M_core_rules;
+const { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, ONDATA_BONUS_COLPO_SOLO, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } = __M_core_rules;
 const { attachAbility, tickCharacterAbility, checkAbilityTrigger } = __M_character_abilities;
 const { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata, risolviBersaglio, tickActiveEffects } = __M_magic_cards;
 const { elencoEffetti, CONDIZIONI, EFFETTI_DIFFERITI } = __M_vocabolario;
@@ -5329,7 +5347,8 @@ function actionLayMeld(state, playerIndex, cardIds, nowMs) {
   const defender = state.players[defenderIndex];
   meld.tierRaggiunto = meldLengthTier(cards);   // serve agli agganci: l'ondata non si ripete
 
-  applicaDanno(state, playerIndex, result, cards, validation.type, validation.suit, cards.length, true);
+  // una calata nuova non ha ancora scaricato niente: parte da zero
+  applicaDanno(state, playerIndex, result, cards, validation.type, validation.suit, cards.length, 0);
   if (result.matchEnded) return result;
 
   // Pozzetto: si prende SUBITO appena la mano si svuota (spec §5)
@@ -5398,7 +5417,18 @@ function modificaDanno(state, playerIndex, damage, result) {
   return damage;
 }
 
-function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghezzaGioco, ondataConsentita) {
+// `pctOndataGiaPagata`: quanto ATT-percento di ondata questo GIOCO ha già
+// scaricato PRIMA di questa mossa (0 per una calata nuova, che parte
+// sempre da zero). Non è un sì/no: le fasce (5→10%, 6→20%, 7→35%) sono
+// SOGLIE CUMULATIVE, non premi indipendenti — salire da 5 a 6 vale la
+// DIFFERENZA (10 punti, non 20 pieni), salire da 6 a 7 vale la differenza
+// (15, non 35). Costruire un gioco a gradini deve scaricare in totale la
+// stessa ondata di chi lo cala già completo in un colpo solo: se ogni
+// aggancio pagasse la percentuale intera della fascia nuova, tre agganci
+// di fila (5→6→7) frutterebbero 10+20+35=65% invece di 35% — quasi il
+// doppio del colpo secco, e senza nessun motivo per cui costruire a
+// pezzi dovrebbe rendere di più che calare tutto insieme.
+function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghezzaGioco, pctOndataGiaPagata) {
   const player = state.players[playerIndex];
   const defenderIndex = opponentIndex(playerIndex);
   const defender = state.players[defenderIndex];
@@ -5445,7 +5475,15 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       }
       // ONDATA D'URTO: percentuale dell'ATT dell'eroe di quel seme, su tutti
       // e 4 gli avversari, in aggiunta al danno delle carte (spec §4).
-      const pct = ondataConsentita ? (DAMAGE_TIERS[tier].aoePercent || 0) : 0;
+      // Solo la parte NUOVA di ondata rispetto a quella già scaricata da
+      // questo gioco: mai negativa (le fasce salgono sempre, non
+      // scendono, ma un controllo costa poco ed evita sorprese).
+      // ECCEZIONE: le 7 carte in un colpo solo — nessuna ondata ancora
+      // scaricata da questo gioco (parte da zero) e la mossa arriva già
+      // a 7 — valgono il premio, non la soglia normale.
+      const diColpo = tier === 7 && (pctOndataGiaPagata || 0) === 0;
+      const pct = diColpo ? ONDATA_BONUS_COLPO_SOLO
+        : Math.max(0, (DAMAGE_TIERS[tier].aoePercent || 0) - (pctOndataGiaPagata || 0));
       if (pct > 0) {
         const ondata = attackerChar.att * pct * fattoreVarianza(state) * penalitaEroe * moltiplicatorePozzetto(player);
         for (const s of SUITS) {
@@ -5656,11 +5694,13 @@ function actionAttachToMeld(state, playerIndex, meldId, cardIds, nowMs) {
   const tierPrima = meld.tierRaggiunto || null;
   const tierOra = meldLengthTier(insieme);
   meld.tierRaggiunto = tierOra;
-  // l'ondata scatta solo se il gioco è salito di fascia con questo aggancio
-  const ondataConsentita = tierOra !== null && tierOra !== tierPrima;
+  // quanto ATT-percento ha già scaricato questo gioco fino ad ora: si
+  // paga solo la differenza con la fascia raggiunta adesso (vedi
+  // applicaDanno). Prima di qualunque fascia (tierPrima null) vale zero.
+  const pctOndataGiaPagata = tierPrima !== null ? (DAMAGE_TIERS[tierPrima].aoePercent || 0) : 0;
 
   const result = { ok: true, meld, damage: 0, agganciate: nuove.length };
-  applicaDanno(state, playerIndex, result, nuove, meld.type, meld.suit, insieme.length, ondataConsentita);
+  applicaDanno(state, playerIndex, result, nuove, meld.type, meld.suit, insieme.length, pctOndataGiaPagata);
   if (result.matchEnded) return result;
 
   return concludiCalata(state, playerIndex, result);
@@ -5720,11 +5760,12 @@ function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersaglio, n
     return { ok: false, reason: 'Punti magia insufficienti: servono ' + costoAbilita + ', ne hai ' + (player.puntiMagia || 0) + '.' };
   }
 
-  // UN'ABILITÀ SI RISOLVE DA SOLA.
-  // Il giocatore sceglie QUALE suo eroe attiva, mai chi colpire: nessuna
-  // carta del roster dice "a scelta", quindi il bersaglio lo decide la
-  // carta (uno a caso, tutti, i propri...). `semeBersaglio` resta per le
-  // carte che un giorno vorranno farlo scegliere davvero — oggi nessuna.
+  // CHI SCEGLIE IL BERSAGLIO, LO DICE LA CARTA.
+  // Per la maggior parte del roster il giocatore sceglie QUALE suo eroe
+  // attiva e basta: il bersaglio lo decide la carta (uno a caso, tutti,
+  // i propri...). Sei carte invece dicono "a scelta" — Papa Figo, Boto
+  // Felipe, Onça-Pintada, Mapinguari, Caipora e Boitatá — e per quelle
+  // `semeBersaglio` è la scelta vera del giocatore, che va controllata.
   // Un eroe senza abilità dichiarata colpisce comunque, alla percentuale
   // di riferimento: è il comportamento di sempre dei personaggi
   // segnaposto, e toglierlo li lascerebbe con un pulsante che spende
@@ -6075,25 +6116,49 @@ const __M_bot = (function(){
 // BURRACO LEGENDS — avversario artificiale, capacità MEDIA.
 //
 // Livello voluto: un giocatore discreto, non un campione. Sa fare le cose
-// giuste di base — riconosce tris e scale, cala, non spreca le matte, non
-// si suicida scartando l'ultima carta — ma non calcola le mosse future,
-// non conta le carte uscite e non gioca "contro" il seme che gli conviene
-// colpire. Serve ad avere un avversario credibile con cui provare il
-// gioco, non a essere imbattibile.
+// giuste di base — riconosce tris e scale, cala, valuta il monte scarti,
+// non spreca le matte, non si suicida scartando l'ultima carta — ma non
+// calcola le mosse future e non conta le carte uscite. Serve ad avere un
+// avversario credibile con cui provare il gioco, non a essere imbattibile.
+//
+// DA DOVE VIENE LA PARTE "BURRACO" DI QUESTO CERVELLO
+// Le tre decisioni difficili del burraco — se raccogliere il monte, cosa
+// scartare, come non far durare la mano in eterno — NON sono state
+// inventate qui: vengono dal bot di Burraco Pulito, dove sono già state
+// misurate e corrette sul campo per mesi. Sono state riscritte per questo
+// motore, non copiate: là si ragiona per squadre e per posti al tavolo,
+// qui il pozzetto è del singolo giocatore e la chiusura vuole un gioco da
+// 5 carte invece che da 7. Dove le due regole divergono comanda QUESTO
+// gioco — copiare alla lettera avrebbe prodotto un bot che gioca bene a
+// un burraco che non è il nostro.
+//
+// Quello che è rimasto fuori, e perché: nel progetto d'origine c'era un
+// livello "esperto" che evitava di scartare carte utili all'avversario.
+// Provato su 250 mani ha vinto il 48% — cioè niente. Non è stato portato:
+// aggiunge codice e non si sente giocando.
+//
+// LA PARTE "LEGENDS" È NOSTRA
+// Abilità degli eroi, punti magia e Carte Magiche non esistono in Burraco
+// Pulito: da lì non c'era niente da prendere. Quelle regole stanno in
+// fondo a questo file e sono scritte per questo gioco soltanto.
 //
 // Usa SOLO le azioni pubbliche del motore (actionDraw, actionLayMeld,
-// actionDiscard): non tocca lo stato di nascosto, quindi non può barare —
-// se una mossa è illecita il motore la rifiuta come farebbe con un umano.
+// actionDiscard, usaAbilitaSpeciale, giocaCartaMagica): non tocca lo
+// stato di nascosto, quindi non può barare — se una mossa è illecita il
+// motore la rifiuta come farebbe con un umano. E non sbircia mai la mano
+// dell'avversario: un bot che sbircia non è difficile, è sleale, e si
+// sente anche quando non si sa spiegare perché.
 // ============================================================
 
-const { validateMeld, cardPointValue, SUITS } = __M_core_rules;
-const { actionDraw, actionTakeDiscardPile, actionLayMeld, actionAttachToMeld, actionDiscard, usaAbilitaSpeciale } = __M_partita;
-const matta = (c) => c.isJolly || c.isPinella;
+const { validateMeld, cardPointValue, SUITS, isValidGroup, isValidSequence, isWildcard } = __M_core_rules;
+const { actionDraw, actionTakeDiscardPile, actionLayMeld, actionAttachToMeld, actionDiscard,
+         usaAbilitaSpeciale, giocaCartaMagica, costoAbilitaDi } = __M_partita;
+const matta = (c) => isWildcard(c);
 
 // --- ricerca delle combinazioni calabili ------------------------------
 
 // Tris: 3+ carte dello stesso valore (semi diversi). Le matte si usano
-// solo se servono davvero (vedi conviene usare la matta, più sotto).
+// solo se servono davvero (vedi convieneUsareMatta, più sotto).
 function cercaTris(mano, usaMatte) {
   const perValore = {};
   for (const c of mano) { if (!matta(c)) (perValore[c.value] = perValore[c.value] || []).push(c); }
@@ -6109,102 +6174,438 @@ function cercaTris(mano, usaMatte) {
   return trovate;
 }
 
-// Scale: 3+ carte consecutive dello stesso seme. Cerca la corsa più lunga
-// disponibile per ciascun seme, e prova a tapparne un buco con una matta.
+// Scale: 3+ carte consecutive dello stesso seme.
+//
+// L'ASSO STA A DUE POSTI, e questo bot ne vedeva uno solo.
+// Nel Burraco l'asso vale 1 sotto il 2 (A-2-3) e 14 sopra il re (Q-K-A).
+// Qui si ordinava per `value` e si cercavano i consecutivi con +1: con
+// l'asso a 1, la donna a 12 e il re a 13, Q-K-A non veniva MAI trovata.
+// Il bot si teneva in mano donna, re e asso dello stesso seme senza
+// accorgersi di avere una scala pronta da calare. Il motore la accetta
+// da sempre (isValidSequence prova entrambe le letture): il difetto era
+// solo qui, in chi doveva proporgliela. Ora si fanno due giri, uno per
+// ciascuna lettura dell'asso, e si tengono le combinazioni distinte.
 function cercaScale(mano, usaMatte) {
   const trovate = [];
-  for (const s of SUITS) {
-    const delSeme = mano.filter((c) => !matta(c) && c.suit === s).sort((a, b) => a.value - b.value);
-    if (delSeme.length < 2) continue;
 
-    // corse consecutive naturali
-    let corsa = [delSeme[0]];
-    for (let i = 1; i < delSeme.length; i++) {
-      const prec = corsa[corsa.length - 1];
-      if (delSeme[i].value === prec.value + 1) corsa.push(delSeme[i]);
-      else if (delSeme[i].value === prec.value) continue;   // doppione: lo salto
-      else { if (corsa.length >= 3 && validateMeld(corsa).ok) trovate.push(corsa.slice()); corsa = [delSeme[i]]; }
-    }
-    if (corsa.length >= 3 && validateMeld(corsa).ok) trovate.push(corsa.slice());
+  const giro = (valoreDi) => {
+    for (const s of SUITS) {
+      const delSeme = mano
+        .filter((c) => !matta(c) && c.suit === s)
+        .map((c) => ({ carta: c, v: valoreDi(c) }))
+        .sort((a, b) => a.v - b.v);
+      if (delSeme.length < 2) continue;
 
-    // con una matta: provo a unire due corse separate da un solo buco
-    if (usaMatte) {
-      const m = mano.find((c) => matta(c));
-      if (m) {
-        for (let i = 0; i < delSeme.length - 1; i++) {
-          for (let j = i + 1; j < delSeme.length; j++) {
-            const pezzo = delSeme.slice(i, j + 1);
-            if (pezzo.length < 2) continue;
-            const prova = [...pezzo, m];
-            if (prova.length >= 3 && validateMeld(prova).ok && !trovate.some((t) => t.length >= prova.length)) {
-              trovate.push(prova);
+      // corse consecutive naturali
+      let corsa = [delSeme[0]];
+      for (let i = 1; i < delSeme.length; i++) {
+        const prec = corsa[corsa.length - 1];
+        if (delSeme[i].v === prec.v + 1) corsa.push(delSeme[i]);
+        else if (delSeme[i].v === prec.v) continue;   // doppione: lo salto
+        else {
+          if (corsa.length >= 3) trovate.push(corsa.map((x) => x.carta));
+          corsa = [delSeme[i]];
+        }
+      }
+      if (corsa.length >= 3) trovate.push(corsa.map((x) => x.carta));
+
+      // con una matta: si prova a tappare un buco fra due pezzi di corsa.
+      // Comprende il caso che vale di più — 5-6-8 più la matta al posto
+      // del 7, cioè una scala da QUATTRO, più vicina al burraco di un
+      // tris da tre e allungabile da entrambi i capi.
+      if (usaMatte) {
+        const m = mano.find((c) => matta(c));
+        if (m) {
+          for (let i = 0; i < delSeme.length - 1; i++) {
+            for (let j = i + 1; j < delSeme.length; j++) {
+              const pezzo = delSeme.slice(i, j + 1).map((x) => x.carta);
+              if (pezzo.length < 2) continue;
+              const prova = [...pezzo, m];
+              if (prova.length >= 3 && validateMeld(prova).ok) trovate.push(prova);
             }
           }
         }
       }
     }
-  }
-  return trovate;
+  };
+
+  giro((c) => c.value);                                    // asso basso: A-2-3
+  giro((c) => (c.value === 1 ? 14 : c.value));             // asso alto: Q-K-A
+
+  // Lo stesso gruppo di carte esce da entrambi i giri quando l'asso non
+  // c'entra (una scala 5-6-7 non cambia): si tengono le combinazioni
+  // distinte confrontando gli id.
+  const viste = new Set();
+  return trovate.filter((s) => {
+    const firma = s.map((c) => c.id).sort().join(',');
+    if (viste.has(firma)) return false;
+    viste.add(firma);
+    return true;
+  });
 }
 
-// Un giocatore medio non brucia una matta per un tris da tre carte: la
-// tiene per allungare un gioco. La spende quando ne ha due, o quando la
-// mano si sta svuotando e tenerla in mano costerebbe punti.
-function convieneUsareMatta(mano, tallone) {
+// Queste carte si legano a un gioco già in tavola? Si costruisce
+// l'insieme risultante e si chiede alla REGOLA VERA se sta in piedi: è
+// l'unico modo affidabile, perché non è un'ipotesi nostra su come
+// funziona il gioco, è il gioco stesso che risponde.
+function siLegaInsieme(gioco, carte) {
+  const insieme = gioco.cards.concat(carte);
+  const esito = gioco.type === 'group' ? isValidGroup(insieme) : isValidSequence(insieme);
+  return !!(esito && esito.ok);
+}
+
+// COSA SI PUÒ ATTACCARE A UN GIOCO, PRENDENDO PIÙ CARTE INSIEME.
+//
+// Provando una carta per volta si perde il caso in cui ne servono DUE per
+// legarsi: con 5-6-7 di picche in tavola e 8-9 in mano, l'8 da solo si
+// lega e va bene — ma con 5-6-7 in tavola e 9-10 in mano non si lega
+// niente, mentre offrendo 8-9-10... nemmeno, l'8 non c'è. Il caso che si
+// perdeva davvero è quello in cui il gioco le vuole entrambe per restare
+// valido. Qui si offrono gruppi di carte contigue, dai più numerosi ai
+// più piccoli — i più numerosi valgono di più perché avvicinano il
+// burraco — e si tiene il primo che il gioco accetta.
+function cercaAggancioMultiplo(gioco, mano) {
+  const candidate = mano.filter((c) => !matta(c));
+  if (candidate.length < 2) return null;
+
+  // Per le scale hanno senso le carte dello stesso seme del gioco, per i
+  // tris quelle dello stesso valore: si restringe il campo, altrimenti le
+  // combinazioni da provare esplodono.
+  const utili = gioco.type === 'sequence'
+    ? candidate.filter((c) => c.suit === gioco.suit).sort((a, b) => a.value - b.value)
+    : candidate.filter((c) => c.value === gioco.value);
+  if (utili.length < 2) return null;
+
+  for (let quante = Math.min(4, utili.length); quante >= 2; quante--) {
+    for (let i = 0; i + quante <= utili.length; i++) {
+      const fetta = utili.slice(i, i + quante);
+      if (siLegaInsieme(gioco, fetta)) return fetta;
+    }
+  }
+  return null;
+}
+
+// QUANDO BRUCIARE UNA MATTA.
+// Una matta sprecata in un tris da tre carte non serve a niente: meglio
+// tenerla per allungare un gioco verso il burraco. Si spende quando ce
+// n'è una di scorta, quando la fine si avvicina, o quando serve a
+// svuotare la mano per prendere il pozzetto — che è il momento in cui
+// vale più di qualunque punto.
+function convieneUsareMatta(mano, tallone, pozzettoTaken) {
   if (mano.filter(matta).length >= 2) return true;
   if (tallone.length < 15) return true;
-  if (mano.length <= 5) return true;
+  if (!pozzettoTaken && mano.length <= 4) return true;
   return false;
 }
 
-// --- scelta dello scarto ---------------------------------------------
+// Quante carte resterebbero in mano dopo aver calato queste, e se quella
+// posizione è ammessa dalle regole. Serve a non incastrarsi da soli.
+function calataAmmessa(giocatore, carte, manoIpotetica) {
+  const mano = manoIpotetica || giocatore.hand;
+  const ids = new Set(carte.map((c) => c.id));
+  const resto = mano.filter((c) => !ids.has(c.id));
 
-// Scarta la carta che serve di meno: mai una matta, e fra le altre quella
-// che non è agganciata a niente. A parità, la più cara — così non resta
-// in mano a fine partita. È il ragionamento di un giocatore discreto:
-// niente calcoli su cosa serve all'avversario.
-function scegliScarto(mano) {
-  const candidate = mano.filter((c) => !matta(c));
-  if (candidate.length === 0) return mano[0];
+  // Restare a mani vuote va bene solo se serve a prendere il pozzetto:
+  // con il pozzetto già preso ci si blocca, perché non resta niente da
+  // scartare per chiudere il turno.
+  if (resto.length === 0) return !giocatore.pozzettoTaken;
 
-  const punteggio = (c) => {
-    let utile = 0;
-    for (const altra of mano) {
-      if (altra === c) continue;
-      if (!matta(altra) && altra.value === c.value) utile += 3;                       // coppia verso un tris
-      if (!matta(altra) && altra.suit === c.suit && Math.abs(altra.value - c.value) === 1) utile += 3; // vicina di scala
-      if (!matta(altra) && altra.suit === c.suit && Math.abs(altra.value - c.value) === 2) utile += 1; // buco colmabile
+  // Con una carta sola in mano, scartarla significa chiudere: si può solo
+  // col pozzetto già preso E un gioco da 5+ carte in tavola (in questo
+  // gioco la chiusura vuole 5 carte, non le 7 del burraco classico).
+  if (resto.length === 1 && giocatore.pozzettoTaken) {
+    if (!giocatore.melds.some((m) => m.cards.length >= 5)) return false;
+  }
+  return true;
+}
+
+// --- PESCARE DAL MAZZO O RACCOGLIERE IL MONTE? ------------------------
+//
+// È la decisione che distingue chi sa giocare, ed è quella che questo bot
+// sbagliava sempre: la vecchia regola raccoglieva solo con un monte da
+// 4 carte o meno E una carta utile subito. In una partita a due il monte
+// sta quasi sempre fra 1 e 3 carte, quindi la condizione era quasi mai
+// vera — il bot non raccoglieva praticamente mai.
+//
+// E la conseguenza non era solo quella: senza raccogliere, la mano non
+// cresce mai oltre le carte pescate una per turno. Con la mano piccola
+// non si formano combinazioni, quindi non cala; non calando non ha giochi
+// in tavola, e senza giochi in tavola non ha niente a cui agganciare.
+// "Non raccoglie", "cala poco" e "non aggancia" erano lo stesso difetto
+// visto da tre lati.
+//
+// SI CONTA LA SPAZZATURA, NON LE CARTE.
+// Il numero che conta non è quanto è grosso il monte: è quante delle sue
+// carte non servono a niente. Quelle restano in mano, pesano a fine mano
+// e soprattutto impediscono di svuotarla. Un monte da otto carte con sei
+// utili è un affare; uno da tre con zero utili è un danno, anche se è
+// piccolo.
+//
+// E il prezzo della spazzatura cambia col momento della partita:
+//   PRIMA del pozzetto è veleno — al pozzetto ci si arriva svuotando la
+//   mano, e ogni carta inutile è un mattone in più da smaltire;
+//   DOPO il pozzetto si può accumulare, perché l'obiettivo diventa fare
+//   danno e punti. Ma non all'infinito: la mano va comunque svuotata.
+function convieneRaccogliere(state, playerIndex) {
+  const io = state.players[playerIndex];
+  const monte = state.scarti;
+  if (!monte.length) return false;
+  const mano = io.hand;
+
+  // Quanto è severo il giudizio dipende da quanto costa sbagliare: con un
+  // monte piccolo la spazzatura che ti resta è poca e si può speculare su
+  // una coppia; con un monte grosso si pretende di più.
+  const soglia = monte.length <= 4 ? 1 : 2;
+
+  let utili = 0;
+  for (const c of monte) {
+    if (matta(c)) { utili++; continue; }
+    if (io.melds.some((m) => siLegaInsieme(m, [c]))) { utili++; continue; }
+    const simili = mano.filter((h) => !matta(h) && h.value === c.value).length;
+    if (simili >= soglia) { utili++; continue; }
+    const vicine = mano.filter((h) => !matta(h) && h.suit === c.suit
+      && Math.abs(h.value - c.value) <= 2 && h.value !== c.value).length;
+    if (vicine >= soglia) utili++;
+  }
+
+  // IL MONTE DA UNA CARTA SOLA — e il giro infinito che ci si nasconde.
+  // Costa poco prenderla, ma se poi non la si può giocare la si ributta
+  // identica, e l'avversario fa lo stesso: nelle prove del progetto
+  // d'origine due computer si sono passati la stessa carta per trecento
+  // turni, col tallone fermo. Quindi non basta che sia "utile": deve
+  // essere GIOCABILE SUBITO, e lo si chiede alla stessa regola che decide
+  // le calate — perché il caso che manda in tondo è proprio quello in cui
+  // quella regola dice di no.
+  if (monte.length === 1) {
+    const c = monte[0];
+    if (matta(c)) return true;
+    if (!io.melds.some((m) => siLegaInsieme(m, [c]))) return false;
+    return calataAmmessa(io, [c], mano.concat([c]));
+  }
+
+  // Verso la fine un monte grosso diventa un peso: le carte inutili non
+  // si smaltiscono più.
+  if (state.tallone.length < 10 && monte.length > 4) return false;
+
+  // Con il pozzetto preso e il gioco che serve a chiudere già in tavola,
+  // l'obiettivo è chiudere, non accumulare.
+  if (io.pozzettoTaken && io.melds.some((m) => m.cards.length >= 5) && monte.length > 3) return false;
+
+  const spazzatura = monte.length - utili;
+  const manoDopo = mano.length + monte.length;
+
+  if (!io.pozzettoTaken) {
+    // L'obiettivo è SVUOTARE: una mano da più di quindici carte non si
+    // svuota in tempo, e il pozzetto resta lì.
+    if (manoDopo > 15) return false;
+    return utili >= 1 && spazzatura <= 2;
+  }
+
+  // Pozzetto in mano: si può crescere, ma da più di venti carte non si
+  // chiude più.
+  if (manoDopo > 20) return false;
+  return utili >= 1 && spazzatura <= 5;
+}
+
+// --- COSA SCARTARE ----------------------------------------------------
+//
+// Tre spinte contrarie: non disfare le proprie combinazioni, non buttare
+// una matta, e liberarsi delle carte care prima che diventino penalità.
+// Torna la lista INTERA ordinata dalla più scartabile alla meno, non una
+// carta sola: se il motore rifiuta la prima si prova la seconda, senza
+// dover indovinare due volte.
+function ordineScarto(state, playerIndex) {
+  const mano = state.players[playerIndex].hand;
+  if (!mano.length) return [];
+  // A tallone quasi finito le carte care diventano il problema principale:
+  // restano in mano e si pagano. Prima di allora contano molto meno delle
+  // combinazioni che si stanno costruendo.
+  const finePartita = state.tallone.length <= 3;
+
+  const valutate = mano.map((c) => {
+    let costo = 0;
+    if (matta(c)) costo += 1000;                    // una matta non si scarta
+
+    const coppia = mano.filter((h) => h !== c && !matta(h) && h.value === c.value).length;
+    const vicine = mano.filter((h) => h !== c && !matta(h) && h.suit === c.suit
+      && Math.abs(h.value - c.value) <= 2 && h.value !== c.value).length;
+    costo += coppia * 26 + vicine * 14;
+
+    costo -= cardPointValue(c) * (finePartita ? 3.0 : 0.7);
+    return { c, costo };
+  });
+  valutate.sort((a, b) => a.costo - b.costo);
+  return valutate.map((v) => v.c);
+}
+
+// --- L'ANTISTALLO -----------------------------------------------------
+//
+// Una mano di burraco finisce in due modi soltanto: qualcuno chiude,
+// oppure il tallone si esaurisce. Raccogliere il monte NON consuma
+// tallone — quindi due giocatori che raccolgono in continuazione possono
+// restare al tavolo per sempre. Non è un'ipotesi: nel progetto d'origine
+// è successo, col tallone fermo per trecento turni. Contro una persona è
+// anche peggio che fra due computer, perché chi guarda non capisce cosa
+// sta succedendo: vede solo una partita che non finisce mai.
+//
+// La regola è quindi grezza e non discutibile: se il tallone non cala da
+// un po', si PESCA, qualunque cosa suggerisca la strategia. Costa qualche
+// punto in casi rari e garantisce che ogni mano finisca. Le euristiche si
+// possono raffinare all'infinito, la terminazione no.
+//
+// Il conto sta sullo STATO della partita, non in una variabile di questo
+// file: due partite aperte insieme (succede nei test) avrebbero condiviso
+// lo stesso contatore e si sarebbero disturbate a vicenda.
+const TURNI_SENZA_PESCARE = 6;
+
+function aggiornaAntistallo(state) {
+  const visto = state._botTalloneVisto;
+  if (visto === undefined || state.tallone.length !== visto) {
+    state._botTalloneVisto = state.tallone.length;
+    state._botTurniFermi = 0;
+  } else {
+    state._botTurniFermi = (state._botTurniFermi || 0) + 1;
+  }
+}
+function devePescareEBasta(state) { return (state._botTurniFermi || 0) >= TURNI_SENZA_PESCARE; }
+
+// --- ABILITÀ DEGLI EROI E CARTE MAGICHE -------------------------------
+//
+// Questa parte è di Burraco Legends e basta: nel burraco da cui viene il
+// resto del cervello non esistono né eroi né magie.
+//
+// COME SCEGLIE, detto dal committente:
+//   · l'abilità la usa quando ha i punti magia per pagarla;
+//   · attacca con l'eroe più FORTE (attacco più alto, e a parità quello
+//     più in salute: uno mezzo morto rischia di cadere prima di servire);
+//   · colpisce il nemico con MENO VITA, per finirlo — un personaggio
+//     morto non attacca più, mentre uno ferito continua a picchiare;
+//   · le Carte Magiche le gioca a caso, intervallate alle abilità,
+//     finché ne ha.
+//
+// Il caso lo dà `state.rng`, la sorgente della partita, non Math.random:
+// così una partita di prova con seme fisso resta ripetibile e i test
+// possono dire cosa succederà.
+function eroiInOrdineDiForza(giocatore) {
+  return SUITS
+    .map((s) => ({ seme: s, eroe: giocatore.characters[s] }))
+    .filter((x) => x.eroe && x.eroe.pv > 0)
+    .sort((a, b) => (b.eroe.att - a.eroe.att) || (b.eroe.pv - a.eroe.pv));
+}
+
+function nemicoPiuDebole(avversario) {
+  const vivi = SUITS.filter((s) => avversario.characters[s] && avversario.characters[s].pv > 0);
+  if (!vivi.length) return null;
+  return vivi.reduce((min, s) => (avversario.characters[s].pv < avversario.characters[min].pv ? s : min), vivi[0]);
+}
+
+// Una Carta Magica a caso fra quelle ancora in mano. Il motore ne accetta
+// UNA per turno e rifiuta senza consumarla quella la cui condizione non è
+// soddisfatta ("solo quando sei in difficoltà"): quindi si prova in
+// ordine casuale finché una entra, invece di arrendersi alla prima che
+// non va — altrimenti una carta condizionata bloccherebbe tutte le altre.
+function giocaUnaMagiaACaso(state, playerIndex, nowMs) {
+  const ms = state.players[playerIndex].magic;
+  if (!ms || !ms.selection || !ms.selection.length) return null;
+  if ((ms.giocateQuestoTurno || 0) >= 1) return null;
+
+  const consumate = ms.consumate || [];
+  const disponibili = ms.selection.map((_, i) => i).filter((i) => !consumate.includes(i));
+  if (!disponibili.length) return null;
+
+  const caso = state.rng || Math.random;
+  // mescolata alla Fisher-Yates: l'ordine dei tentativi è casuale, non
+  // sempre dal primo posto — sennò la carta in prima posizione uscirebbe
+  // sempre per prima e "a caso" non sarebbe vero.
+  for (let i = disponibili.length - 1; i > 0; i--) {
+    const j = Math.floor(caso() * (i + 1));
+    [disponibili[i], disponibili[j]] = [disponibili[j], disponibili[i]];
+  }
+
+  for (const indice of disponibili) {
+    const r = giocaCartaMagica(state, playerIndex, indice, nowMs);
+    if (r.ok) return r;
+  }
+  return null;
+}
+
+// Abilità e magie, alternate: un eroe attacca, poi tocca a una Carta
+// Magica, poi il prossimo eroe. Alternarle è quello che chiede il
+// committente ed è anche quello che rende leggibile il turno a chi
+// guarda — quattro colpi tutti insieme e poi una magia sembrano due
+// turni diversi.
+function abilitaEMagie(state, playerIndex, mosse, nowMs) {
+  const io = () => state.players[playerIndex];
+  const avversario = () => state.players[playerIndex === 0 ? 1 : 0];
+  let magiaGiocata = false;
+
+  for (const { seme, eroe } of eroiInOrdineDiForza(io())) {
+    if (state.status !== 'in_progress') return true;
+
+    // Prima la magia, dalla seconda abilità in poi: così le due cose si
+    // alternano davvero invece di ammucchiarsi.
+    if (magiaGiocata === false && mosse.some((m) => m.tipo === 'abilita')) {
+      const rm = giocaUnaMagiaACaso(state, playerIndex, nowMs);
+      magiaGiocata = true;                       // provata: non si riprova ogni giro
+      if (rm) {
+        mosse.push({ tipo: 'magia', carta: rm.carta, magiaTipo: rm.tipo,
+                     danno: rm.damage || 0, colpi: rm.colpi || [],
+                     effettiAbilita: rm.esiti || [] });
+        if (rm.matchEnded) return true;
+      }
     }
-    return utile * 10 - cardPointValue(c);   // meno è utile e più è cara → si scarta prima
-  };
-  return candidate.reduce((peggiore, c) => (punteggio(c) < punteggio(peggiore) ? c : peggiore), candidate[0]);
+
+    if ((io().puntiMagia || 0) < costoAbilitaDi(eroe)) continue;
+    const bersaglio = nemicoPiuDebole(avversario());
+    if (!bersaglio) break;                        // non è rimasto nessuno da colpire
+
+    const r = usaAbilitaSpeciale(state, playerIndex, seme, bersaglio, nowMs);
+    if (r.ok) {
+      // `effettiAbilita` viaggia col resoconto della mossa perché il
+      // tavolo deve poter mostrare anche quello che NON è danno: se il
+      // bot ti abbassa le difese o ti ruba punti magia e non si vede, il
+      // colpo che arriva due turni dopo sembra arrivato dal nulla.
+      mosse.push({ tipo: 'abilita', danno: r.damage || 0, colpi: r.colpi || [],
+                   effettiAbilita: r.effettiAbilita || [],
+                   semeAttaccante: seme, semeBersaglio: bersaglio });
+      if (r.matchEnded) return true;
+    }
+  }
+
+  // Nessuna abilità è partita (punti magia a zero, eroi già usati): la
+  // Carta Magica si gioca lo stesso, non deve restare in mano solo perché
+  // non c'era niente con cui alternarla.
+  if (!magiaGiocata && state.status === 'in_progress') {
+    const rm = giocaUnaMagiaACaso(state, playerIndex, nowMs);
+    if (rm) {
+      mosse.push({ tipo: 'magia', carta: rm.carta, magiaTipo: rm.tipo,
+                   danno: rm.damage || 0, colpi: rm.colpi || [],
+                   effettiAbilita: rm.esiti || [] });
+      if (rm.matchEnded) return true;
+    }
+  }
+  return false;
 }
 
 // --- turno completo ---------------------------------------------------
 
 /**
- * Gioca un turno intero del bot: pesca, cala quello che trova, scarta.
- * Ritorna l'elenco delle mosse fatte, così il tavolo può mostrarle una
- * alla volta invece che tutte insieme.
+ * Gioca un turno intero del bot: pesca, usa abilità e magie, aggancia,
+ * cala, scarta. Ritorna l'elenco delle mosse fatte, così il tavolo può
+ * mostrarle una alla volta invece che tutte insieme.
  */
 function botGiocaTurno(state, playerIndex, nowMs = Date.now()) {
   const mosse = [];
   if (state.status !== 'in_progress' || state.currentPlayerIndex !== playerIndex) return mosse;
   const io = () => state.players[playerIndex];
 
-  // 1. PESCA — prende il monte scarti solo se è piccolo e la carta in cima
-  //    gli serve subito; altrimenti pesca dal mazzo. Un giocatore medio non
-  //    si carica venti carte in mano sperando di piazzarle.
+  // 1. PESCA — o raccoglie il monte, se ne vale la pena e se l'antistallo
+  //    non impone di pescare per far finire la mano.
+  aggiornaAntistallo(state);
   let presoMonte = false;
-  const cima = state.scarti[state.scarti.length - 1];
-  if (cima && state.scarti.length <= 4 && !matta(cima)) {
-    const conCima = [...io().hand, cima];
-    const utile = cercaTris(conCima, false).some((t) => t.includes(cima)) ||
-                  cercaScale(conCima, false).some((t) => t.includes(cima));
-    if (utile) {
-      const r = actionTakeDiscardPile(state, playerIndex, nowMs);
-      if (r.ok) { presoMonte = true; mosse.push({ tipo: 'monte', carte: state.scarti.length }); }
-    }
+  if (!devePescareEBasta(state) && convieneRaccogliere(state, playerIndex)) {
+    const r = actionTakeDiscardPile(state, playerIndex, nowMs);
+    if (r.ok) { presoMonte = true; mosse.push({ tipo: 'monte', carte: state.scarti.length }); }
   }
   if (!presoMonte) {
     const r = actionDraw(state, playerIndex, nowMs);
@@ -6212,43 +6613,38 @@ function botGiocaTurno(state, playerIndex, nowMs = Date.now()) {
     if (state.status !== 'in_progress') return mosse;   // mazzo finito: partita chiusa
   }
 
-  // 1b. ABILITÀ SPECIALI — usa quelle cariche, puntando al personaggio
-  //     avversario più debole ancora in piedi: è la scelta ovvia, quella
-  //     che farebbe chiunque, senza calcoli più fini.
-  for (const s of SUITS) {
-    const eroe = io().characters[s];
-    if (!eroe || eroe.pv <= 0 || (eroe.carica || 0) < 100 - 1e-9) continue;
-    const avv = state.players[playerIndex === 0 ? 1 : 0].characters;
-    const vivi = SUITS.filter((x) => avv[x].pv > 0);
-    if (!vivi.length) break;
-    const piuDebole = vivi.reduce((min, x) => (avv[x].pv < avv[min].pv ? x : min), vivi[0]);
-    const r = usaAbilitaSpeciale(state, playerIndex, s, piuDebole, nowMs);
-    if (r.ok) {
-      // `effettiAbilita` viaggia col resoconto della mossa perche' il
-      // tavolo deve poter mostrare anche quello che NON e' danno: se il
-      // bot ti abbassa le difese o ti ruba punti magia e non si vede,
-      // il colpo che arriva due turni dopo sembra arrivato dal nulla.
-      mosse.push({ tipo: 'abilita', danno: r.damage || 0, colpi: r.colpi || [],
-                   effettiAbilita: r.effettiAbilita || [],
-                   semeAttaccante: s, semeBersaglio: piuDebole });
-      if (r.matchEnded) return mosse;
-    }
-  }
+  // 2. ABILITÀ E CARTE MAGICHE
+  if (abilitaEMagie(state, playerIndex, mosse, nowMs)) return mosse;
 
-  // 2a. AGGANCIA — prima di aprire giochi nuovi, allunga quelli che ha già:
-  //     costa una carta sola e fa comunque danno. Un giocatore medio lo fa
-  //     sempre, è la mossa più economica che ci sia.
+  // 3. AGGANCIA — prima di aprire giochi nuovi, allunga quelli che ha già:
+  //    costa poco e fa comunque danno. Si provano prima gli agganci
+  //    MULTIPLI, che portano più carte in tavola in una volta sola, e poi
+  //    quelli a una carta.
   let agganciato = true;
   while (agganciato && state.status === 'in_progress') {
     agganciato = false;
     for (const gioco of io().melds) {
+      if (state.status !== 'in_progress') break;
+
+      const gruppo = cercaAggancioMultiplo(gioco, io().hand);
+      if (gruppo && calataAmmessa(io(), gruppo)) {
+        const r = actionAttachToMeld(state, playerIndex, gioco.id, gruppo.map((c) => c.id), nowMs);
+        if (r.ok) {
+          mosse.push({ tipo: 'aggancia', carte: gruppo.length, danno: r.damage || 0,
+                       colpi: r.colpi || [], pozzetto: !!r.pozzettoPreso });
+          agganciato = true;
+          if (r.matchEnded) return mosse;
+          continue;
+        }
+      }
+
       for (const c of io().hand.slice()) {
-        // tenersi sempre almeno due carte: una da tenere, una da scartare
-        if (io().hand.length <= 2) break;
-        if (matta(c) && !convieneUsareMatta(io().hand, state.tallone)) continue;
+        if (matta(c) && !convieneUsareMatta(io().hand, state.tallone, io().pozzettoTaken)) continue;
+        if (!calataAmmessa(io(), [c])) continue;
         const r = actionAttachToMeld(state, playerIndex, gioco.id, [c.id], nowMs);
         if (r.ok) {
-          mosse.push({ tipo: 'aggancia', carte: 1, danno: r.damage || 0, colpi: r.colpi || [], pozzetto: !!r.pozzettoPreso });
+          mosse.push({ tipo: 'aggancia', carte: 1, danno: r.damage || 0,
+                       colpi: r.colpi || [], pozzetto: !!r.pozzettoPreso });
           agganciato = true;
           if (r.matchEnded) return mosse;
         }
@@ -6256,36 +6652,23 @@ function botGiocaTurno(state, playerIndex, nowMs = Date.now()) {
     }
   }
 
-  // 2b. CALA — finché trova combinazioni valide, tenendosi sempre almeno una
-  //    carta da scartare (restare a zero senza poter chiudere blocca il turno).
+  // 4. CALA — finché trova combinazioni valide, senza mai finire in una
+  //    posizione da cui non si può più scartare.
   let ancora = true;
   while (ancora && state.status === 'in_progress') {
     ancora = false;
     const mano = io().hand;
-    const usaMatte = convieneUsareMatta(mano, state.tallone);
+    const usaMatte = convieneUsareMatta(mano, state.tallone, io().pozzettoTaken);
     const opzioni = [...cercaScale(mano, usaMatte), ...cercaTris(mano, usaMatte)]
       .filter((g) => g.length >= 3)
-      .sort((a, b) => b.length - a.length);   // prima le combinazioni più lunghe: fanno più danno
+      .sort((a, b) => b.length - a.length);   // le più lunghe prima: fanno più danno
 
     for (const gruppo of opzioni) {
-      const restanti = mano.length - gruppo.length;
-      // Dopo questa calata potrei chiudere? Serve il pozzetto già preso e un
-      // gioco da 5+ carte, contando anche quello che sto per calare.
-      const puoChiudere = io().pozzettoTaken &&
-        (gruppo.length >= 5 || io().melds.some((m) => m.cards.length >= 5));
-
-      // Trappola in cui il bot cadeva: restare con UNA carta sola. Quella
-      // carta non si può scartare (svuoterebbe la mano) se non si è in
-      // condizione di chiudere, quindi il turno non finiva più e il tavolo
-      // si bloccava. Servono almeno due carte: una da tenere, una da scartare.
-      if (restanti === 1 && !puoChiudere) continue;
-      // Svuotare del tutto la mano va bene solo se il pozzetto deve ancora
-      // arrivare (lo si prende subito) oppure se così si chiude davvero.
-      if (restanti === 0 && io().pozzettoTaken && !puoChiudere) continue;
-
+      if (!calataAmmessa(io(), gruppo)) continue;
       const r = actionLayMeld(state, playerIndex, gruppo.map((c) => c.id), nowMs);
       if (r.ok) {
-        mosse.push({ tipo: 'cala', carte: gruppo.length, danno: r.damage || 0, colpi: r.colpi || [], pozzetto: !!r.pozzettoPreso });
+        mosse.push({ tipo: 'cala', carte: gruppo.length, danno: r.damage || 0,
+                     colpi: r.colpi || [], pozzetto: !!r.pozzettoPreso });
         ancora = true;
         if (r.matchEnded) return mosse;
         break;
@@ -6293,17 +6676,12 @@ function botGiocaTurno(state, playerIndex, nowMs = Date.now()) {
     }
   }
 
-  // 3. SCARTA — chiude il turno
+  // 5. SCARTA — chiude il turno. Si scende lungo l'ordine di preferenza:
+  //    la prima carta che il motore accetta è quella che se ne va.
   if (state.status === 'in_progress' && io().hand.length > 0) {
-    const carta = scegliScarto(io().hand);
-    const r = actionDiscard(state, playerIndex, carta.id, nowMs);
-    if (r.ok) mosse.push({ tipo: 'scarta', carta, chiusura: !!r.matchEnded });
-    else {
-      // ripiego: se lo scarto scelto è illecito provo le altre carte
-      for (const c of io().hand) {
-        const r2 = actionDiscard(state, playerIndex, c.id, nowMs);
-        if (r2.ok) { mosse.push({ tipo: 'scarta', carta: c, chiusura: !!r2.matchEnded }); break; }
-      }
+    for (const carta of ordineScarto(state, playerIndex)) {
+      const r = actionDiscard(state, playerIndex, carta.id, nowMs);
+      if (r.ok) { mosse.push({ tipo: 'scarta', carta, chiusura: !!r.matchEnded }); break; }
     }
   }
   return mosse;
@@ -6312,7 +6690,7 @@ function botGiocaTurno(state, playerIndex, nowMs = Date.now()) {
 return {botGiocaTurno};
 })();
 
-const {createMatch, actionDraw, actionTakeDiscardPile, actionLayMeld, actionAttachToMeld, actionDiscard, usaAbilitaSpeciale, giocaCartaMagica, haEffetto, checkTurnTimeout, TURN_SECONDS, SECONDI_DI_STUDIO, abbandona, abilitaChiedeBersaglio} = __M_partita;
+const {createMatch, actionDraw, actionTakeDiscardPile, actionLayMeld, actionAttachToMeld, actionDiscard, usaAbilitaSpeciale, giocaCartaMagica, haEffetto, checkTurnTimeout, TURN_SECONDS, SECONDI_DI_STUDIO, abbandona, abilitaChiedeBersaglio, costoAbilitaDi} = __M_partita;
 const {makeMagicState, activateSorpresa, armTrappola, resetTurnoMagie} = __M_magic_cards;
 const {valueLabel} = __M_core_rules;
 const {botGiocaTurno} = __M_bot;
@@ -6320,7 +6698,7 @@ const {botGiocaTurno} = __M_bot;
 // ===== dati carta incorporati da cards/data e cards/i18n =====
 const DATI_CARTE = {
   i18n: {"personaggio_001": {"nome": "Fiamma Ardente", "descrizione": "Una guerriera di Cuori dal temperamento infuocato, sempre pronta al primo colpo."}, "personaggio_002": {"nome": "Regina di Brace", "descrizione": "Governa il seme di Cuori con un fuoco che non si spegne mai, nemmeno nella sconfitta."}, "personaggio_003": {"nome": "Custode di Cristallo", "descrizione": "Protegge i tesori di Quadri dietro un'armatura trasparente e incrollabile."}, "personaggio_004": {"nome": "Sovrano d'Ambra", "descrizione": "Il suo trono è scolpito nell'ambra: ogni sua mossa è calcolata e preziosa."}, "personaggio_005": {"nome": "Guardiano del Bosco", "descrizione": "Un protettore silenzioso di Fiori, radicato e paziente."}, "personaggio_006": {"nome": "Spirito della Foresta Antica", "descrizione": "La forma più rara del seme di Fiori: si dice sia vecchio quanto il mazzo stesso."}, "personaggio_007": {"nome": "Lama d'Ombra", "descrizione": "Si muove tra le Picche senza far rumore, colpendo prima di essere vista."}, "personaggio_008": {"nome": "Assassino delle Nebbie", "descrizione": "Il più letale fra i personaggi di Picche: nessuno lo vede arrivare due volte."}, "sorpresa_001": {"nome": "Fulmine Improvviso", "descrizione": "Un colpo di danno diretto, giocabile in qualsiasi momento della partita."}, "sorpresa_002": {"nome": "Furia di Battaglia", "descrizione": "Aumenta temporaneamente l'ATT del tuo personaggio: due turni di pura aggressività."}, "trappola_001": {"nome": "Insidia nell'Ombra", "descrizione": "Resta coperta finché l'avversario non pesca: allora lo costringe a scartare."}, "trappola_002": {"nome": "Specchio di Ritorsione", "descrizione": "Se subisci danno mentre è attiva, metà del danno torna a chi lo ha inflitto."}, "sorpresa_003": {"nome": "Triplice Benedizione", "descrizione": "Un solo gesto e tre doni: colpisce l'avversario, risana un tuo eroe e ti concede una carta in più alla prossima pescata."}, "trappola_003": {"nome": "Sigillo del Disperato", "descrizione": "Si può schierare solo quando i tuoi eroi sono ridotti a meno di metà. Se l'avversario osa usare un'abilità, gli blocca la calata per un turno."}, "personaggio_101": {"nome": "Papa Figo", "descrizione": "Attacco notturno: distrugge le carte trappola sul campo e infligge il 30% del danno spada"}, "personaggio_102": {"nome": "Zè l'Arara", "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"}, "personaggio_103": {"nome": "Sua Majestade o Papagaio", "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"}, "personaggio_104": {"nome": "Lorinho", "descrizione": "Beccata dell'arara: Riduce il mana dell'avversario di 1 punto. Questa carta subisce 10 punti vita di danno"}, "personaggio_105": {"nome": "Zeca il Capibara", "descrizione": "Riposo curativo: Cura tutti gli alleati di 30 hp"}, "personaggio_106": {"nome": "Chico il Mico", "descrizione": "Colpo della scimmia: Infligge il 30% di danni ad un avversario casuale"}, "personaggio_107": {"nome": "Jão il Tamanduá", "descrizione": "Tremore del suolo: Infligge il 15% di danno a tutti i nemici"}, "personaggio_108": {"nome": "Tonho il Tatu", "descrizione": "Difesa coriacea: Tutti gli alleati per 3 turni hanno difesa aumentata del 25%"}, "personaggio_109": {"nome": "Boto Felipe", "descrizione": "Getto d'acqua: Infligge 20% di danno a un avversario. Per 2 turni tutti gli avversari hanno difesa ridotta del 20%"}, "personaggio_110": {"nome": "Vitoria-Regia", "descrizione": "Fiore curativo:Cura tutti gli alleati di 50 hp"}, "personaggio_111": {"nome": "Queixada della Caipora", "descrizione": "Carica: colpisce con due cariche da 20% di danno ognuna"}, "personaggio_112": {"nome": "Cão-do-Mato", "descrizione": "Ricerca del bersaglio: Aumenta del 25% il danno di carte calate e abilità"}, "personaggio_113": {"nome": "Onça-Pintada", "descrizione": "Morso feroce: fa il 25% di danno e l avversario colpito per 2 turni ha difesa ridotta del 20%"}, "personaggio_114": {"nome": "Anaconda Gigante", "descrizione": "Stritolamento:fa 15% di danno a tutti gli avversari e riduce di 2 i punti magia dell avversario"}, "personaggio_115": {"nome": "Pisadeira", "descrizione": "Terrore: Riduce del 25% la difesa di tutti gli avversari"}, "personaggio_116": {"nome": "Corpo-Seco", "descrizione": "Corteccia:Aumenta la difesa degli alleati del 25%"}, "personaggio_117": {"nome": "Mapinguari", "descrizione": "Colpo della bestia:infligge il 40% di danno a un avversario"}, "personaggio_118": {"nome": "Curupira", "descrizione": "Attacco furtivo: Fa il 20% di danno a tutti gli avversari e aumenta del 20% la difesa degli alleati"}, "personaggio_119": {"nome": "Caipora", "descrizione": "Carica: Fa il 40% di danno a un avversario e riduce i pm avversari di 1"}, "personaggio_120": {"nome": "Iara", "descrizione": "Canto curativo: Cura tutti gli alleati del 20% e cura tutti i disturbi della difesa"}, "personaggio_121": {"nome": "Boitatá", "descrizione": "Morso di boitata: fa il 20% di danno a un nemico, d ora in poi per attivare la skill del nemico colpito servirà 1 pm in piu fino a un massimo di 7 pm"}, "personaggio_122": {"nome": "Saci-Pererê", "descrizione": "Scherzo del folletto: Aumenta l'attacco di un alleato casuale del 30% per due turni, cura un alleato casuale del 30%, aumenta la difesa di un alleato casuale del 30%"}, "personaggio_123": {"nome": "Mula Sem Cabeça", "descrizione": "Rabbia: Aumenta il suo attacco del 100% per 2 turni"}, "personaggio_124": {"nome": "Cuca", "descrizione": "Maleficio della strega:Riduce i pm avversari di 3, riduce la difesa avversaria del 30%"}, "sorpresa_101": {"nome": "Fulmine Nero", "descrizione": "Infligge 50 danni diretti"}, "sorpresa_102": {"nome": "Pozione Magica", "descrizione": "Aumenta di 2 i punti magia"}, "trappola_101": {"nome": "Specchio riflesso", "descrizione": "Si attiva quando l avversario usa una abilità che fa danno diretto. Il danno viene restituito al mittente"}, "sorpresa_103": {"nome": "Mano sacra", "descrizione": "Ti permette di pescare altre due carte dal mazzo"}, "trappola_102": {"nome": "Conversione", "descrizione": "Carta coperta che si attiva quando l avversario attiva bonus o malus della difesa. Ruba i bonus e rispedisce al mittente i malus"}},
-  personaggi: {"personaggio_001": {"id": "personaggio_001", "fuoriCommercio": true, "seme": "♥", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_002": {"id": "personaggio_002", "fuoriCommercio": true, "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_003": {"id": "personaggio_003", "fuoriCommercio": true, "seme": "♦", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_004": {"id": "personaggio_004", "fuoriCommercio": true, "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_005": {"id": "personaggio_005", "fuoriCommercio": true, "seme": "♣", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_006": {"id": "personaggio_006", "fuoriCommercio": true, "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "difesa": 1.18, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_007": {"id": "personaggio_007", "fuoriCommercio": true, "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "difesa": 1.08, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_008": {"id": "personaggio_008", "fuoriCommercio": true, "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_101": {"id": "personaggio_101", "seme": "♦", "rarita": 5, "vita": 140, "att": 180, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "distruggi_trappole"}, {"effect": "danno_da_attacco", "parametro": "30", "target": "avversario"}]}}, "personaggio_102": {"id": "personaggio_102", "seme": "♥", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, "personaggio_103": {"id": "personaggio_103", "seme": "♦", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, "personaggio_104": {"id": "personaggio_104", "seme": "♠", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, "personaggio_105": {"id": "personaggio_105", "seme": "♣", "rarita": 3, "vita": 130, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "cura_diretta", "parametro": "30", "target": "tutti_alleati"}]}}, "personaggio_106": {"id": "personaggio_106", "seme": "♥", "rarita": 3, "vita": 90, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "danno_da_attacco", "parametro": "30", "target": "avversario"}]}}, "personaggio_107": {"id": "personaggio_107", "seme": "♦", "rarita": 3, "vita": 80, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "15", "target": "tutti_avversari"}]}}, "personaggio_108": {"id": "personaggio_108", "seme": "♠", "rarita": 3, "vita": 120, "att": 85, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "boost_difesa", "parametro": "25", "target": "tutti_alleati", "durata_turni": 3}]}}, "personaggio_109": {"id": "personaggio_109", "seme": "♣", "rarita": 3, "vita": 110, "att": 100, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}, {"effect": "riduci_difesa", "parametro": "20", "target": "tutti_avversari", "durata_turni": 2}]}}, "personaggio_110": {"id": "personaggio_110", "seme": "♥", "rarita": 4, "vita": 160, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "cura_diretta", "parametro": "50", "target": "tutti_alleati"}]}}, "personaggio_111": {"id": "personaggio_111", "seme": "♦", "rarita": 4, "vita": 120, "att": 140, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}, {"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}], "_nota": "Il foglio dice \"due cariche da 20% ognuna\" senza dire se sullo stesso nemico: qui sono due colpi indipendenti, quindi possono finire su due nemici diversi."}}, "personaggio_112": {"id": "personaggio_112", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_danno", "parametro": "25", "target": "se_stesso", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, "personaggio_113": {"id": "personaggio_113", "seme": "♣", "rarita": 4, "vita": 120, "att": 140, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "danno_da_attacco", "parametro": "25", "target": "avversario"}, {"effect": "riduci_difesa", "parametro": "20", "target": "bersaglio_colpito", "durata_turni": 2}]}}, "personaggio_114": {"id": "personaggio_114", "seme": "♥", "rarita": 4, "vita": 130, "att": 130, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "15", "target": "tutti_avversari"}, {"effect": "riduci_punti_magia", "parametro": "2", "target": "avversario"}]}}, "personaggio_115": {"id": "personaggio_115", "seme": "♦", "rarita": 4, "vita": 150, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "riduci_difesa", "parametro": "25", "target": "tutti_avversari", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, "personaggio_116": {"id": "personaggio_116", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "boost_difesa", "parametro": "25", "target": "tutti_alleati", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, "personaggio_117": {"id": "personaggio_117", "seme": "♣", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 6, "effetti": [{"effect": "danno_da_attacco", "parametro": "40", "target": "avversario"}]}}, "personaggio_118": {"id": "personaggio_118", "seme": "♠", "rarita": 5, "vita": 150, "att": 170, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "tutti_avversari"}, {"effect": "boost_difesa", "parametro": "20", "target": "tutti_alleati", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni duri il bonus di difesa: presa la durata predefinita."}}, "personaggio_119": {"id": "personaggio_119", "seme": "♣", "rarita": 5, "vita": 145, "att": 175, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "40", "target": "avversario"}, {"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}]}}, "personaggio_120": {"id": "personaggio_120", "seme": "♥", "rarita": 5, "vita": 170, "att": 150, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "cura_percentuale", "parametro": "20", "target": "tutti_alleati"}, {"effect": "pulisci_malus_difesa", "target": "tutti_alleati"}]}}, "personaggio_121": {"id": "personaggio_121", "seme": "♣", "rarita": 5, "vita": 130, "att": 180, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}, {"effect": "costo_abilita_extra", "parametro": "1", "target": "bersaglio_colpito"}]}}, "personaggio_122": {"id": "personaggio_122", "seme": "♥", "rarita": 5, "vita": 160, "att": 160, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_att_percentuale", "parametro": "30", "target": "alleato_casuale", "durata_turni": 2}, {"effect": "cura_percentuale", "parametro": "30", "target": "alleato_casuale"}, {"effect": "boost_difesa", "parametro": "30", "target": "alleato_casuale", "durata_turni": 2}]}}, "personaggio_123": {"id": "personaggio_123", "seme": "♦", "rarita": 5, "vita": 140, "att": 190, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_att_percentuale", "parametro": "100", "target": "se_stesso", "durata_turni": 2}]}}, "personaggio_124": {"id": "personaggio_124", "seme": "♠", "rarita": 5, "vita": 160, "att": 160, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "riduci_punti_magia", "parametro": "3", "target": "avversario"}, {"effect": "riduci_difesa", "parametro": "30", "target": "tutti_avversari", "durata_turni": 2}], "_nota": "Il foglio dice \"la difesa avversaria\" senza dire se uno o tutti: preso \"tutti gli avversari\"."}}},
+  personaggi: {"personaggio_001": {"id": "personaggio_001", "fuoriCommercio": true, "seme": "♥", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_002": {"id": "personaggio_002", "fuoriCommercio": true, "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_003": {"id": "personaggio_003", "fuoriCommercio": true, "seme": "♦", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_004": {"id": "personaggio_004", "fuoriCommercio": true, "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_005": {"id": "personaggio_005", "fuoriCommercio": true, "seme": "♣", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_006": {"id": "personaggio_006", "fuoriCommercio": true, "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "difesa": 1.18, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_007": {"id": "personaggio_007", "fuoriCommercio": true, "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "difesa": 1.08, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_008": {"id": "personaggio_008", "fuoriCommercio": true, "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, "personaggio_101": {"id": "personaggio_101", "seme": "♦", "rarita": 5, "vita": 140, "att": 180, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "distruggi_trappole"}, {"effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico"}]}}, "personaggio_102": {"id": "personaggio_102", "seme": "♥", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, "personaggio_103": {"id": "personaggio_103", "seme": "♦", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, "personaggio_104": {"id": "personaggio_104", "seme": "♠", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, "personaggio_105": {"id": "personaggio_105", "seme": "♣", "rarita": 3, "vita": 130, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "cura_diretta", "parametro": "30", "target": "tutti_alleati"}]}}, "personaggio_106": {"id": "personaggio_106", "seme": "♥", "rarita": 3, "vita": 90, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "danno_da_attacco", "parametro": "30", "target": "avversario"}]}}, "personaggio_107": {"id": "personaggio_107", "seme": "♦", "rarita": 3, "vita": 80, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "15", "target": "tutti_avversari"}]}}, "personaggio_108": {"id": "personaggio_108", "seme": "♠", "rarita": 3, "vita": 120, "att": 85, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "boost_difesa", "parametro": "25", "target": "tutti_alleati", "durata_turni": 3}]}}, "personaggio_109": {"id": "personaggio_109", "seme": "♣", "rarita": 3, "vita": 110, "att": 100, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "personaggio_specifico"}, {"effect": "riduci_difesa", "parametro": "20", "target": "tutti_avversari", "durata_turni": 2}]}}, "personaggio_110": {"id": "personaggio_110", "seme": "♥", "rarita": 4, "vita": 160, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "cura_diretta", "parametro": "50", "target": "tutti_alleati"}]}}, "personaggio_111": {"id": "personaggio_111", "seme": "♦", "rarita": 4, "vita": 120, "att": 140, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}, {"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}], "_nota": "Il foglio dice \"due cariche da 20% ognuna\" senza dire se sullo stesso nemico: qui sono due colpi indipendenti, quindi possono finire su due nemici diversi."}}, "personaggio_112": {"id": "personaggio_112", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_danno", "parametro": "25", "target": "se_stesso", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, "personaggio_113": {"id": "personaggio_113", "seme": "♣", "rarita": 4, "vita": 120, "att": 140, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "danno_da_attacco", "parametro": "25", "target": "personaggio_specifico"}, {"effect": "riduci_difesa", "parametro": "20", "target": "bersaglio_colpito", "durata_turni": 2}]}}, "personaggio_114": {"id": "personaggio_114", "seme": "♥", "rarita": 4, "vita": 130, "att": 130, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "15", "target": "tutti_avversari"}, {"effect": "riduci_punti_magia", "parametro": "2", "target": "avversario"}]}}, "personaggio_115": {"id": "personaggio_115", "seme": "♦", "rarita": 4, "vita": 150, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "riduci_difesa", "parametro": "25", "target": "tutti_avversari", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, "personaggio_116": {"id": "personaggio_116", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "boost_difesa", "parametro": "25", "target": "tutti_alleati", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, "personaggio_117": {"id": "personaggio_117", "seme": "♣", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 6, "effetti": [{"effect": "danno_da_attacco", "parametro": "40", "target": "personaggio_specifico"}]}}, "personaggio_118": {"id": "personaggio_118", "seme": "♠", "rarita": 5, "vita": 150, "att": 170, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "tutti_avversari"}, {"effect": "boost_difesa", "parametro": "20", "target": "tutti_alleati", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni duri il bonus di difesa: presa la durata predefinita."}}, "personaggio_119": {"id": "personaggio_119", "seme": "♣", "rarita": 5, "vita": 145, "att": 175, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "40", "target": "personaggio_specifico"}, {"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}]}}, "personaggio_120": {"id": "personaggio_120", "seme": "♥", "rarita": 5, "vita": 170, "att": 150, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "cura_percentuale", "parametro": "20", "target": "tutti_alleati"}, {"effect": "pulisci_malus_difesa", "target": "tutti_alleati"}]}}, "personaggio_121": {"id": "personaggio_121", "seme": "♣", "rarita": 5, "vita": 130, "att": 180, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "personaggio_specifico"}, {"effect": "costo_abilita_extra", "parametro": "1", "target": "bersaglio_colpito"}]}}, "personaggio_122": {"id": "personaggio_122", "seme": "♥", "rarita": 5, "vita": 160, "att": 160, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_att_percentuale", "parametro": "30", "target": "alleato_casuale", "durata_turni": 2}, {"effect": "cura_percentuale", "parametro": "30", "target": "alleato_casuale"}, {"effect": "boost_difesa", "parametro": "30", "target": "alleato_casuale", "durata_turni": 2}]}}, "personaggio_123": {"id": "personaggio_123", "seme": "♦", "rarita": 5, "vita": 140, "att": 190, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_att_percentuale", "parametro": "100", "target": "se_stesso", "durata_turni": 2}]}}, "personaggio_124": {"id": "personaggio_124", "seme": "♠", "rarita": 5, "vita": 160, "att": 160, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "riduci_punti_magia", "parametro": "3", "target": "avversario"}, {"effect": "riduci_difesa", "parametro": "30", "target": "tutti_avversari", "durata_turni": 2}], "_nota": "Il foglio dice \"la difesa avversaria\" senza dire se uno o tutti: preso \"tutti gli avversari\"."}}},
   magiche: {"sorpresa_001": {"id": "sorpresa_001", "fuoriCommercio": true, "tipo": "sorpresa", "rarita": 3, "effect": "danno_diretto", "parametro": "30", "trigger": "on_activate", "target": "avversario", "durata_turni": 0}, "sorpresa_002": {"id": "sorpresa_002", "fuoriCommercio": true, "tipo": "sorpresa", "rarita": 4, "effect": "boost_att", "parametro": "20", "trigger": "on_activate", "target": "se_stesso", "durata_turni": 2}, "sorpresa_003": {"id": "sorpresa_003", "fuoriCommercio": true, "tipo": "sorpresa", "rarita": 4, "trigger": "on_activate", "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.", "effetti": [{"effect": "danno_diretto", "parametro": "25", "target": "avversario", "durata_turni": 0}, {"effect": "cura_diretta", "parametro": "15", "target": "se_stesso", "durata_turni": 0}, {"effect": "pesca_extra", "parametro": "1", "target": "se_stesso", "durata_turni": 1}]}, "sorpresa_101": {"id": "sorpresa_101", "tipo": "sorpresa", "rarita": 3, "trigger": "on_activate", "effetti": [{"effect": "danno_diretto", "parametro": "50", "target": "avversario"}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}, "sorpresa_102": {"id": "sorpresa_102", "tipo": "sorpresa", "rarita": 3, "trigger": "on_activate", "effetti": [{"effect": "aumenta_punti_magia", "parametro": "2", "target": "se_stesso"}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}, "sorpresa_103": {"id": "sorpresa_103", "tipo": "sorpresa", "rarita": 4, "trigger": "on_activate", "effetti": [{"effect": "pesca_extra", "parametro": "2", "target": "se_stesso", "durata_turni": 1}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}, "trappola_001": {"id": "trappola_001", "fuoriCommercio": true, "tipo": "trappola", "rarita": 3, "effect": "scarto_forzato", "parametro": "1", "trigger": "avversario_pesca", "target": "avversario", "durata_turni": 0}, "trappola_002": {"id": "trappola_002", "fuoriCommercio": true, "tipo": "trappola", "rarita": 5, "effect": "riflette_danno", "parametro": "50", "trigger": "subisco_danno", "target": "se_stesso", "durata_turni": 0}, "trappola_003": {"id": "trappola_003", "fuoriCommercio": true, "tipo": "trappola", "rarita": 5, "trigger": "avversario_usa_abilita", "target": "avversario", "effect": "skip_fase_attacco", "parametro": "", "durata_turni": 1, "_nota": "ESEMPIO DI CARTA CON CONDIZIONE: si schiera solo quando sei in difficoltà. Scatta quando l'avversario usa l'abilità di un eroe.", "condizione": {"tipo": "pv_totali_sotto", "parametro": 50, "chi": "io"}}, "trappola_101": {"id": "trappola_101", "tipo": "trappola", "rarita": 5, "trigger": "avversario_usa_abilita", "effetti": [{"effect": "riflette_danno", "parametro": "100", "target": "se_stesso"}], "durata_turni": 0, "_nota": "Rimanda il 100% del danno: la carta dice \"il danno viene restituito\", non una parte. Rarita' provvisoria."}, "trappola_102": {"id": "trappola_102", "tipo": "trappola", "rarita": 4, "trigger": "avversario_tocca_difesa", "effetti": [{"effect": "converti_difesa", "target": "se_stesso"}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}}
 };
 
@@ -6455,12 +6833,13 @@ function mazzoScelto() {
     personaggi.push(id);
   }
 
+  // Le Carte Magiche sono facoltative: da zero a tre, bastano gli eroi.
   const magicheScelte = salvato.carteMagiche;
-  if (!Array.isArray(magicheScelte) || magicheScelte.length !== 3) return perche('servono 3 Carte Magiche');
+  if (!Array.isArray(magicheScelte) || magicheScelte.length > 3) return perche('massimo 3 Carte Magiche');
   for (const id of magicheScelte) {
     if (typeof id !== 'string' || !dati.magiche[id]) return perche('una Carta Magica non esiste piu\'');
   }
-  if (new Set(magicheScelte).size !== 3) return perche('la stessa Carta Magica e\' ripetuta');
+  if (new Set(magicheScelte).size !== magicheScelte.length) return perche('la stessa Carta Magica e\' ripetuta');
 
   return { personaggi, carteMagiche: magicheScelte };
 }
@@ -6540,10 +6919,14 @@ function squadra(ids) {
 function stelle(n) { return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n)); }
 
 // quanti punti magia costa l'abilità speciale di questo eroe
+// Il costo vero lo calcola il motore (costoAbilitaDi), non questa
+// funzione: deve sommare il sovrapprezzo del morso di Boitatá
+// (costoExtra) e fermarsi al tetto di 7 PM. Prima qui c'era una copia
+// che leggeva solo il costo base — il bottone "USA ABILITÀ" mostrava
+// sempre lo stesso numero anche dopo il morso, come se non fosse
+// successo niente.
 function costoAbilita(ch) {
-  const a = ch && ch._ability;
-  const c = a && (a.costo ?? a.puntiMagia);
-  return (c === undefined || c === null) ? 4 : Number(c);
+  return costoAbilitaDi(ch);
 }
 
 // ------------------------------------------------------------
@@ -7831,6 +8214,10 @@ function turnoBot() {
     if (m.tipo === 'cala')     avviso('L\'avversario cala ' + m.carte + ' carte' + (m.pozzetto ? ' e prende il pozzetto!' : '') + '.');
     if (m.tipo === 'aggancia') avviso('L\'avversario aggancia una carta a un suo gioco.');
     if (m.tipo === 'abilita')  avviso('L\'avversario usa l\'abilità speciale di ' + testo(S.players[1].characters[m.semeAttaccante].cardId).nome + '!');
+    // Una Carta Magica dell'avversario si deve capire: le Trappole
+    // soprattutto, che restano sul campo e scatteranno dopo — vederla
+    // arrivare adesso è l'unico avviso che si ha.
+    if (m.tipo === 'magia')    avviso('L\'avversario gioca una Carta Magica: ' + testo(m.carta.id).nome + (m.magiaTipo === 'trappola' ? ' (Trappola)' : '') + '!');
     if (m.tipo === 'scarta')   avviso('L\'avversario scarta.');
 
     // PRIMA si ridisegna il tavolo, POI parte l'animazione del colpo.
@@ -8707,12 +9094,12 @@ const ui = {
       avviso('Punti magia insufficienti: servono ' + costo + ', ne hai ' + S.players[0].puntiMagia + '.');
       return;
     }
-    // QUASI NESSUNA ABILITA' CHIEDE DI MIRARE.
-    // Nessuna carta del roster dice "a scelta": il bersaglio lo decide la
-    // carta (uno a caso, tutti, i propri...). Quindi il piu' delle volte
-    // il colpo parte subito, e il passo "tocca un nemico" — che non
-    // avrebbe niente da chiedere — si salta del tutto. Chi decide se
-    // serve e' il motore, non questa pagina.
+    // LA MAGGIOR PARTE DELLE ABILITA' NON CHIEDE DI MIRARE.
+    // Per quasi tutto il roster il bersaglio lo decide la carta (uno a
+    // caso, tutti, i propri...) e il colpo parte subito. Sei carte pero'
+    // dicono "a scelta" (Papa Figo, Boto Felipe, Onca-Pintada, Mapinguari,
+    // Caipora, Boitata): per quelle serve il passo "tocca un nemico".
+    // Chi decide se serve e' il motore, non questa pagina.
     if (!abilitaChiedeBersaglio(eroe._ability)) { this.colpisci(null, seme); return; }
 
     bersaglioAttivo = seme;
@@ -8895,7 +9282,8 @@ window.__tavolo = () => (S ? JSON.parse(JSON.stringify({
     hand: p.hand, melds: p.melds, characters: p.characters,
     hasDrawnThisTurn: p.hasDrawnThisTurn, puntiMagia: p.puntiMagia,
     pozzettoTaken: p.pozzettoTaken
-  }))
+  })),
+  magiche: magie ? magie.map((m) => (m ? m.selection.map((c) => c.id) : [])) : null
 })) : null);
 window.__inRete = ONLINE;
 // I segni degli effetti si vedono per due secondi e poi spariscono: per

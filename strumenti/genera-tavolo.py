@@ -803,6 +803,19 @@ BATTLE_CSS = r'''
        di carta non serve più a nessuno. */
     .table-resources-row { position: static; top: auto; margin-bottom: 0; }
 
+    /* I MIEI GIOCHI CALATI CRESCONO DAL BASSO, non dall'alto.
+       .meld-side (di Burraco Pulito) ancora entrambe le colonne in cima
+       col contenitore: giusto per l'avversario, che sta in alto — sbagliato
+       per me, che sto in basso. All'inizio partita, con poche carte calate
+       e il campo che (giustamente) prende tutto lo spazio verticale che
+       avanza, la mia colonna restava appesa in cima e sotto si apriva un
+       vuoto enorme fino alla riga di mazzo/scarti e alla mano: sembrava
+       spazio sprecato proprio dove si gioca davvero. Ancorando la MIA
+       colonna in basso, i giochi che calo restano vicini alla mano da cui
+       arrivano, e il vuoto (quando c'è) finisce in alto, verso l'avversario
+       — dove già c'è la sua fascia a fare da cornice. */
+    .meld-side.mine { align-items: flex-end; }
+
     /* --- BARRA DEI PUNTI MAGIA ---
        Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
        a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
@@ -1335,14 +1348,10 @@ BATTLE_CSS = r'''
       text-shadow: 0 0 30px rgba(232,196,106,0.75), 0 6px 22px rgba(0,0,0,0.9);
     }
     #studio .numero.poco { color: #ff9db0; text-shadow: 0 0 30px rgba(255,120,150,0.8), 0 6px 22px rgba(0,0,0,0.9); animation: battito 1s ease-in-out infinite; }
-    #studio .dice {
-      margin-top: 6px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;
-      color: #f3e6c4; text-shadow: 0 2px 10px #000;
-    }
-    #studio .sotto {
-      margin-top: 4px; font-size: 12px; color: #cdbfa2; text-shadow: 0 2px 8px #000;
-      max-width: 340px; margin-left: auto; margin-right: auto; line-height: 1.5;
-    }
+    /* Il testo "Guarda il tavolo" e la spiegazione sotto sono spariti:
+       il riquadro sta al centro dello schermo, proprio sopra le carte
+       che dovrebbe far guardare — coprivano quello che c'era da vedere.
+       Resta solo il numero, che basta a dire "hai ancora questo tempo". */
     /* mentre si guarda, le carte dei personaggi si fanno notare */
     body.in-studio .bcard[data-seme] {
       animation: respiroStudio 2.2s ease-in-out infinite;
@@ -1532,9 +1541,6 @@ BODY = r'''
 
 <div id="studio">
   <div class="numero" id="studioNumero">30</div>
-  <div class="dice">Guarda il tavolo</div>
-  <div class="sotto">I quattro personaggi tuoi e i suoi: vita, attacco e abilità.
-    Passaci sopra per leggerli. Gli orologi partono alla fine.</div>
 </div>
 
 <div id="finePartita"><div class="box">
@@ -1640,12 +1646,13 @@ function mazzoScelto() {
     personaggi.push(id);
   }
 
+  // Le Carte Magiche sono facoltative: da zero a tre, bastano gli eroi.
   const magicheScelte = salvato.carteMagiche;
-  if (!Array.isArray(magicheScelte) || magicheScelte.length !== 3) return perche('servono 3 Carte Magiche');
+  if (!Array.isArray(magicheScelte) || magicheScelte.length > 3) return perche('massimo 3 Carte Magiche');
   for (const id of magicheScelte) {
     if (typeof id !== 'string' || !dati.magiche[id]) return perche('una Carta Magica non esiste piu\'');
   }
-  if (new Set(magicheScelte).size !== 3) return perche('la stessa Carta Magica e\' ripetuta');
+  if (new Set(magicheScelte).size !== magicheScelte.length) return perche('la stessa Carta Magica e\' ripetuta');
 
   return { personaggi, carteMagiche: magicheScelte };
 }
@@ -1725,10 +1732,14 @@ function squadra(ids) {
 function stelle(n) { return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n)); }
 
 // quanti punti magia costa l'abilità speciale di questo eroe
+// Il costo vero lo calcola il motore (costoAbilitaDi), non questa
+// funzione: deve sommare il sovrapprezzo del morso di Boitatá
+// (costoExtra) e fermarsi al tetto di 7 PM. Prima qui c'era una copia
+// che leggeva solo il costo base — il bottone "USA ABILITÀ" mostrava
+// sempre lo stesso numero anche dopo il morso, come se non fosse
+// successo niente.
 function costoAbilita(ch) {
-  const a = ch && ch._ability;
-  const c = a && (a.costo ?? a.puntiMagia);
-  return (c === undefined || c === null) ? 4 : Number(c);
+  return costoAbilitaDi(ch);
 }
 
 // ------------------------------------------------------------
@@ -3016,6 +3027,10 @@ function turnoBot() {
     if (m.tipo === 'cala')     avviso('L\'avversario cala ' + m.carte + ' carte' + (m.pozzetto ? ' e prende il pozzetto!' : '') + '.');
     if (m.tipo === 'aggancia') avviso('L\'avversario aggancia una carta a un suo gioco.');
     if (m.tipo === 'abilita')  avviso('L\'avversario usa l\'abilità speciale di ' + testo(S.players[1].characters[m.semeAttaccante].cardId).nome + '!');
+    // Una Carta Magica dell'avversario si deve capire: le Trappole
+    // soprattutto, che restano sul campo e scatteranno dopo — vederla
+    // arrivare adesso è l'unico avviso che si ha.
+    if (m.tipo === 'magia')    avviso('L\'avversario gioca una Carta Magica: ' + testo(m.carta.id).nome + (m.magiaTipo === 'trappola' ? ' (Trappola)' : '') + '!');
     if (m.tipo === 'scarta')   avviso('L\'avversario scarta.');
 
     // PRIMA si ridisegna il tavolo, POI parte l'animazione del colpo.
@@ -3892,12 +3907,12 @@ const ui = {
       avviso('Punti magia insufficienti: servono ' + costo + ', ne hai ' + S.players[0].puntiMagia + '.');
       return;
     }
-    // QUASI NESSUNA ABILITA' CHIEDE DI MIRARE.
-    // Nessuna carta del roster dice "a scelta": il bersaglio lo decide la
-    // carta (uno a caso, tutti, i propri...). Quindi il piu' delle volte
-    // il colpo parte subito, e il passo "tocca un nemico" — che non
-    // avrebbe niente da chiedere — si salta del tutto. Chi decide se
-    // serve e' il motore, non questa pagina.
+    // LA MAGGIOR PARTE DELLE ABILITA' NON CHIEDE DI MIRARE.
+    // Per quasi tutto il roster il bersaglio lo decide la carta (uno a
+    // caso, tutti, i propri...) e il colpo parte subito. Sei carte pero'
+    // dicono "a scelta" (Papa Figo, Boto Felipe, Onca-Pintada, Mapinguari,
+    // Caipora, Boitata): per quelle serve il passo "tocca un nemico".
+    // Chi decide se serve e' il motore, non questa pagina.
     if (!abilitaChiedeBersaglio(eroe._ability)) { this.colpisci(null, seme); return; }
 
     bersaglioAttivo = seme;
@@ -4080,7 +4095,8 @@ window.__tavolo = () => (S ? JSON.parse(JSON.stringify({
     hand: p.hand, melds: p.melds, characters: p.characters,
     hasDrawnThisTurn: p.hasDrawnThisTurn, puntiMagia: p.puntiMagia,
     pozzettoTaken: p.pozzettoTaken
-  }))
+  })),
+  magiche: magie ? magie.map((m) => (m ? m.selection.map((c) => c.id) : [])) : null
 })) : null);
 window.__inRete = ONLINE;
 // I segni degli effetti si vedono per due secondi e poi spariscono: per
@@ -4249,7 +4265,7 @@ PRELIEVI = [
                     'actionAttachToMeld', 'actionDiscard', 'usaAbilitaSpeciale',
                     'giocaCartaMagica', 'haEffetto', 'checkTurnTimeout',
                     'TURN_SECONDS', 'SECONDI_DI_STUDIO',
-                    'abbandona', 'abilitaChiedeBersaglio']),
+                    'abbandona', 'abilitaChiedeBersaglio', 'costoAbilitaDi']),
     ('magic-cards.js', ['makeMagicState', 'activateSorpresa', 'armTrappola', 'resetTurnoMagie']),
     ('core-rules.js', ['valueLabel']),
     ('bot.js', ['botGiocaTurno'])
