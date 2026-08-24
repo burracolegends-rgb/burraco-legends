@@ -65,10 +65,17 @@
   .picker.open { display: flex; }
   .picker-item {
     background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
-    padding: 8px 10px; cursor: pointer; font-size: 0.85rem; display: flex; justify-content: space-between;
+    padding: 8px 10px; cursor: pointer; font-size: 0.85rem;
+    display: flex; flex-direction: column; gap: 4px;
   }
   .picker-item:hover { background: var(--bg-card-hover); border-color: var(--gold); }
-  .picker-item .stats { color: var(--text-dim); }
+  .picker-item .riga1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .picker-item .con-mini { flex: 1 1 auto; min-width: 0; }
+  .picker-item .con-mini .pi-nome {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+  }
+  .picker-item .stats { color: var(--text-dim); flex: 0 0 auto; white-space: nowrap; }
+  .picker-item .pi-desc { color: var(--text-dim); font-size: 0.78rem; line-height: 1.3; }
 
   .magic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
   .magic-card {
@@ -1219,36 +1226,36 @@ const ILLUSTRAZIONI = ["personaggio_101", "personaggio_102", "personaggio_103", 
 // CARTE invece arrivano da cards/i18n, nel blocco generato qui sopra.
 const I18N = {
   it: { ui: {
-      sottotitolo: 'Scegli 4 Personaggi (uno per seme) e 3 Carte Magiche: sono quelli con cui scenderai in campo.',
+      sottotitolo: 'Scegli 4 Personaggi (uno per seme) e, se vuoi, fino a 3 Carte Magiche: sono quelli con cui scenderai in campo.',
       titoloPersonaggi: 'Personaggi', hintPersonaggi: 'Uno obbligatorio per ciascun seme.',
-      titoloMagiche: 'Carte Magiche', hintMagiche: 'Scegline esattamente 3, mix libero fra Sorpresa e Trappola.',
+      titoloMagiche: 'Carte Magiche', hintMagiche: 'Facoltative: fino a 3, anche zero, mix libero fra Sorpresa e Trappola.',
       scegli: 'Scegli...', vita: 'VITA', att: 'ATT', difesa: 'DIF',
       ordinaPer: 'Ordina per:', ordinaPunteggio: 'Punteggio (raritÃ )', ordinaNome: 'Nome',
       entraBtn: 'Conferma il mazzo', riepilogoTitolo: 'Squadra pronta',
       progresso: (p, m) => `Personaggi: ${p}/4 Â· Carte Magiche: ${m}/3`
   } },
   en: { ui: {
-      sottotitolo: 'Select 4 Characters (one per suit) and 3 Magic Cards before entering the match list.',
+      sottotitolo: 'Select 4 Characters (one per suit) and, if you want, up to 3 Magic Cards before entering the match list.',
       titoloPersonaggi: 'Characters', hintPersonaggi: 'One required for each suit.',
-      titoloMagiche: 'Magic Cards', hintMagiche: 'Pick exactly 3, any mix of Surprise and Trap.',
+      titoloMagiche: 'Magic Cards', hintMagiche: 'Optional: up to 3, even zero, any mix of Surprise and Trap.',
       scegli: 'Choose...', vita: 'HP', att: 'ATK', difesa: 'DEF',
       ordinaPer: 'Sort by:', ordinaPunteggio: 'Score (rarity)', ordinaNome: 'Name',
       entraBtn: 'Confirm this deck', riepilogoTitolo: 'Team ready',
       progresso: (p, m) => `Characters: ${p}/4 Â· Magic Cards: ${m}/3`
   } },
   es: { ui: {
-      sottotitolo: 'Selecciona 4 Personajes (uno por palo) y 3 Cartas MÃ¡gicas antes de entrar en la lista de partidas.',
+      sottotitolo: 'Selecciona 4 Personajes (uno por palo) y, si quieres, hasta 3 Cartas MÃ¡gicas antes de entrar en la lista de partidas.',
       titoloPersonaggi: 'Personajes', hintPersonaggi: 'Uno obligatorio por cada palo.',
-      titoloMagiche: 'Cartas MÃ¡gicas', hintMagiche: 'Elige exactamente 3, mezcla libre de Sorpresa y Trampa.',
+      titoloMagiche: 'Cartas MÃ¡gicas', hintMagiche: 'Opcionales: hasta 3, incluso cero, mezcla libre de Sorpresa y Trampa.',
       scegli: 'Elegir...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
       ordinaPer: 'Ordenar por:', ordinaPunteggio: 'PuntuaciÃ³n (rareza)', ordinaNome: 'Nombre',
       entraBtn: 'Confirmar la baraja', riepilogoTitolo: 'Equipo listo',
       progresso: (p, m) => `Personajes: ${p}/4 Â· Cartas MÃ¡gicas: ${m}/3`
   } },
   pt: { ui: {
-      sottotitolo: 'Selecione 4 Personagens (um por naipe) e 3 Cartas MÃ¡gicas antes de entrar na lista de partidas.',
+      sottotitolo: 'Selecione 4 Personagens (um por naipe) e, se quiser, atÃ© 3 Cartas MÃ¡gicas antes de entrar na lista de partidas.',
       titoloPersonaggi: 'Personagens', hintPersonaggi: 'Um obrigatÃ³rio para cada naipe.',
-      titoloMagiche: 'Cartas MÃ¡gicas', hintMagiche: 'Escolha exatamente 3, mistura livre de Surpresa e Armadilha.',
+      titoloMagiche: 'Cartas MÃ¡gicas', hintMagiche: 'Opcionais: atÃ© 3, atÃ© zero, mistura livre de Surpresa e Armadilha.',
       scegli: 'Escolher...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
       ordinaPer: 'Ordenar por:', ordinaPunteggio: 'PontuaÃ§Ã£o (raridade)', ordinaNome: 'Nome',
       entraBtn: 'Confirmar o baralho', riepilogoTitolo: 'Equipe pronta',
@@ -1359,7 +1366,7 @@ function renderSuits() {
       const txt = cardText(p.id);
       const item = document.createElement('div');
       item.className = 'picker-item';
-      item.innerHTML = `<span class="con-mini">${miniaturaCarta(p.id, p.seme)}<span>${txt.nome} ${'★'.repeat(p.rarita)}</span></span><span class="stats">${t('vita')} ${p.vita} · ${t('att')} ${p.att}</span>`;
+      item.innerHTML = `<div class="riga1"><span class="con-mini">${miniaturaCarta(p.id, p.seme)}<span class="pi-nome">${txt.nome} ${'★'.repeat(p.rarita)}</span></span><span class="stats">${t('vita')} ${p.vita} · ${t('att')} ${p.att}</span></div><div class="pi-desc">${txt.descrizione || ''}</div>`;
       item.onclick = (ev) => {
         ev.stopPropagation();
         state.personaggi[seme] = p;
@@ -1410,10 +1417,13 @@ function renderStaticText() {
 function renderFooter() {
   const nPers = Object.values(state.personaggi).filter(Boolean).length;
   const nMagic = state.magiche.length;
+  // Le Carte Magiche sono facoltative: bastano gli eroi per confermare.
+  // La spunta sul numero di magiche resta com'e' (si accende a 3) solo
+  // per dire "ne hai prese il massimo", non perche' serva per forza.
   document.getElementById('progressText').innerHTML = t('progresso')(nPers, nMagic)
     .replace(`${nPers}/4`, `<b class="${nPers === 4 ? 'done' : ''}">${nPers}/4</b>`)
     .replace(`${nMagic}/3`, `<b class="${nMagic === 3 ? 'done' : ''}">${nMagic}/3</b>`);
-  document.getElementById('entraBtn').disabled = !(nPers === 4 && nMagic === 3);
+  document.getElementById('entraBtn').disabled = !(nPers === 4);
 }
 
 function renderAll() {
@@ -1449,7 +1459,7 @@ const DOVE_SI_SALVA_IL_MAZZO = 'bb_mazzo';
 
 document.getElementById('entraBtn').addEventListener('click', () => {
   const nPers = Object.values(state.personaggi).filter(Boolean).length;
-  if (nPers !== 4 || state.magiche.length !== 3) return;
+  if (nPers !== 4) return;
   const selezione = {
     personaggi: Object.fromEntries(Object.entries(state.personaggi).map(([s, c]) => [s, c.id])),
     carteMagiche: state.magiche

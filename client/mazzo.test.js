@@ -85,12 +85,22 @@ check('col mazzo salvato scendono in campo QUELLI',
   'in campo: ' + JSON.stringify(eroi));
 check('e sono diversi dalla squadra predefinita',
   JSON.stringify(eroi) !== JSON.stringify(eroiPredefiniti));
-const mieMagiche = (stato.players[0].magic ? [] : []); // le magiche non escono da __tavolo
 check('il tavolo si apre lo stesso senza errori', con.guasti.length === 0,
   (con.guasti[0] || '').split('\n')[0]);
-check('l\'avversario mantiene la sua squadra', 
+check('l\'avversario mantiene la sua squadra',
   Object.values(stato.players[1].characters).every((c) => !!c.cardId));
 con.dom.window.close();
+
+// ---------- 2b. le Carte Magiche sono facoltative: bastano gli eroi ----------
+for (const carteMagiche of [[], ['sorpresa_002'], ['sorpresa_002', 'trappola_001']]) {
+  const mazzo = { personaggi: MIO.personaggi, carteMagiche };
+  const r = await tavoloCon(mazzo);
+  const s = r.w.__tavolo();
+  check('un mazzo con ' + carteMagiche.length + ' Carte Magiche viene accettato com\'e\'',
+    !!s && r.guasti.length === 0 && JSON.stringify(s.magiche[0]) === JSON.stringify(carteMagiche),
+    'magiche in campo: ' + JSON.stringify(s && s.magiche && s.magiche[0]));
+  r.dom.window.close();
+}
 
 // ---------- 3. mazzi rotti: si torna al predefinito, dicendolo ----------
 const ROTTI = [
@@ -98,7 +108,7 @@ const ROTTI = [
   ['mancano i personaggi', { carteMagiche: ['sorpresa_001', 'trappola_001', 'trappola_002'] }],
   ['un eroe che non esiste', { personaggi: { '♥': 'personaggio_999', '♦': 'personaggio_004', '♣': 'personaggio_006', '♠': 'personaggio_008' }, carteMagiche: ['sorpresa_002', 'trappola_001', 'trappola_002'] }],
   ['un seme scoperto', { personaggi: { '♥': 'personaggio_002', '♦': 'personaggio_004', '♣': 'personaggio_006' }, carteMagiche: ['sorpresa_002', 'trappola_001', 'trappola_002'] }],
-  ['due Carte Magiche invece di tre', { personaggi: MIO.personaggi, carteMagiche: ['sorpresa_002', 'trappola_001'] }],
+  ['sette Carte Magiche invece che al massimo tre', { personaggi: MIO.personaggi, carteMagiche: ['sorpresa_002', 'trappola_001', 'trappola_002', 'sorpresa_002', 'trappola_001', 'trappola_002', 'sorpresa_002'] }],
   ['una Carta Magica inventata', { personaggi: MIO.personaggi, carteMagiche: ['sorpresa_002', 'trappola_001', 'magia_fantasma'] }],
   ['la stessa Carta Magica tre volte', { personaggi: MIO.personaggi, carteMagiche: ['trappola_001', 'trappola_001', 'trappola_001'] }],
   ['testo che non e\' JSON', '{questo non e\' json']
