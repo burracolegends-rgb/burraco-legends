@@ -48,7 +48,12 @@
   .suits-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   @media (max-width: 900px) { .suits-row { grid-template-columns: repeat(2, 1fr); } }
 
-  .suit-col { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .suit-col {
+    background:
+      linear-gradient(168deg, rgba(15,10,7,0.55), rgba(15,10,7,0.72)),
+      url('immagini/decorazioni/pannello-premio.webp') center / cover no-repeat;
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+  }
   .suit-col-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; }
   .suit-symbol { font-size: 1.3rem; }
   .suit-symbol.red { color: var(--red); }
@@ -59,7 +64,12 @@
     cursor: pointer; color: var(--text-dim); transition: 0.15s;
   }
   .slot:hover { border-color: var(--gold); color: var(--text); }
-  .slot.filled { border-style: solid; border-color: var(--ok); background: var(--bg-card); color: var(--text); text-align: left; }
+  .slot.filled {
+    border-style: solid; border-color: var(--ok); color: var(--text); text-align: left;
+    background:
+      linear-gradient(168deg, rgba(15,10,7,0.45), rgba(15,10,7,0.65)),
+      url('immagini/decorazioni/pannello-premio.webp') center / cover no-repeat;
+  }
   .slot .name { font-weight: 700; margin-bottom: 2px; }
   .slot .stats { font-size: 0.8rem; color: var(--text-dim); }
   .slot .rarity { color: var(--gold); font-size: 0.85rem; margin-top: 2px; }
@@ -82,7 +92,10 @@
 
   .magic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
   .magic-card {
-    background: var(--bg-card); border: 2px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer;
+    background:
+      linear-gradient(168deg, rgba(15,10,7,0.45), rgba(15,10,7,0.65)),
+      url('immagini/decorazioni/pannello-premio.webp') center / cover no-repeat;
+    border: 2px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer;
     transition: 0.15s;
   }
   .magic-card:hover { background: var(--bg-card-hover); }
