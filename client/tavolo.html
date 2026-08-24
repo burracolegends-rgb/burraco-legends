@@ -1771,7 +1771,8 @@
         radial-gradient(ellipse 46% 42% at 96% 10%, rgba(110,140,255,0.16), transparent 70%),
         /* un ricordo di feltro verde, molto in fondo */
         radial-gradient(ellipse 70% 46% at 50% 56%, rgba(40,120,90,0.22), transparent 72%),
-        /* la pietra */
+        /* la camera di pietra vera, illustrata — prima era solo un gradiente */
+        url('immagini/decorazioni/sfondo-tavolo.webp') center / cover no-repeat,
         linear-gradient(168deg, #171426 0%, #1d1a2f 34%, #15121f 68%, #0b0912 100%) !important;
     }
     /* venature della pietra: due griglie storte e quasi invisibili */
@@ -1795,7 +1796,9 @@
         radial-gradient(circle at 50% 50%, transparent 0 33%, rgba(232,196,106,0.06) 33% 33.3%, transparent 33.3%),
         radial-gradient(ellipse 62% 58% at 50% 50%, rgba(190,255,225,0.10), transparent 72%),
         repeating-linear-gradient(102deg, rgba(255,255,255,0.022) 0 2px, transparent 2px 26px),
-        repeating-linear-gradient(-14deg, rgba(0,0,0,0.05) 0 3px, transparent 3px 34px);
+        repeating-linear-gradient(-14deg, rgba(0,0,0,0.05) 0 3px, transparent 3px 34px),
+        /* il feltro vero: pietra illustrata al posto del solo effetto di luce */
+        url('immagini/decorazioni/feltro-tavolo.webp') center / cover no-repeat;
       box-shadow: inset 0 0 120px rgba(0,0,0,0.42), inset 0 0 40px rgba(126,255,204,0.06);
     }
     /* cerchio rituale al centro del tavolo */
@@ -2018,6 +2021,20 @@
       .hand-center-box { padding-top: 10px !important; padding-bottom: 2px !important; }
     }
 
+    /* IL DORSO DELLE CARTE, ILLUSTRATO INVECE DEL GRADIENTE ROSSO-ORO.
+       --back-bg/--back-border/--rombo-dorso sono le tre variabili che
+       Burraco Pulito usa ovunque si veda un dorso — mano dell'avversario,
+       mazzo, pozzetti, carte in volo durante la distribuzione — proprio
+       per poterle cambiare tutte insieme da un punto solo, senza toccare
+       il resto. Il rombo al centro si spegne (--rombo-dorso: none) perché
+       l'illustrazione ha già il suo motivo decorativo: il rombo sopra
+       sarebbe un ornamento in più su un disegno che non ne ha bisogno. */
+    :root {
+      --back-bg: url('immagini/decorazioni/dorso-carta.webp') center / cover no-repeat;
+      --back-border: #8a6a2a;
+      --rombo-dorso: none;
+    }
+
     /* PERSONAGGI E MAGIA DELL'AVVERSARIO PIÙ VICINI AL TASTO IMPOSTAZIONI.
        .top-shelf (Burraco Pulito) usa justify-content:space-between su
        SEI figli — tasto impostazioni, le sue carte Battle, la sua barra
@@ -2198,8 +2215,12 @@
     }
     .slot-trappole .posto {
       width: var(--card-w); height: var(--card-h); border-radius: var(--card-radius);
-      border: 1px dashed rgba(232,196,106,0.45); box-sizing: border-box;
+      box-sizing: border-box;
       display: flex; align-items: center; justify-content: center;
+      /* la cornice ornamentale sostituisce il bordo tratteggiato: stesso
+         "qui potrebbe scattare una trappola", ma disegnata invece che
+         un rettangolo di puntini */
+      background: url('immagini/decorazioni/cornice-trappole.webp') center / contain no-repeat;
     }
     .trappola-posata {
       width: var(--card-w); height: var(--card-h); border-radius: var(--card-radius);
@@ -2259,25 +2280,21 @@
        che resta visibile anche quando la carta e' quasi tutta coperta
        dalla successiva nel ventaglio.
        ============================================================ */
+    /* La carta jolly aveva solo un gradiente e la scritta "JOLLY" di
+       taglio: niente illustrazione, mentre tutto il resto del gioco ne
+       ha una. Ora è una faccia vera — la maschera del burlante fra i
+       rovi — e tutto il testo che serviva a "arredare" un gradiente
+       vuoto (semi, numeri, la scritta di taglio) sparisce: l'immagine
+       si spiega da sola, aggiungere lettere sopra la affollerebbe. */
     .card.jolly {
-      background: linear-gradient(160deg, #2a2140 0%, #1a1430 55%, #241b3c 100%) !important;
+      background: url('immagini/decorazioni/jolly.webp') center / cover no-repeat !important;
       border-color: var(--oro, #e8c46a) !important;
       box-shadow: inset 0 0 0 1px rgba(232,196,106,0.55), 0 0 10px rgba(232,196,106,0.35);
     }
     .card.jolly .v, .card.jolly .s, .card.jolly .centro,
-    .card.jolly .fil, .card.jolly .numgrande, .card.jolly .semino {
-      color: var(--oro, #e8c46a) !important;
-      text-shadow: 0 0 8px rgba(232,196,106,0.6);
-    }
-    .card.jolly .banda { background: linear-gradient(90deg, #3a2d17, #6b5320) !important; }
-    .card.jolly .centro { opacity: 0.55; }
-    .card.jolly .scritta-jolly {
-      position: absolute; right: 1px; top: 50%;
-      transform: translateY(-50%) rotate(180deg);
-      writing-mode: vertical-rl;
-      font-size: 7px; font-weight: 900; letter-spacing: 1.5px;
-      color: var(--oro, #e8c46a); opacity: 0.85; pointer-events: none;
-      text-shadow: 0 1px 2px #000;
+    .card.jolly .fil, .card.jolly .numgrande, .card.jolly .semino,
+    .card.jolly .banda, .card.jolly .scritta-jolly {
+      display: none !important;
     }
 
     /* --- NUMERO DEL DANNO CHE SALE DALLA CARTA ---
