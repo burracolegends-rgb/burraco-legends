@@ -120,9 +120,22 @@ BATTLE_CSS = r'''
          guarda per capire come va la partita: erano troppo piccole per
          leggerle senza avvicinarsi. Portate al 120%. Le misure stanno
          qui e una sola volta: tutto il resto (semi, nomi, barre) e'
-         calcolato in proporzione, quindi cresce da solo. */
-      --battle-w: 74px;              /* 52 -> 62 -> 74 */
-      --battle-h: 107px;             /* 74 -> 89 -> 107 */
+         calcolato in proporzione, quindi cresce da solo.
+
+         FLUIDE CON L'ALTEZZA, non a scatto. Prima erano un numero fisso
+         (107px) sostituito da un altro numero fisso (58px) sotto una
+         soglia di 480px di altezza — chi aveva uno schermo appena SOPRA
+         quella soglia (un'app installata a schermo intero su un
+         telefono grande, senza la barra del browser a rubare pixel,
+         puo' benissimo superare 480px anche in orizzontale) restava
+         sulla misura "da monitor" e si ritrovava la fascia di
+         mazzo/scarti/mano enorme, con la zona centrale del tavolo
+         schiacciata sopra — esattamente il "troppo spazio" segnalato
+         giocando. clamp() cresce insieme allo schermo invece di saltare
+         da una taglia all'altra: chi ha 520px di altezza prende una
+         misura di mezzo, non la piu' grande delle due. */
+      --battle-h: clamp(58px, 15vh, 107px);
+      --battle-w: clamp(40px, 10.35vh, 74px);
       --hp: #e05266; --charge: #45b6ff; --oro: #e8c46a; --blu: #5cc0ff;
       --pergamena: #f0e2c0;
     }
@@ -131,12 +144,10 @@ BATTLE_CSS = r'''
        l'altezza — su un monitor stretto ma alto (finestra ridimensionata)
        non deve succedere niente, il problema è un altro. */
     @media (max-height: 480px), (hover: none) and (orientation: portrait) {
-      /* Le carte Battle restano leggibili anche un po' più piccole di
-         prima (46/67 → 40/58, circa -13%): quello che si guadagna va
-         tutto all'area centrale del tavolo, dove si gioca davvero — le
-         due fasce sopra e sotto sono informazione di corredo, il centro
-         è dove succede la partita. */
-      :root { --battle-w: 40px; --battle-h: 58px; }
+      /* --battle-w/--battle-h non servono più qui: sono già fluidi con
+         clamp() qui sopra, e scendono da soli fino al minimo (40/58) su
+         uno schermo bassissimo. Quello che resta da fare sotto questa
+         soglia è solo stringere il resto — padding e cronometro. */
       .top-shelf, .bottom-shelf, .table-resources-row { padding-top: 2px; padding-bottom: 2px; }
 
       /* IL CRONOMETRO STRABORDAVA DALLO SCHERMO.
@@ -816,6 +827,23 @@ BATTLE_CSS = r'''
        — dove già c'è la sua fascia a fare da cornice. */
     .meld-side.mine { align-items: flex-end; }
 
+    /* IL PADDING SOPRA LA MANO NON SI RIDUCEVA MAI, SU NESSUN TELEFONO.
+       Il foglio di Burraco Pulito ha già la regola giusta — .hand-center-box
+       passa da 20px/6px (da monitor) a 10px/2px (touch) — ma la scrive
+       PRIMA della regola generale invece che dopo. A parità di
+       specificità vince chi è scritto per ultimo nel foglio, quindi la
+       versione "da monitor" (più bassa nel file) sovrascriveva sempre
+       quella touch, schermo o non schermo: chi giocava da telefono si
+       ritrovava comunque 20px di vuoto sopra la mano, un terzo
+       dell'altezza della fascia sprecato. Qui la regola si riscrive DOPO
+       tutto il resto — in Legends questo blocco è l'ultima parola —
+       cosi' vince per davvero. Il 10px/2px non e' arbitrario: la carta
+       selezionata sale di 9px (riga piu' sotto in questo stesso file),
+       e serve un pixel di margine perche' non resti tagliata in cima. */
+    @media (hover: none), (pointer: coarse) {
+      .hand-center-box { padding-top: 10px !important; padding-bottom: 2px !important; }
+    }
+
     /* --- BARRA DEI PUNTI MAGIA ---
        Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
        a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
@@ -832,7 +860,12 @@ BATTLE_CSS = r'''
     .barra-magia .etichetta { font-size: 8px; color: #9adcff; letter-spacing: 0.5px; white-space: nowrap; }
     .barra-magia .tacche { display: flex; flex-direction: column-reverse; gap: 1px; }
     .barra-magia .tacca {
-      width: 13px; height: 4px; border-radius: 1.5px;
+      /* Stessa storia delle carte Battle: un numero fisso (4px) sostituito
+         da un altro fisso (2.5px) sotto i 480px di altezza lasciava chi
+         aveva uno schermo appena sopra quella soglia con la colonna di 15
+         tacche più alta del necessario — quasi 105px, in una fascia che
+         doveva restare stretta. Fluido con clamp(), niente più scatto. */
+      width: 13px; height: clamp(2.5px, 0.65vh, 4px); border-radius: 1.5px;
       background: rgba(0,0,0,0.55); border: 1px solid rgba(69,182,255,0.28); box-sizing: border-box;
     }
     .barra-magia .tacca.piena {
@@ -857,7 +890,7 @@ BATTLE_CSS = r'''
     @media (max-height: 480px), (hover: none) and (orientation: portrait) {
       .barra-magia { gap: 1px; }
       .barra-magia .etichetta { font-size: 6.5px; }
-      .barra-magia .tacca { width: 10px; height: 2.5px; }
+      .barra-magia .tacca { width: 10px; }
       .barra-magia .conta { font-size: 9px; }
       /* Quella dell'avversario si guarda ancora meno da vicino — serve
          solo a sapere se sta per potersi permettere qualcosa, non il
