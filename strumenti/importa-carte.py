@@ -54,12 +54,19 @@ DURATA_PREDEFINITA = 2
 # infieriscono sullo stesso bersaglio (013, 021) il secondo effetto usa
 # "bersaglio_colpito", che riusa chi ha appena incassato invece di
 # estrarre un nemico nuovo.
+#
+# BERSAGLIO A SCELTA, non casuale: Papa Figo (001), Boto Felipe (009),
+# Onca-Pintada (013), Mapinguari (017), Caipora (019) e Boitata (021)
+# colpiscono con "personaggio_specifico" invece che "avversario" — è
+# il giocatore a scegliere chi colpire, non l'estrazione casuale. Sono
+# le uniche sei: per tutte le altre la scelta resta "chi capita capita",
+# altrimenti la strategia del bersaglio non serve a niente.
 # ------------------------------------------------------------
 EFFETTI = {
     # --- Papa Figo: distrugge le trappole, poi colpisce ---
     '001': [
         {'effect': 'distruggi_trappole'},
-        {'effect': 'danno_da_attacco', 'parametro': '30', 'target': 'avversario'},
+        {'effect': 'danno_da_attacco', 'parametro': '30', 'target': 'personaggio_specifico'},
     ],
     # --- i tre pappagalli: stessa beccata, semi diversi ---
     # "Questa carta subisce 10 punti vita di danno": il contraccolpo va
@@ -81,7 +88,7 @@ EFFETTI = {
     '007': [{'effect': 'danno_da_attacco', 'parametro': '15', 'target': 'tutti_avversari'}],
     '008': [{'effect': 'boost_difesa', 'parametro': '25', 'target': 'tutti_alleati', 'durata_turni': 3}],
     '009': [
-        {'effect': 'danno_da_attacco', 'parametro': '20', 'target': 'avversario'},
+        {'effect': 'danno_da_attacco', 'parametro': '20', 'target': 'personaggio_specifico'},
         {'effect': 'riduci_difesa', 'parametro': '20', 'target': 'tutti_avversari', 'durata_turni': 2},
     ],
     '010': [{'effect': 'cura_diretta', 'parametro': '50', 'target': 'tutti_alleati'}],
@@ -95,7 +102,7 @@ EFFETTI = {
     '012': [{'effect': 'boost_danno', 'parametro': '25', 'target': 'se_stesso',
              'durata_turni': DURATA_PREDEFINITA}],
     '013': [
-        {'effect': 'danno_da_attacco', 'parametro': '25', 'target': 'avversario'},
+        {'effect': 'danno_da_attacco', 'parametro': '25', 'target': 'personaggio_specifico'},
         {'effect': 'riduci_difesa', 'parametro': '20', 'target': 'bersaglio_colpito', 'durata_turni': 2},
     ],
     '014': [
@@ -106,14 +113,14 @@ EFFETTI = {
              'durata_turni': DURATA_PREDEFINITA}],
     '016': [{'effect': 'boost_difesa', 'parametro': '25', 'target': 'tutti_alleati',
              'durata_turni': DURATA_PREDEFINITA}],
-    '017': [{'effect': 'danno_da_attacco', 'parametro': '40', 'target': 'avversario'}],
+    '017': [{'effect': 'danno_da_attacco', 'parametro': '40', 'target': 'personaggio_specifico'}],
     '018': [
         {'effect': 'danno_da_attacco', 'parametro': '20', 'target': 'tutti_avversari'},
         {'effect': 'boost_difesa', 'parametro': '20', 'target': 'tutti_alleati',
          'durata_turni': DURATA_PREDEFINITA},
     ],
     '019': [
-        {'effect': 'danno_da_attacco', 'parametro': '40', 'target': 'avversario'},
+        {'effect': 'danno_da_attacco', 'parametro': '40', 'target': 'personaggio_specifico'},
         {'effect': 'riduci_punti_magia', 'parametro': '1', 'target': 'avversario'},
     ],
     '020': [
@@ -122,7 +129,7 @@ EFFETTI = {
     ],
     # Il morso del Boitata': la cicatrice resta a chi ha incassato il colpo.
     '021': [
-        {'effect': 'danno_da_attacco', 'parametro': '20', 'target': 'avversario'},
+        {'effect': 'danno_da_attacco', 'parametro': '20', 'target': 'personaggio_specifico'},
         {'effect': 'costo_abilita_extra', 'parametro': '1', 'target': 'bersaglio_colpito'},
     ],
     # Saci: tre doni, tre alleati estratti a caso uno per uno (la carta

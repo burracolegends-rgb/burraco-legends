@@ -12,7 +12,7 @@
       {
         "effect": "danno_da_attacco",
         "parametro": "20",
-        "target": "avversario"
+        "target": "personaggio_specifico"
       },
       {
         "effect": "costo_abilita_extra",
