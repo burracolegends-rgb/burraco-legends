@@ -351,6 +351,14 @@
   .modo:hover::after { transform: translateX(130%); }
   .modo:active { transform: translateY(0); }
 
+  /* cornice dorata incisa, stirata sul riquadro intero: sostituisce il
+     bordo di un pixel con un ornamento vero, agli stessi quattro angoli
+     dove gia' curva il border-radius. */
+  .modo .cornice {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: fill; pointer-events: none; z-index: 3; opacity: 0.85;
+  }
+
   /* riquadro illustrato a sinistra */
   .modo .scena { position: relative; width: clamp(84px, 22vw, 124px); flex: 0 0 auto; overflow: hidden; }
   .modo .scena svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -601,6 +609,7 @@
 <div class="modalita">
 
   <a class="modo" href="tavolo.html">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
     <div class="scena"><img src="immagini/decorazioni/icona-tavolo.webp" alt=""></div>
     <div class="testo">
       <span class="titolo">IL TAVOLO</span>
@@ -610,6 +619,7 @@
   </a>
 
   <a class="modo" href="negozio.html">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
     <div class="scena"><img src="immagini/decorazioni/icona-pacchetti.webp" alt=""></div>
     <div class="testo">
       <span class="titolo">ACQUISTA PACCHETTI</span>
@@ -619,6 +629,7 @@
   </a>
 
   <a class="modo" href="sala.html">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
     <div class="scena"><img src="immagini/decorazioni/icona-amico.webp" alt=""></div>
     <div class="testo">
       <span class="titolo">GIOCA CON UN AMICO</span>
@@ -628,6 +639,7 @@
   </a>
 
   <a class="modo chiuso" href="#" onclick="return false;">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
     <span class="sigillo-presto">Presto</span>
     <div class="scena"><img src="immagini/decorazioni/icona-missioni.webp" alt=""></div>
     <div class="testo">

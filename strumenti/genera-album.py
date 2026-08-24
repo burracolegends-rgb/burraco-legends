@@ -227,7 +227,11 @@ PAGINA = r'''<!DOCTYPE html>
   .lente .quante { font-size: 0.82rem; color: var(--verde); }
   .lente .dove-si-trova { font-size: 0.78rem; color: var(--tenue); line-height: 1.5; max-width: 92%; }
 
-  .vuoto { font-size: 0.85rem; color: var(--tenue); text-align: center; padding: 30px 0; }
+  .vuoto {
+    font-size: 0.85rem; color: var(--tenue); text-align: center; padding: 12px 0 30px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .vuoto .fregio { width: 70px; height: auto; opacity: 0.55; }
   .nota { max-width: 640px; font-size: 0.72rem; color: #8a7e68; line-height: 1.55; text-align: center; }
 __CSS_CARTA__
 </style>
@@ -408,7 +412,7 @@ function disegna() {
       '<div class="griglia">' + mostrate.map(figurina).join('') + '</div>' +
     '</div>';
   }
-  $('sezioni').innerHTML = html || '<div class="vuoto">Qui non c\'è niente da mostrare con questo filtro.</div>';
+  $('sezioni').innerHTML = html || '<div class="vuoto"><img class="fregio" src="immagini/decorazioni/fregio.webp" alt="">Qui non c\'è niente da mostrare con questo filtro.</div>';
 
   for (const nodo of document.querySelectorAll('.figurina')) {
     nodo.addEventListener('click', () => ingrandisci(nodo.getAttribute('data-id')));
