@@ -41,6 +41,7 @@
   /* ---------- FONDALE: sala del castello all'alba ---------- */
   .fondale { position: fixed; inset: 0; z-index: -3; overflow: hidden; }
   .fondale svg { width: 100%; height: 100%; display: block; }
+  .fondale-img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center 30%; }
 
   /* raggi di luce che entrano dalle arcate */
   .raggi-luce {
@@ -308,6 +309,8 @@
 
   /* ---------- TITOLO ---------- */
   .insegna { text-align: center; padding: 2px 0 0; flex: 0 0 auto; }
+  .insegna .stemma { height: 52px; width: auto; display: block; margin: 0 auto 2px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6)); }
+  @media (max-height: 560px) { .insegna .stemma { height: 38px; } }
   .insegna h1 {
     margin: 0; font-family: Georgia, 'Times New Roman', serif;
     font-size: clamp(1.9rem, 5.2vw, 3rem); font-weight: 700;
@@ -348,6 +351,7 @@
   /* riquadro illustrato a sinistra */
   .modo .scena { position: relative; width: clamp(84px, 22vw, 124px); flex: 0 0 auto; overflow: hidden; }
   .modo .scena svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .modo .scena img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #171025; }
   .modo .scena::after { content: ''; position: absolute; inset: 0;
     background: linear-gradient(90deg, transparent 55%, rgba(24,16,10,0.96) 100%); }
 
@@ -385,6 +389,7 @@
     text-decoration: none; transition: color 0.15s, background 0.15s, transform 0.15s;
   }
   .voce svg { width: 23px; height: 23px; }
+  .voce img.icona-nav { width: 26px; height: 26px; object-fit: contain; border-radius: 50%; }
   .voce:hover:not(:disabled) { color: var(--oro-chiaro); background: rgba(232,196,106,0.09); transform: translateY(-2px); }
   .voce:disabled { opacity: 0.4; cursor: not-allowed; }
   .voce.attiva { color: var(--oro); }
@@ -447,6 +452,7 @@
     /* la barra in basso: sei voci in 300px, le etichette vanno strette */
     .voce { font-size: 0.55rem; letter-spacing: 0.2px; padding: 7px 2px; gap: 3px; }
     .voce svg { width: 20px; height: 20px; }
+    .voce img.icona-nav { width: 22px; height: 22px; }
 
     .insegna h1 { letter-spacing: 2px; }
     .insegna .sotto { font-size: 0.72rem; }
@@ -481,66 +487,7 @@
 
 <!-- ============ FONDALE: sala con arcate sul paesaggio ============ -->
 <div class="fondale">
-  <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"   stop-color="#2a1a3d"/>
-        <stop offset="38%"  stop-color="#5c3450"/>
-        <stop offset="66%"  stop-color="#b06a4a"/>
-        <stop offset="86%"  stop-color="#e9a25c"/>
-        <stop offset="100%" stop-color="#f6cf8a"/>
-      </linearGradient>
-      <linearGradient id="montiLontani" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#6d4a63"/><stop offset="100%" stop-color="#4a2f47"/>
-      </linearGradient>
-      <linearGradient id="montiVicini" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#3b2740"/><stop offset="100%" stop-color="#241830"/>
-      </linearGradient>
-      <linearGradient id="pietra" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%"   stop-color="#1a1119"/>
-        <stop offset="45%"  stop-color="#2b1d26"/>
-        <stop offset="100%" stop-color="#150e14"/>
-      </linearGradient>
-      <radialGradient id="sole" cx="0.5" cy="0.5" r="0.5">
-        <stop offset="0%"  stop-color="#fff3c4" stop-opacity="0.95"/>
-        <stop offset="45%" stop-color="#ffca7a" stop-opacity="0.4"/>
-        <stop offset="100%" stop-color="#ffb463" stop-opacity="0"/>
-      </radialGradient>
-      <linearGradient id="veloBasso" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#0e0a14" stop-opacity="0"/>
-        <stop offset="100%" stop-color="#0e0a14" stop-opacity="0.96"/>
-      </linearGradient>
-    </defs>
-
-    <rect width="1200" height="800" fill="url(#cielo)"/>
-    <circle cx="600" cy="470" r="230" fill="url(#sole)"/>
-
-    <!-- catene montuose -->
-    <path d="M0 470 L120 392 L215 452 L330 348 L455 462 L560 405 L680 470 L790 372 L900 452 L1020 388 L1120 460 L1200 415 L1200 800 L0 800 Z" fill="url(#montiLontani)" opacity="0.62"/>
-    <path d="M0 545 L145 470 L268 528 L390 445 L520 535 L640 480 L770 545 L890 465 L1010 528 L1130 478 L1200 520 L1200 800 L0 800 Z" fill="url(#montiVicini)" opacity="0.82"/>
-
-    <!-- pavimento -->
-    <rect y="600" width="1200" height="200" fill="#150d16"/>
-    <path d="M0 600 L1200 600 L1200 640 L0 640 Z" fill="#241626" opacity="0.7"/>
-
-    <!-- colonne e arcate in primo piano -->
-    <g fill="url(#pietra)">
-      <path d="M0 0 H235 V800 H0 Z"/>
-      <path d="M965 0 H1200 V800 H1200 H965 Z"/>
-      <path d="M235 0 H965 V96 Q600 -34 235 96 Z"/>
-      <!-- capitelli -->
-      <rect x="196" y="150" width="78" height="24" rx="5"/>
-      <rect x="926" y="150" width="78" height="24" rx="5"/>
-      <rect x="186" y="612" width="98" height="26" rx="5"/>
-      <rect x="916" y="612" width="98" height="26" rx="5"/>
-    </g>
-    <!-- filo di luce sul bordo delle colonne -->
-    <path d="M235 96 V800" stroke="rgba(255,206,138,0.28)" stroke-width="1.5" fill="none"/>
-    <path d="M965 96 V800" stroke="rgba(255,206,138,0.28)" stroke-width="1.5" fill="none"/>
-    <path d="M235 96 Q600 -34 965 96" stroke="rgba(255,206,138,0.3)" stroke-width="1.5" fill="none"/>
-
-    <rect y="470" width="1200" height="330" fill="url(#veloBasso)"/>
-  </svg>
+  <img src="immagini/decorazioni/sfondo-home.webp" alt="" class="fondale-img">
 </div>
 <div class="raggi-luce"></div>
 <div class="braci" id="braci"></div>
@@ -593,6 +540,7 @@
 
 <!-- ============ TITOLO ============ -->
 <div class="insegna">
+  <img src="immagini/decorazioni/emblema-home.webp" alt="" class="stemma">
   <h1>BURRACO LEGENDS</h1>
   <div class="fregio">
     <span class="filo"></span>
@@ -650,35 +598,7 @@
 <div class="modalita">
 
   <a class="modo" href="tavolo.html">
-    <div class="scena">
-      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="sfTavolo" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#1f5c3f"/><stop offset="100%" stop-color="#0d2c1f"/>
-          </linearGradient>
-          <linearGradient id="lama" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0%" stop-color="#8e9bb0"/><stop offset="55%" stop-color="#eef3ff"/><stop offset="100%" stop-color="#7d8899"/>
-          </linearGradient>
-        </defs>
-        <rect width="120" height="100" fill="url(#sfTavolo)"/>
-        <ellipse cx="60" cy="52" rx="46" ry="34" fill="rgba(150,255,205,0.10)"/>
-        <!-- spade incrociate -->
-        <g stroke-linecap="round">
-          <path d="M30 78 L84 24" stroke="url(#lama)" stroke-width="6"/>
-          <path d="M90 78 L36 24" stroke="url(#lama)" stroke-width="6"/>
-          <path d="M24 84 L34 74 M96 84 L86 74" stroke="#c9a24a" stroke-width="7"/>
-          <path d="M74 20 L92 18 L90 36" stroke="#c9a24a" stroke-width="5" fill="none"/>
-          <path d="M46 20 L28 18 L30 36" stroke="#c9a24a" stroke-width="5" fill="none"/>
-        </g>
-        <!-- carte -->
-        <g transform="translate(60 66)">
-          <rect x="-26" y="-16" width="22" height="31" rx="3" fill="#f6f1e4" transform="rotate(-16)"/>
-          <rect x="-11" y="-18" width="22" height="31" rx="3" fill="#fffbf0"/>
-          <rect x="4"  y="-16" width="22" height="31" rx="3" fill="#f6f1e4" transform="rotate(15)"/>
-          <text x="0" y="1" font-size="12" text-anchor="middle" fill="#c0392b" font-family="Georgia, serif">♥</text>
-        </g>
-      </svg>
-    </div>
+    <div class="scena"><img src="immagini/decorazioni/icona-tavolo.webp" alt=""></div>
     <div class="testo">
       <span class="titolo">IL TAVOLO</span>
       <span class="sotto">Sfida uno contro uno · partita rapida</span>
@@ -687,41 +607,7 @@
   </a>
 
   <a class="modo" href="negozio.html">
-    <div class="scena">
-      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="sfNegozio" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#4a2b6b"/><stop offset="100%" stop-color="#1c1030"/>
-          </linearGradient>
-          <linearGradient id="bustaHome" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#7a55d8"/><stop offset="100%" stop-color="#2e1a6b"/>
-          </linearGradient>
-          <linearGradient id="oroHome" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#fff2c8"/><stop offset="55%" stop-color="#e8c46a"/><stop offset="100%" stop-color="#8a6118"/>
-          </linearGradient>
-        </defs>
-        <rect width="120" height="100" fill="url(#sfNegozio)"/>
-        <circle cx="60" cy="48" r="34" fill="rgba(255,214,140,0.14)"/>
-        <!-- tre buste sovrapposte -->
-        <g>
-          <rect x="20" y="26" width="38" height="54" rx="5" fill="url(#bustaHome)" stroke="url(#oroHome)" stroke-width="2" transform="rotate(-11 39 53)"/>
-          <rect x="62" y="26" width="38" height="54" rx="5" fill="url(#bustaHome)" stroke="url(#oroHome)" stroke-width="2" transform="rotate(11 81 53)"/>
-          <rect x="41" y="20" width="38" height="60" rx="5" fill="url(#bustaHome)" stroke="url(#oroHome)" stroke-width="2.4"/>
-          <path d="M41 34 l6 -3 l7 3 l7 -3 l7 3 l5 -2" fill="none" stroke="rgba(255,240,200,0.6)" stroke-width="1.6" stroke-dasharray="3 2"/>
-          <g transform="translate(60 56)" font-family="Georgia, serif" text-anchor="middle">
-            <text y="-4" font-size="10" fill="#ff8fa3">&#9829;</text>
-            <text y="14" font-size="10" fill="#ff8fa3">&#9830;</text>
-            <text x="-11" y="5" font-size="10" fill="#e8e6f0">&#9827;</text>
-            <text x="11" y="5" font-size="10" fill="#e8e6f0">&#9824;</text>
-          </g>
-        </g>
-        <!-- scintille -->
-        <g fill="#ffe9ae">
-          <circle cx="26" cy="16" r="2"/><circle cx="96" cy="20" r="1.6"/>
-          <circle cx="16" cy="70" r="1.4"/><circle cx="104" cy="66" r="2"/>
-        </g>
-      </svg>
-    </div>
+    <div class="scena"><img src="immagini/decorazioni/icona-pacchetti.webp" alt=""></div>
     <div class="testo">
       <span class="titolo">ACQUISTA PACCHETTI</span>
       <span class="sotto">Da 1 a 50 carte per volta</span>
@@ -730,32 +616,7 @@
   </a>
 
   <a class="modo" href="sala.html">
-    <div class="scena">
-      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="sfAmico" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#2b3f6b"/><stop offset="100%" stop-color="#141c33"/>
-          </linearGradient>
-          <linearGradient id="oroAmico" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#fff2c8"/><stop offset="55%" stop-color="#e8c46a"/><stop offset="100%" stop-color="#8a6118"/>
-          </linearGradient>
-        </defs>
-        <rect width="120" height="100" fill="url(#sfAmico)"/>
-        <circle cx="60" cy="50" r="40" fill="rgba(180,210,255,0.1)"/>
-        <!-- due figure una di fronte all'altra, e in mezzo il tavolo -->
-        <g fill="url(#oroAmico)">
-          <circle cx="30" cy="34" r="9"/>
-          <path d="M16 60c0-8 6-14 14-14s14 6 14 14z"/>
-          <circle cx="90" cy="34" r="9"/>
-          <path d="M76 60c0-8 6-14 14-14s14 6 14 14z"/>
-        </g>
-        <ellipse cx="60" cy="76" rx="34" ry="10" fill="#1f5c3f" stroke="url(#oroAmico)" stroke-width="2"/>
-        <g fill="#f2e6cc" stroke="#8a6118" stroke-width="0.8">
-          <rect x="48" y="68" width="11" height="15" rx="1.6" transform="rotate(-11 53 75)"/>
-          <rect x="61" y="68" width="11" height="15" rx="1.6" transform="rotate(11 66 75)"/>
-        </g>
-      </svg>
-    </div>
+    <div class="scena"><img src="immagini/decorazioni/icona-amico.webp" alt=""></div>
     <div class="testo">
       <span class="titolo">GIOCA CON UN AMICO</span>
       <span class="sotto">Un codice da passargli &middot; partita vera</span>
@@ -765,29 +626,7 @@
 
   <a class="modo chiuso" href="#" onclick="return false;">
     <span class="sigillo-presto">Presto</span>
-    <div class="scena">
-      <svg viewBox="0 0 120 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="sfMissioni" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#3c2a55"/><stop offset="100%" stop-color="#191029"/>
-          </linearGradient>
-          <linearGradient id="carta" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#f6e6c2"/><stop offset="100%" stop-color="#cdb488"/>
-          </linearGradient>
-        </defs>
-        <rect width="120" height="100" fill="url(#sfMissioni)"/>
-        <circle cx="60" cy="48" r="32" fill="rgba(190,150,255,0.14)"/>
-        <g>
-          <path d="M34 24h52v54H34z" fill="#f2e2be"/>
-          <path d="M34 24c-5 0-8 3-8 7s3 7 8 7zM86 64c5 0 8 3 8 7s-3 7-8 7z" fill="#d9c496"/>
-          <g stroke="#7c6134" stroke-width="2" stroke-linecap="round">
-            <path d="M44 38h32M44 47h32M44 56h22"/>
-          </g>
-          <circle cx="72" cy="62" r="9" fill="#2d1f45" stroke="#b98cff" stroke-width="2"/>
-          <circle cx="72" cy="62" r="3.4" fill="#dcc0ff"/>
-        </g>
-      </svg>
-    </div>
+    <div class="scena"><img src="immagini/decorazioni/icona-missioni.webp" alt=""></div>
     <div class="testo">
       <span class="titolo">LE MISSIONI</span>
       <span class="sotto">Sfide contro l'intelligenza artificiale</span>
@@ -800,44 +639,27 @@
 <!-- ============ NAVIGAZIONE ============ -->
 <div class="navigazione riquadro">
   <a class="voce" href="selezione.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
-      <rect x="3.2" y="5" width="10" height="14" rx="1.6" transform="rotate(-9 8 12)"/>
-      <rect x="10.8" y="5" width="10" height="14" rx="1.6" transform="rotate(9 16 12)"/>
-      <path d="M16 10.4v3.2M14.4 12h3.2"/>
-    </svg>
+    <img class="icona-nav" src="immagini/decorazioni/nav-deck.webp" alt="">
     Deck ed Eroi
   </a>
   <button class="voce attiva">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
-      <path d="M3.6 10.6 12 3.4l8.4 7.2"/><path d="M5.6 12.2V20h12.8v-7.8"/><path d="M10 20v-5h4v5"/>
-    </svg>
+    <img class="icona-nav" src="immagini/decorazioni/nav-home.webp" alt="">
     Home
   </button>
   <a class="voce" href="negozio.html" title="Acquista pacchetti">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
-      <rect x="3" y="9" width="18" height="12" rx="1.8"/><path d="M2.4 9h19.2v3.4H2.4z"/><path d="M12 9v12"/>
-      <path d="M12 9S9.6 4.2 7 5.2 8.8 9 12 9zM12 9s2.4-4.8 5-3.8S15.2 9 12 9z"/>
-    </svg>
+    <img class="icona-nav" src="immagini/decorazioni/nav-negozio.webp" alt="">
     Negozio
   </a>
   <a class="voce" href="accedi.html" title="Il tuo account">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
-      <circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
-    </svg>
+    <img class="icona-nav" src="immagini/decorazioni/nav-account.webp" alt="">
     Account
   </a>
   <a class="voce" href="album.html" title="Il tuo album">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
-      <path d="M4 4.6A1.6 1.6 0 0 1 5.6 3H19v18H5.6A1.6 1.6 0 0 1 4 19.4z"/>
-      <path d="M8 3v18"/><path d="M11.6 8.4h4M11.6 12h4M11.6 15.6h2.4"/>
-    </svg>
+    <img class="icona-nav" src="immagini/decorazioni/nav-album.webp" alt="">
     Album
   </a>
   <button class="voce" disabled title="Non ancora disponibile">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
-      <path d="M12 21s-7.4-4.4-7.4-10.2A4.4 4.4 0 0 1 12 8.4a4.4 4.4 0 0 1 7.4 2.4C19.4 16.6 12 21 12 21z"/>
-      <path d="M12 8.4V3.2M9 5.2h6"/>
-    </svg>
+    <img class="icona-nav" src="immagini/decorazioni/nav-alleanze.webp" alt="">
     Alleanze
   </button>
 </div>
