@@ -56,8 +56,9 @@ PAGINA = r'''<!DOCTYPE html>
   body {
     font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
     background:
-      radial-gradient(ellipse at 50% 0%, #2a1d3d 0%, transparent 62%),
-      radial-gradient(ellipse at 50% 100%, #3a2410 0%, transparent 58%),
+      radial-gradient(ellipse at 50% 0%, rgba(42,29,61,0.65) 0%, transparent 62%),
+      radial-gradient(ellipse at 50% 100%, rgba(58,36,16,0.6) 0%, transparent 58%),
+      url('immagini/decorazioni/sfondo-tavolo.webp') center / cover no-repeat,
       var(--notte);
     padding: max(14px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
     display: flex; flex-direction: column; align-items: center; gap: 18px;
