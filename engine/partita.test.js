@@ -342,15 +342,16 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   check('scala da 6: i semi non bersaglio perdono 20', Math.abs(state.players[1].characters['♦'].pv - 80) < 1e-9);
 }
 {
-  // scala da 7 carte → ondata 35%, che si somma all'AoE delle carte
+  // scala da 7 carte CALATA IN UN COLPO SOLO → premio: 40%, non il 35%
+  // della soglia normale (vedi ONDATA_BONUS_COLPO_SOLO in core-rules.js).
   const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   const a = state.players[0];
   a.hasDrawnThisTurn = true;
   const meld = heartsSeq([3, 4, 5, 6, 7, 8, 9]);
   a.hand = [...meld, ...a.hand.slice(0, 4)];
   const res = actionLayMeld(state, 0, meld.map((c) => c.id), T0 + 1000);
-  check('scala da 7: ondata al 35% dell\'ATT', Math.abs(res.ondata - 35) < 1e-9 && res.ondataPercent === 0.35);
-  // carte 45pt × 1.6 = 72 (già AoE) + ondata 35 = 107 su ciascuno → tutti a 0 da 100
+  check('scala da 7 in un colpo solo: ondata al 40% dell\'ATT (premio)', Math.abs(res.ondata - 40) < 1e-9 && res.ondataPercent === 0.40);
+  // carte 45pt × 1.6 = 72 (già AoE) + ondata 40 = 112 su ciascuno → tutti a 0 da 100
   check('scala da 7: ogni avversario incassa carte AoE + ondata', state.players[1].characters['♦'].pv === 0);
 }
 {
@@ -490,21 +491,59 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   check('portando il gioco a 5 carte scatta l\'ondata del 10%', Math.abs(res.ondata - 10) < 1e-9);
   check('l\'ondata colpisce tutti e 4 gli avversari', res.colpi.length === 4);
 
-  // agganciarne un'altra NON deve ripetere l'ondata da 5 carte
+  // Le fasce sono SOGLIE CUMULATIVE (10% a 5, 20% a 6, 35% a 7), non premi
+  // indipendenti: salendo di fascia si paga solo la DIFFERENZA con quello
+  // che questo gioco ha già scaricato, non la percentuale piena. Sennò
+  // costruire a gradini (5→6→7) renderebbe 10+20+35=65%, quasi il doppio
+  // del 35% di chi cala 7 carte in un colpo solo — senza nessun motivo
+  // per cui i pezzi dovrebbero valere più del tutto.
   const sesta = makeCard('♥', 9);
   a.hand.push(sesta);
   const res2 = actionAttachToMeld(state, 0, lay.meld.id, [sesta.id], T0 + 3000);
-  check('portando il gioco a 6 carte scatta l\'ondata del 20% (fascia nuova)', Math.abs(res2.ondata - 20) < 1e-9);
+  check('portando il gioco a 6 carte scatta solo la DIFFERENZA, 20%-10%=10%',
+    Math.abs(res2.ondata - 10) < 1e-9);
 
   const settima = makeCard('♥', 10);
   a.hand.push(settima);
   const res3 = actionAttachToMeld(state, 0, lay.meld.id, [settima.id], T0 + 4000);
-  check('a 7 carte scatta l\'ondata del 35%', Math.abs(res3.ondata - 35) < 1e-9);
+  // A gradini niente premio: la 7ª carta arriva su un gioco che aveva già
+  // scaricato ondata (non parte da zero), quindi vale la soglia normale
+  // (35%-20%=15%), non i 40% di chi cala 7 carte in un colpo solo.
+  check('a 7 carte per gradini scatta la differenza 35%-20%=15%, non il premio del colpo solo',
+    Math.abs(res3.ondata - 15) < 1e-9);
+  check('il totale delle tre ondate a gradini (10+10+15=35) uguaglia la SOGLIA cumulativa, non il premio',
+    Math.abs((res.ondata + res2.ondata + res3.ondata) - 35) < 1e-9);
 
   const ottava = makeCard('♥', 11);
   a.hand.push(ottava);
   const res4 = actionAttachToMeld(state, 0, lay.meld.id, [ottava.id], T0 + 5000);
   check('l\'ondata NON si ripete restando nella stessa fascia (8 carte)', !res4.ondata);
+}
+
+// --- 17bis. IL PREMIO delle 7 carte in un colpo solo è più alto di quello a gradini ---
+{
+  // Stessa identica scala finale (3-9 di cuori), stesso ATT, due modi
+  // diversi di arrivarci: qui il confronto diretto, sullo stesso metro.
+  const daColpoSolo = () => {
+    const st = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
+    const p = st.players[0]; p.hasDrawnThisTurn = true;
+    const m = heartsSeq([3, 4, 5, 6, 7, 8, 9]);
+    p.hand = [...m, ...p.hand.slice(0, 4)];
+    return actionLayMeld(st, 0, m.map((c) => c.id), T0 + 1000).ondata;
+  };
+  const daGradini = () => {
+    const st = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
+    const p = st.players[0]; p.hasDrawnThisTurn = true;
+    const base = heartsSeq([3, 4, 5, 6, 7]);
+    const c6 = makeCard('♥', 8), c7 = makeCard('♥', 9);
+    p.hand = [...base, c6, c7, ...p.hand.slice(0, 2)];
+    const lay = actionLayMeld(st, 0, base.map((c) => c.id), T0 + 1000);
+    actionAttachToMeld(st, 0, lay.meld.id, [c6.id], T0 + 2000);
+    return actionAttachToMeld(st, 0, lay.meld.id, [c7.id], T0 + 3000).ondata;
+  };
+  check('il colpo solo (40%) rende più del gradino finale a gradini (15%)', daColpoSolo() > daGradini());
+  check('la differenza è esattamente 25 punti di ATT-percento (40-15)',
+    Math.abs(daColpoSolo() - daGradini() - 25) < 1e-9);
 }
 
 // --- 18. Agganci illeciti rifiutati ---

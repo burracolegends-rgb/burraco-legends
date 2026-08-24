@@ -213,6 +213,18 @@ export const DAMAGE_TIERS = {
   7: { multiplier: 1.6, target: 'aoe',     aoePercent: 0.35 }
 };
 
+// PREMIO PER LE 7 CARTE IN UN COLPO SOLO (regola del committente).
+// Le percentuali sopra sono soglie cumulative: chi ci arriva a gradini
+// (5→6→7, con un aggancio alla volta) paga solo la differenza a ogni
+// passo, e il totale delle differenze torna a essere 35% — mai di più.
+// Ma chi cala le 7 carte in UN'UNICA mossa, senza mai passare dalle
+// fasce sotto, guadagna 40% invece di 35%: un premio per la giocata
+// difficile, sopra al vantaggio che il danno delle carte dà già da solo.
+// Vale solo quando l'intera ondata matura in quella mossa (nessuna
+// percentuale ancora scaricata da questo gioco prima d'ora) — non per un
+// aggancio che completa un gioco già a metà strada.
+export const ONDATA_BONUS_COLPO_SOLO = 0.40;
+
 // Accetta l'elenco delle carte oppure direttamente un numero: agli agganci
 // serve la fascia della lunghezza RAGGIUNTA dal gioco, non di un mazzetto.
 export function meldLengthTier(cards) {

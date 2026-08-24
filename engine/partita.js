@@ -40,7 +40,7 @@
 //    stesso principio già usato per i trigger delle Carte Trappola.
 // ============================================================
 
-import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } from './core-rules.js';
+import { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthTier, meldPointValue, DAMAGE_TIERS, ONDATA_BONUS_COLPO_SOLO, cardPointValue, groupDamageBySuit, groupJollyDamage, semeAttaccoMigliore, infliggiDanno, sorteggioPrimoTurno } from './core-rules.js';
 import { attachAbility, tickCharacterAbility, checkAbilityTrigger } from './character-abilities.js';
 import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata, risolviBersaglio, tickActiveEffects } from './magic-cards.js';
 import { elencoEffetti, CONDIZIONI, EFFETTI_DIFFERITI } from './vocabolario.js';
@@ -709,7 +709,8 @@ export function actionLayMeld(state, playerIndex, cardIds, nowMs) {
   const defender = state.players[defenderIndex];
   meld.tierRaggiunto = meldLengthTier(cards);   // serve agli agganci: l'ondata non si ripete
 
-  applicaDanno(state, playerIndex, result, cards, validation.type, validation.suit, cards.length, true);
+  // una calata nuova non ha ancora scaricato niente: parte da zero
+  applicaDanno(state, playerIndex, result, cards, validation.type, validation.suit, cards.length, 0);
   if (result.matchEnded) return result;
 
   // Pozzetto: si prende SUBITO appena la mano si svuota (spec §5)
@@ -778,7 +779,18 @@ function modificaDanno(state, playerIndex, damage, result) {
   return damage;
 }
 
-function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghezzaGioco, ondataConsentita) {
+// `pctOndataGiaPagata`: quanto ATT-percento di ondata questo GIOCO ha già
+// scaricato PRIMA di questa mossa (0 per una calata nuova, che parte
+// sempre da zero). Non è un sì/no: le fasce (5→10%, 6→20%, 7→35%) sono
+// SOGLIE CUMULATIVE, non premi indipendenti — salire da 5 a 6 vale la
+// DIFFERENZA (10 punti, non 20 pieni), salire da 6 a 7 vale la differenza
+// (15, non 35). Costruire un gioco a gradini deve scaricare in totale la
+// stessa ondata di chi lo cala già completo in un colpo solo: se ogni
+// aggancio pagasse la percentuale intera della fascia nuova, tre agganci
+// di fila (5→6→7) frutterebbero 10+20+35=65% invece di 35% — quasi il
+// doppio del colpo secco, e senza nessun motivo per cui costruire a
+// pezzi dovrebbe rendere di più che calare tutto insieme.
+function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghezzaGioco, pctOndataGiaPagata) {
   const player = state.players[playerIndex];
   const defenderIndex = opponentIndex(playerIndex);
   const defender = state.players[defenderIndex];
@@ -825,7 +837,15 @@ function applicaDanno(state, playerIndex, result, cards, tipo, suitGioco, lunghe
       }
       // ONDATA D'URTO: percentuale dell'ATT dell'eroe di quel seme, su tutti
       // e 4 gli avversari, in aggiunta al danno delle carte (spec §4).
-      const pct = ondataConsentita ? (DAMAGE_TIERS[tier].aoePercent || 0) : 0;
+      // Solo la parte NUOVA di ondata rispetto a quella già scaricata da
+      // questo gioco: mai negativa (le fasce salgono sempre, non
+      // scendono, ma un controllo costa poco ed evita sorprese).
+      // ECCEZIONE: le 7 carte in un colpo solo — nessuna ondata ancora
+      // scaricata da questo gioco (parte da zero) e la mossa arriva già
+      // a 7 — valgono il premio, non la soglia normale.
+      const diColpo = tier === 7 && (pctOndataGiaPagata || 0) === 0;
+      const pct = diColpo ? ONDATA_BONUS_COLPO_SOLO
+        : Math.max(0, (DAMAGE_TIERS[tier].aoePercent || 0) - (pctOndataGiaPagata || 0));
       if (pct > 0) {
         const ondata = attackerChar.att * pct * fattoreVarianza(state) * penalitaEroe * moltiplicatorePozzetto(player);
         for (const s of SUITS) {
@@ -1036,11 +1056,13 @@ export function actionAttachToMeld(state, playerIndex, meldId, cardIds, nowMs) {
   const tierPrima = meld.tierRaggiunto || null;
   const tierOra = meldLengthTier(insieme);
   meld.tierRaggiunto = tierOra;
-  // l'ondata scatta solo se il gioco è salito di fascia con questo aggancio
-  const ondataConsentita = tierOra !== null && tierOra !== tierPrima;
+  // quanto ATT-percento ha già scaricato questo gioco fino ad ora: si
+  // paga solo la differenza con la fascia raggiunta adesso (vedi
+  // applicaDanno). Prima di qualunque fascia (tierPrima null) vale zero.
+  const pctOndataGiaPagata = tierPrima !== null ? (DAMAGE_TIERS[tierPrima].aoePercent || 0) : 0;
 
   const result = { ok: true, meld, damage: 0, agganciate: nuove.length };
-  applicaDanno(state, playerIndex, result, nuove, meld.type, meld.suit, insieme.length, ondataConsentita);
+  applicaDanno(state, playerIndex, result, nuove, meld.type, meld.suit, insieme.length, pctOndataGiaPagata);
   if (result.matchEnded) return result;
 
   return concludiCalata(state, playerIndex, result);
@@ -1100,11 +1122,12 @@ export function usaAbilitaSpeciale(state, playerIndex, semeAttaccante, semeBersa
     return { ok: false, reason: 'Punti magia insufficienti: servono ' + costoAbilita + ', ne hai ' + (player.puntiMagia || 0) + '.' };
   }
 
-  // UN'ABILITÀ SI RISOLVE DA SOLA.
-  // Il giocatore sceglie QUALE suo eroe attiva, mai chi colpire: nessuna
-  // carta del roster dice "a scelta", quindi il bersaglio lo decide la
-  // carta (uno a caso, tutti, i propri...). `semeBersaglio` resta per le
-  // carte che un giorno vorranno farlo scegliere davvero — oggi nessuna.
+  // CHI SCEGLIE IL BERSAGLIO, LO DICE LA CARTA.
+  // Per la maggior parte del roster il giocatore sceglie QUALE suo eroe
+  // attiva e basta: il bersaglio lo decide la carta (uno a caso, tutti,
+  // i propri...). Sei carte invece dicono "a scelta" — Papa Figo, Boto
+  // Felipe, Onça-Pintada, Mapinguari, Caipora e Boitatá — e per quelle
+  // `semeBersaglio` è la scelta vera del giocatore, che va controllata.
   // Un eroe senza abilità dichiarata colpisce comunque, alla percentuale
   // di riferimento: è il comportamento di sempre dei personaggi
   // segnaposto, e toglierlo li lascerebbe con un pulsante che spende
