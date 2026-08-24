@@ -2592,6 +2592,10 @@ function svegliaIlBotSeTocca() {
   setTimeout(turnoBot, 900);
 }
 
+// l'ultimo secondo suonato del conto alla rovescia: senza, il tic
+// suonerebbe fino a quattro volte per secondo (il giro dell'orologio
+// e' ogni 250ms), non una volta sola come si sente un vero countdown.
+let ultimoTicStudio = null;
 function aggiornaStudio() {
   const box = $('studio');
   if (!box) return;
@@ -2599,10 +2603,12 @@ function aggiornaStudio() {
   const dentro = restano > 0;
   box.classList.toggle('mostra', dentro);
   document.body.classList.toggle('in-studio', dentro);
-  if (!dentro) { svegliaIlBotSeTocca(); return; }
+  if (!dentro) { ultimoTicStudio = null; svegliaIlBotSeTocca(); return; }
   const n = $('studioNumero');
   n.textContent = restano;
-  n.classList.toggle('poco', restano <= 5);
+  const poco = restano <= 5;
+  n.classList.toggle('poco', poco);
+  if (poco && restano !== ultimoTicStudio) { ultimoTicStudio = restano; SUONI.countdown(); }
 }
 
 function rigiaMiaSpenta() {
@@ -3257,19 +3263,48 @@ function mostraResoconto(r, chiAgisce) {
 // ============================================================
 // I SUONI
 //
-// NESSUN FILE AUDIO. I suoni si costruiscono qui, sul momento, con
-// qualche oscillatore e un po' di rumore filtrato. Non e' un vezzo: la
-// pagina deve poter essere aperta col doppio clic, senza rete e senza
-// cartelle accanto, e un file .mp3 da scaricare romperebbe proprio
-// questo. In cambio si ottiene qualcosa che i file non danno: il tonfo
-// del danno cambia con QUANTO danno e', il fruscio della pescata non e'
-// mai identico a se stesso.
+// Da qui in poi la voce vera e' quella registrata (client/audio/*.mp3):
+// piu' ricca di quanto un oscillatore possa fare. Ma la pagina deve
+// restare in piedi anche SENZA quella cartella accanto — aperta col
+// doppio clic da uno zip spacchettato a meta', o offline, o con un
+// singolo file mp3 mancante — quindi ogni suono registrato ha ancora
+// il suo equivalente generato al volo come rete di sicurezza: se il
+// file non c'e' o non carica, si sente comunque qualcosa, mai silenzio.
+// Il tonfo del danno, generato, cambia inoltre con QUANTO danno e' —
+// una clip fissa non potrebbe mai farlo — quindi li' la voce registrata
+// e quella dinamica suonano insieme, non una al posto dell'altra.
 //
 // I browser non lasciano suonare niente finche' l'utente non ha toccato
 // la pagina — regola sacrosanta, se no i siti urlerebbero da soli. Il
 // primo tocco sveglia l'audio, e da li' in poi funziona.
 // ============================================================
 const SUONI = (function () {
+  // le clip registrate: create una sola volta, riusate ad ogni chiamata.
+  // Se un file manca o non carica il fallimento arriva async (evento
+  // 'error' o rifiuto della promise di play()): troppo tardi per far
+  // scattare la voce generata ALLA PRIMA chiamata di quel suono, ma da
+  // quella chiamata in poi 'ok' resta falso e si passa dritti al
+  // generato, senza ritentare un file che si sa gia' rotto.
+  const clip = {};
+  function suonaClip(nome, volume) {
+    if (!acceso) return false;
+    let el = clip[nome];
+    if (!el) {
+      el = new Audio('audio/' + nome + '.mp3');
+      el.preload = 'auto';
+      el._ok = true;
+      el.addEventListener('error', () => { el._ok = false; });
+      clip[nome] = el;
+    }
+    if (!el._ok) return false;
+    try {
+      el.currentTime = 0;
+      el.volume = volume === undefined ? 1 : volume;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => { el._ok = false; });
+    } catch (e) { el._ok = false; return false; }
+    return true;
+  }
   let ctx = null, svegliato = false;
   let acceso = true;
   try { acceso = localStorage.getItem('bb_suoni') !== 'no'; } catch (e) {}
@@ -3347,15 +3382,21 @@ const SUONI = (function () {
     },
 
     // carta che scivola via dal mazzo
-    pesca() { soffio({ durata: 0.16, filtroDa: fra(900, 1200), filtroA: fra(2200, 3000), volume: 0.075, q: 0.8 }); },
+    pesca() {
+      if (suonaClip('pesca', 0.7)) return;
+      soffio({ durata: 0.16, filtroDa: fra(900, 1200), filtroA: fra(2200, 3000), volume: 0.075, q: 0.8 });
+    },
 
     // carta che atterra sul monte: fruscio piu' corto e un colpetto secco
     scarta() {
+      if (suonaClip('scarta', 0.7)) return;
       soffio({ durata: 0.13, filtroDa: fra(1800, 2400), filtroA: fra(500, 700), volume: 0.07, q: 0.9 });
       tono({ da: 190, a: 90, durata: 0.09, tipo: 'triangle', volume: 0.055, ritardo: 0.05 });
     },
 
-    // il monte scarti raccolto tutto insieme: molte carte, non una
+    // il monte scarti raccolto tutto insieme: molte carte, non una.
+    // Resta sempre generato: e' l'unico caso di piu' carte in fila, e
+    // nessuna delle clip registrate rende quella ripetizione.
     monte() {
       for (let i = 0; i < 5; i++) {
         soffio({ durata: 0.11, filtroDa: fra(800, 1600), filtroA: fra(1800, 2600), volume: 0.05, q: 0.8, ritardo: i * 0.045 });
@@ -3364,12 +3405,14 @@ const SUONI = (function () {
 
     // le carte scendono in tavola: un accordo che sale
     cala() {
+      if (suonaClip('cala', 0.7)) return;
       tono({ da: 300, a: 460, durata: 0.16, tipo: 'triangle', volume: 0.07 });
       tono({ da: 450, a: 690, durata: 0.2, tipo: 'sine', volume: 0.055, ritardo: 0.05 });
       soffio({ durata: 0.14, filtroDa: 1400, filtroA: 2600, volume: 0.05, q: 0.9 });
     },
 
-    // il colpo che parte e attraversa il tavolo
+    // il colpo che parte e attraversa il tavolo: resta generato, e'
+    // solo il fruscio del volo, non l'impatto (quello e' danno() sotto)
     colpoParte(magico) {
       if (magico) {
         tono({ da: 700, a: 1500, durata: 0.26, tipo: 'sine', volume: 0.075 });
@@ -3379,20 +3422,43 @@ const SUONI = (function () {
       }
     },
 
-    // lo schianto sulla carta bersaglio: piu' forte e' il colpo, piu'
-    // basso e lungo e' il tonfo. Trenta danni e centoventi non possono
-    // fare lo stesso rumore.
+    // lo schianto sulla carta bersaglio: la clip registrata da' il corpo
+    // dell'impatto, ma il tonfo generato resta ATTACCATO per i colpi
+    // forti — e' l'unico modo in cui trenta danni e centoventi continuano
+    // a non fare lo stesso rumore, cosa che una clip fissa non puo' dare.
     danno(quanto) {
       const forza = Math.max(0, Math.min(1, (Number(quanto) || 10) / 90));
-      const grave = 130 - forza * 60;
-      tono({ da: grave, a: grave * 0.45, durata: 0.16 + forza * 0.24, tipo: 'sine', volume: 0.11 + forza * 0.09 });
-      soffio({ durata: 0.1 + forza * 0.1, filtroDa: 2600 - forza * 900, filtroA: 320, volume: 0.07 + forza * 0.06, q: 0.7 });
+      const claccata = suonaClip('colpo', 0.6);
+      if (!claccata) {
+        const grave = 130 - forza * 60;
+        tono({ da: grave, a: grave * 0.45, durata: 0.16 + forza * 0.24, tipo: 'sine', volume: 0.11 + forza * 0.09 });
+        soffio({ durata: 0.1 + forza * 0.1, filtroDa: 2600 - forza * 900, filtroA: 320, volume: 0.07 + forza * 0.06, q: 0.7 });
+      }
       if (forza > 0.55) tono({ da: 70, a: 40, durata: 0.34, tipo: 'sine', volume: 0.1, ritardo: 0.03 });
     },
 
-    // la carta magica che si apre a mezzo schermo
+    // lo scudo che assorbe (la difesa sale) o si spacca (la difesa scende)
+    scudoRegge() {
+      if (suonaClip('scudo-regge', 0.65)) return;
+      tono({ da: 700, a: 1100, durata: 0.22, tipo: 'sine', volume: 0.08 });
+    },
+    scudoRotto() {
+      if (suonaClip('scudo-rotto', 0.65)) return;
+      soffio({ durata: 0.18, filtroDa: 3200, filtroA: 600, volume: 0.08, q: 1.3 });
+      tono({ da: 500, a: 200, durata: 0.2, tipo: 'triangle', volume: 0.07, ritardo: 0.03 });
+    },
+
+    // la cura che risana
+    cura() {
+      if (suonaClip('cura', 0.65)) return;
+      [0, 0.09].forEach((r, i) => tono({ da: 520 + i * 160, a: 780 + i * 160, durata: 0.28, tipo: 'sine', volume: 0.07, ritardo: r }));
+    },
+
+    // la carta magica che si apre a mezzo schermo: sorpresa e trappola
+    // hanno ciascuna la sua voce, non piu' la stessa intonata diverso
     magia(trappola) {
       const base = trappola ? 520 : 660;
+      if (suonaClip(trappola ? 'trappola' : 'sorpresa', 0.65)) return;
       [0, 0.07, 0.14].forEach((r, i) => {
         tono({ da: base * (1 + i * 0.26), a: base * (1 + i * 0.26) * 1.5, durata: 0.5, tipo: 'sine', volume: 0.07, ritardo: r });
       });
@@ -3404,13 +3470,29 @@ const SUONI = (function () {
     },
 
     fine(vinto) {
+      if (suonaClip(vinto ? 'vittoria' : 'sconfitta', 0.75)) return;
       const note = vinto ? [523, 659, 784, 1047] : [523, 466, 392, 294];
       note.forEach((n, i) => tono({ da: n, a: n, durata: 0.5, tipo: vinto ? 'triangle' : 'sine', volume: 0.09, ritardo: i * 0.17 }));
     },
 
     // il proprio turno che comincia
     tuoTurno() {
+      if (suonaClip('notifica', 0.6)) return;
       tono({ da: 660, a: 880, durata: 0.18, tipo: 'sine', volume: 0.06 });
+    },
+
+    // gli ultimi secondi del conto alla rovescia iniziale
+    countdown() {
+      if (suonaClip('countdown', 0.55)) return;
+      tono({ da: 880, a: 660, durata: 0.12, tipo: 'square', volume: 0.05 });
+    },
+
+    // un bottone dell'interfaccia, generico: aprire le impostazioni,
+    // ordinare la mano, confermare — non le azioni di gioco, che hanno
+    // gia' la loro voce
+    click() {
+      if (suonaClip('click', 0.5)) return;
+      tono({ da: 500, a: 380, durata: 0.05, tipo: 'triangle', volume: 0.045 });
     },
 
     perAzione(tipo) {
@@ -3421,6 +3503,14 @@ const SUONI = (function () {
     }
   };
 })();
+
+// Ogni <button> vero dell'interfaccia (impostazioni, ordina la mano,
+// accendi/spegni i suoni, abbandona, chiudi, usa la carta magica) fa lo
+// stesso clic. Un solo ascoltatore per tutti, invece di scriverlo undici
+// volte: se domani nasce un dodicesimo bottone, suona da solo.
+document.addEventListener('click', (e) => {
+  if (e.target.closest && e.target.closest('button')) SUONI.click();
+});
 
 // ------------------------------------------------------------
 // IL COLPO CHE ATTRAVERSA IL TAVOLO
@@ -3833,6 +3923,7 @@ function mostraEffetti(r, chiAgisce, ritardo) {
           if (!el) return;
           const quanto = e.guarigione ? e.guarigione[s] : Number(e.parametro);
           if (!quanto) return;
+          if (cura) SUONI.cura(); else SUONI.danno(quanto);
           numeroDanno(el, cura ? -Math.abs(quanto) : Math.abs(quanto));
         }, quando);
       });
@@ -3861,6 +3952,8 @@ function mostraEffetti(r, chiAgisce, ritardo) {
       segnaAnimazione(quando + 2400);
       setTimeout(() => {
         const el = $(striscia) && $(striscia).querySelector('.bcard[data-seme="' + s + '"]');
+        if (e.effect === 'boost_difesa') SUONI.scudoRegge();
+        else if (e.effect === 'riduci_difesa') SUONI.scudoRotto();
         segnoEffetto(el, def, e.parametro);
       }, quando);
     });

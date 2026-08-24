@@ -531,6 +531,19 @@ const $ = (id) => document.getElementById(id);
 const testo = (id) => TESTI[id] || { nome: id, descrizione: '' };
 const stelle = (n) => '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
 
+// Il fanfara-lampo per le carte Epiche e Leggendarie: le uniche che
+// scuotono lo schermo (st.scossa), quindi le uniche che meritano anche
+// un suono che si fa notare. Se il file non c'e' o non carica, silenzio:
+// qui non c'e' un equivalente generato da rifare al volo come al tavolo.
+function suonaRivelazioneRara() {
+  try {
+    const a = new Audio('audio/pacchetto-raro.mp3');
+    a.volume = 0.8;
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) {}
+}
+
 // La collezione e il contatore della garanzia vivono nel browser: senza
 // un account non c'è dove salvarli. Quando ci sarà il server, questi due
 // valori vanno di là — sono il tipo di dato che un giocatore non deve
@@ -828,7 +841,7 @@ function giraCarta(c, st) {
     $('aura').className = 'aura accesa';
     scintille(cx, cy, st.particelle, st.colore);
     if (st.raggi) $('raggi').style.opacity = String(st.raggi);
-    if (st.scossa) scuotiSchermo(c.rarita === 5 ? 22 : 12);
+    if (st.scossa) { scuotiSchermo(c.rarita === 5 ? 22 : 12); suonaRivelazioneRara(); }
     if (c.rarita === 5) coriandoli(90);
 
     $('suggerimento').textContent = indice + 1 < risultato.carte.length
