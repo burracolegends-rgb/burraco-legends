@@ -68,7 +68,8 @@ PAGINA = r'''<!DOCTYPE html>
     width: 100%; max-width: 980px; display: flex; align-items: center;
     justify-content: space-between; gap: 12px;
   }
-  .torna { font-size: 0.85rem; color: var(--tenue); text-decoration: none; }
+  .torna { font-size: 0.85rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .torna .icona-torna { width: 20px; height: 20px; object-fit: contain; }
   .torna:hover { color: var(--oro); }
 
   .borsellino {
@@ -218,7 +219,7 @@ PAGINA = r'''<!DOCTYPE html>
 <body>
 
 <div class="barra">
-  <a class="torna" href="home.html">← Torna alla home</a>
+  <a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Torna alla home</a>
   <div class="borsellino" id="borsellino" title="I tuoi sharkini">
     <span class="moneta" id="moneta-saldo"></span>
     <span class="cifra" id="saldo">0</span>

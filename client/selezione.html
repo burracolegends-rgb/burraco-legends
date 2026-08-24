@@ -123,8 +123,9 @@
   #summaryPanel.open { display: block; }
   #summaryPanel h3 { margin-top: 0; color: var(--ok); }
   #summaryPanel pre { background: var(--bg); padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; }
-  .torna { display: inline-block; margin-bottom: 8px; font-size: 0.85rem;
+  .torna { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 0.85rem;
            color: var(--muted, #9a8fb5); text-decoration: none; }
+  .torna .icona-torna { width: 20px; height: 20px; object-fit: contain; }
   .torna:hover { color: var(--ok, #d4af37); }
 
   /* --- le miniature delle illustrazioni --- */
@@ -152,7 +153,7 @@
     <!-- Da qui si entrava e non si usciva più: nessun modo di tornare
          alla home se non col tasto indietro del browser, che su telefono
          metà delle volte non c'è. -->
-    <a class="torna" href="home.html">← Torna alla home</a>
+    <a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Torna alla home</a>
     <h1>Burraco <span>Legends</span></h1>
     <div class="subtitle" data-i18n-key="sottotitolo">Scegli 4 Personaggi (uno per seme) e 3 Carte Magiche: sono quelli con cui scenderai in campo.</div>
   </div>

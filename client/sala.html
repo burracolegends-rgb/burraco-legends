@@ -117,7 +117,8 @@
   .avviso.buono { border-color: rgba(88,196,138,0.5); background: rgba(30,66,48,0.4); color: #b6ffd4; }
   .nascosto { display: none !important; }
 
-  .torna { position: fixed; top: 16px; left: 16px; font-size: 0.85rem; color: var(--tenue); text-decoration: none; }
+  .torna { position: fixed; top: 16px; left: 16px; font-size: 0.85rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .torna .icona-torna { width: 20px; height: 20px; object-fit: contain; }
   .torna:hover { color: var(--oro); }
   .piede { font-size: 0.7rem; color: #8a7e68; text-align: center; max-width: 420px; line-height: 1.6; }
   .spia-mazzo {
@@ -129,7 +130,7 @@
 </head>
 <body>
 
-<a class="torna" href="home.html">← Home</a>
+<a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Home</a>
 
 <div class="insegna">
   <h1>GIOCA CON UN AMICO</h1>

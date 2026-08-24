@@ -309,7 +309,8 @@
   .bottone:hover { transform: translateY(-2px); border-color: var(--oro); box-shadow: 0 1vh 2.4vh rgba(0,0,0,0.6), 0 0 2vh rgba(232,196,106,0.35); }
   .bottone.principale { background: linear-gradient(180deg, var(--oro-chiaro), var(--oro)); color: #1b1208; border-color: var(--oro-chiaro); }
 
-  .torna { position: fixed; top: 2vh; left: 2vh; z-index: 8; font-size: 0.85rem; color: var(--tenue); text-decoration: none; }
+  .torna { position: fixed; top: 2vh; left: 2vh; z-index: 8; font-size: 0.85rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .torna .icona-torna { width: 20px; height: 20px; object-fit: contain; }
   .torna:hover { color: var(--oro); }
 
   /* ---------- LA CARTA ILLUSTRATA (condivisa fra le pagine) ---------- */
@@ -457,7 +458,7 @@
 </head>
 <body>
 
-<a class="torna" href="home.html">← Torna alla home</a>
+<a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Torna alla home</a>
 <div class="borsellino" id="borsellino" title="I tuoi sharkini">
   <span id="moneta-saldo"></span><span class="cifra" id="saldo">0</span><span class="etichetta-moneta">sharkini</span>
 </div>
