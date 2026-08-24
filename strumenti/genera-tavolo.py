@@ -2147,6 +2147,16 @@ function agganciaPannello() {
     const c = e.target.closest ? e.target.closest('.bcard') : null;
     if (c) pop.classList.remove('mostra');
   });
+  // COL DITO, "mouseover"/"mouseout" NON BASTANO.
+  // Un tocco sulla carta genera spesso un mouseover sintetico che apre
+  // il pannello, ma il mouseout che lo richiuderebbe a volte non arriva
+  // mai: resta appiccicato sopra il tavolo finché non capita un altro
+  // evento a caso. Un tocco FUORI da una carta lo chiude sempre, quindi,
+  // qualunque cosa faccia (o non faccia) il mouseover/mouseout sintetico.
+  document.addEventListener('touchstart', (e) => {
+    const c = e.target.closest ? e.target.closest('.bcard') : null;
+    if (!c) pop.classList.remove('mostra');
+  }, { passive: true });
 }
 
 // ------------------------------------------------------------
