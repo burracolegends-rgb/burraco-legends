@@ -2023,57 +2023,38 @@
        a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
        Carta Magica o un'abilità speciale. Ha preso il posto delle vecchie
        barre azzurre che stavano su ogni singolo eroe.
-       VERTICALE, non orizzontale: nelle fasce del tavolo lo spazio che
-       manca è quello in LARGHEZZA (sette carte per parte, mazzo, scarti,
-       pozzetti...), mentre in altezza la riga ha già lo spazio delle
-       carte Battle da riempire. Una colonna di tacche occupa una
-       frazione della larghezza di prima. Si riempie dal basso verso
-       l'alto, come un termometro: è la lettura più naturale per una
-       riserva che "sale". */
-    .barra-magia { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 0 0 auto; }
-    .barra-magia .etichetta { font-size: 8px; color: #9adcff; letter-spacing: 0.5px; white-space: nowrap; }
-    .barra-magia .tacche { display: flex; flex-direction: column-reverse; gap: 1px; }
-    .barra-magia .tacca {
-      /* Stessa storia delle carte Battle: un numero fisso (4px) sostituito
-         da un altro fisso (2.5px) sotto i 480px di altezza lasciava chi
-         aveva uno schermo appena sopra quella soglia con la colonna di 15
-         tacche più alta del necessario — quasi 105px, in una fascia che
-         doveva restare stretta. Fluido con clamp(), niente più scatto. */
-      width: 13px; height: clamp(2.5px, 0.65vh, 4px); border-radius: 1.5px;
-      background: rgba(0,0,0,0.55); border: 1px solid rgba(69,182,255,0.28); box-sizing: border-box;
+
+       UNA SOLA COLONNA PIENA, non 15 tacche impilate. Le tacche singole
+       erano leggibili ma avevano un difetto strutturale: 15 segmenti più
+       etichetta più conteggio finivano sempre più alti delle carte
+       Battle accanto — anche al minimo leggibile (2,5px a tacca) restava
+       un'eccedenza di quasi 20px, l'unico pezzo della fascia che non si
+       poteva più stringere con un numero. Qui l'altezza è `var(--battle-h)`,
+       LA STESSA delle carte accanto: per costruzione non può mai superarle,
+       a qualunque dimensione di schermo — non serve più nessuna soglia da
+       aggiustare a mano. Il numero sta dentro la colonna stessa, non su
+       una riga a parte: quel "a parte" era il resto dell'eccedenza. */
+    .barra-magia { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
+    .barra-magia .pila {
+      position: relative; width: 20px; height: var(--battle-h); border-radius: 4px;
+      background: rgba(0,0,0,0.55); border: 1px solid rgba(69,182,255,0.28);
+      box-sizing: border-box; overflow: hidden; display: flex; align-items: flex-end;
     }
-    .barra-magia .tacca.piena {
-      background: linear-gradient(90deg, #9adcff, var(--charge));
-      border-color: var(--charge); box-shadow: 0 0 4px rgba(69,182,255,0.8);
+    .barra-magia .riempimento {
+      width: 100%; background: linear-gradient(180deg, var(--charge), #9adcff);
+      box-shadow: 0 0 6px rgba(69,182,255,0.7); transition: height 0.4s ease;
     }
-    .barra-magia .conta { font-size: 11px; font-weight: 800; color: var(--charge); font-variant-numeric: tabular-nums; }
+    .barra-magia .conta {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 11px; font-weight: 800; color: #eaf6ff; font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9);
+    }
     .barra-magia.piena .conta { animation: caricaPiena 1.2s ease-in-out infinite; }
 
-    /* SU TELEFONO ANCHE UNA COLONNA VA STRETTA.
-       15 tacche in verticale, più etichetta e conteggio, sono comode su
-       un monitor dove la riga ha decine di pixel di margine; in mezzo a
-       sette carte per parte e a tutto il resto della fascia, ogni pixel
-       di altezza in più si contende spazio con le carte stesse. Si
-       stringe: le tacche restano leggibili come andamento (quota
-       riempita), che è l'unica cosa che serve d'un colpo d'occhio — il
-       numero preciso resta scritto lì accanto.
-       DEVE STARE QUI, DOPO le regole base sopra: stessa regola di
-       cascata di .turni-box qualche riga più giù — a parità di
-       specificità vince chi è scritto dopo, e messa nel primo blocco
-       @media (più in alto nel foglio) perdeva contro queste. */
-    @media (max-height: 480px), (hover: none) and (orientation: portrait) {
-      .barra-magia { gap: 1px; }
-      .barra-magia .etichetta { font-size: 6.5px; }
-      .barra-magia .tacca { width: 10px; }
-      .barra-magia .conta { font-size: 9px; }
-      /* Quella dell'avversario si guarda ancora meno da vicino — serve
-         solo a sapere se sta per potersi permettere qualcosa, non il
-         numero esatto tacca per tacca. Via l'etichetta "MAGIA" (la
-         posizione in alto lo dice già), tacche più strette ancora. */
-      #magiaAvversario .etichetta { display: none; }
-      #magiaAvversario .tacca { width: 8px; height: 2px; }
-      #magiaAvversario .conta { font-size: 8px; }
-    }
+    /* Quella dell'avversario si guarda meno da vicino: basta un po' più
+       stretta, non serve il numero preciso quanto la propria. */
+    #magiaAvversario .pila { width: 15px; }
+    #magiaAvversario .conta { font-size: 9px; }
 
     /* --- I due cronometri del minuto a turno --- */
     .turni-box { display: flex; flex-direction: column; gap: 3px; }
@@ -7510,14 +7491,14 @@ function disegnaTutto() {
   if (S.status === 'finished') mostraFine();
 }
 
-// La riserva di punti magia: 15 tacche, quelle piene sono i punti che hai.
+// La riserva di punti magia: una colonna sola che si riempie dal basso,
+// alta quanto le carte accanto — non più 15 tacche impilate.
 function disegnaMagia(box, giocatore) {
-  const punti = giocatore.puntiMagia || 0;
-  let tacche = '';
-  for (let i = 0; i < 15; i++) tacche += '<div class="tacca' + (i < punti ? ' piena' : '') + '"></div>';
+  const punti = Math.max(0, Math.min(15, giocatore.puntiMagia || 0));
+  const percento = Math.round((punti / 15) * 100);
   box.className = 'barra-magia' + (punti >= 15 ? ' piena' : '');
   box.title = 'Punti magia: ' + punti + ' su 15 — crescono di 2 a ogni tuo turno e si spendono per le Carte Magiche e le abilità speciali';
-  box.innerHTML = '<span class="etichetta">MAGIA</span><div class="tacche">' + tacche + '</div><span class="conta">' + punti + '/15</span>';
+  box.innerHTML = '<div class="pila"><div class="riempimento" style="height:' + percento + '%"></div><span class="conta">' + punti + '</span></div>';
 }
 
 // ------------------------------------------------------------
