@@ -2018,6 +2018,33 @@
       .hand-center-box { padding-top: 10px !important; padding-bottom: 2px !important; }
     }
 
+    /* PERSONAGGI E MAGIA DELL'AVVERSARIO PIÙ VICINI AL TASTO IMPOSTAZIONI.
+       .top-shelf (Burraco Pulito) usa justify-content:space-between su
+       SEI figli — tasto impostazioni, le sue carte Battle, la sua barra
+       magia, il gruppo avatar/mano coperta, il tabellone dei due
+       cronometri, il timer di partita — e distribuisce lo spazio vuoto
+       fra tutti loro in parti uguali. Il vuoto fra "carte + magia" e
+       "avatar/mano coperta" cresceva quanto quello fra qualunque altra
+       coppia, anche se qui in mezzo non c'è niente da separare: sono
+       tutte informazioni DELL'AVVERSARIO, hanno senso vicine. Il divario
+       vero che serve — fra "cose dell'avversario" e "i due cronometri" —
+       lo fa da solo il margin-left:auto sul tabellone: flex-start più
+       quello sposta il vuoto tutto dove serve, non spalmato ovunque. */
+    .top-shelf { justify-content: flex-start; gap: 8px; }
+    .top-shelf .tabellone { margin-left: auto; }
+
+    /* LE CARTE COPERTE DELL'AVVERSARIO, PIÙ GRANDI (+20%, richiesto).
+       --opp-card-w/h su schermo touch partono da 19×27,7px: lo spazio
+       liberato spostando tutto a sinistra qui sopra va proprio a loro,
+       che restavano le più piccole della fascia pur essendo l'unica
+       cosa lì che si guarda per capire quante carte ha in mano
+       l'avversario. Cresce anche .top-shelf di conseguenza (la sua
+       altezza minima è calc(--opp-card-h + 4px)): è il prezzo di carte
+       più leggibili, non uno scatto accidentale. */
+    @media (hover: none), (pointer: coarse) {
+      :root { --opp-card-w: 22.8px; --opp-card-h: 33.24px; }
+    }
+
     /* --- BARRA DEI PUNTI MAGIA ---
        Una sola riserva per giocatore, sotto le sue sette carte. Sale di 2
        a ogni proprio turno, si ferma a 15, e si svuota quando si gioca una
