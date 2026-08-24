@@ -421,7 +421,7 @@ const server = http.createServer(async (req, res) => {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const quante = Number(corpo.carte);
-      return rispondi(res, 200, await anagrafe.compraPacchetto(corpo.gettone, quante));
+      return rispondi(res, 200, await anagrafe.compraPacchetto(corpo.gettone, quante, corpo.tipo));
     }
 
     if (via === '/api/ricarica' && req.method === 'POST') {

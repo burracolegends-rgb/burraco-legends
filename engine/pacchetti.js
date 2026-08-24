@@ -73,6 +73,28 @@ export function carteInVendita(catalogo) {
 }
 
 // ------------------------------------------------------------
+// PACCHETTI MIRATI: solo eroi, o solo Carte Magiche.
+//
+// Chi vuole completare gli eroi di un seme, o mettere insieme le Carte
+// Magiche che gli mancano, prima era costretto a comprare pacchetti
+// misti e sperare — metà delle carte che uscivano non gli servivano
+// mai. Qui si restringe il catalogo PRIMA di passarlo ad
+// apriPacchetto, che per il resto non cambia di una riga: continua a
+// pescare "in tutto il catalogo che gli viene dato", senza sapere che
+// esiste la distinzione.
+//
+// Un eroe si riconosce dal seme (♥♦♣♠), una Carta Magica no — è la
+// stessa differenza che usa già selezione.html per smistarle.
+// ------------------------------------------------------------
+export function carteDiTipo(catalogo, tipo) {
+  const lista = catalogo || [];
+  if (!tipo || tipo === 'tutti') return lista;
+  if (tipo === 'eroe') return lista.filter((c) => !!c.seme);
+  if (tipo === 'magia') return lista.filter((c) => !c.seme);
+  throw new Error('Tipo di pacchetto sconosciuto: ' + tipo);
+}
+
+// ------------------------------------------------------------
 // GARANZIA (pity)
 // Il contatore conta CARTE, non pacchetti: solo così è giusto anche coi
 // tagli diversi. Chi compra 50 carte in una volta deve ricevere le stesse

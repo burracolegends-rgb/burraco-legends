@@ -379,9 +379,15 @@ PAGINA = r'''<!DOCTYPE html>
     animation: miniEntra 0.4s backwards;
   }
   @keyframes miniEntra { from { opacity: 0; transform: translateY(2vh) scale(0.9); } }
-  .mini .tag { position: absolute; top: -0.9vh; font-size: 1vh; font-weight: 900; padding: 0.25vh 0.9vh; border-radius: 1vh; letter-spacing: 0.1vh; }
+  .mini .tag { position: absolute; top: -0.9vh; font-size: 1vh; font-weight: 900; padding: 0.25vh 0.9vh; border-radius: 1vh; letter-spacing: 0.1vh; z-index: 5; left: 50%; transform: translateX(-50%); white-space: nowrap; }
   .mini .tag.nuova { background: #35c46f; color: #05301a; }
   .mini .tag.doppia { background: #3b3550; color: var(--tenue); }
+  /* Quante copie della stessa carta sono uscite in QUESTA apertura. */
+  .mini .quante {
+    position: absolute; bottom: 0.6vh; right: 0.6vh; z-index: 5;
+    background: rgba(13,10,19,0.85); color: #fff0c2; border: 1px solid var(--oro-scuro, #9a6f21);
+    font-size: 1.1vh; font-weight: 900; padding: 0.2vh 0.7vh; border-radius: 1vh;
+  }
 
   .incasso { font-size: 1rem; color: var(--tenue); }
   .incasso b { color: var(--oro); }
@@ -489,6 +495,7 @@ __CSS_CARTA__
     <div class="incasso" id="incasso"></div>
     <div class="bottoni">
       <a class="bottone principale" href="negozio.html">Compra un altro pacchetto</a>
+      <a class="bottone" href="selezione.html">Vai al deck</a>
       <a class="bottone" href="album.html">Vedi l'album</a>
       <a class="bottone" href="home.html">Torna alla home</a>
     </div>
@@ -547,6 +554,13 @@ const QUANTE = (function () {
   const n = parseInt(new URLSearchParams(location.search).get('carte'), 10);
   const ammesse = OFFERTE.map((o) => o.carte);
   return ammesse.includes(n) ? n : CARTE_PER_PACCHETTO;
+})();
+// Pacchetto mirato (solo eroi o solo Carte Magiche): viaggia nello
+// stesso indirizzo, es. spacchetta.html?carte=10&tipo=eroe. Un valore
+// che non sia uno dei due vale "misto" — lo stesso che dire niente.
+const TIPO_PACCHETTO = (function () {
+  const t = new URLSearchParams(location.search).get('tipo');
+  return (t === 'eroe' || t === 'magia') ? t : null;
 })();
 let risultato = null, indice = 0, girata = false;
 
@@ -613,7 +627,8 @@ function saldoInsufficiente() {
 }
 
 $('invito').textContent = 'Tocca per strappare';
-$('quante-dentro').innerHTML = '<b>' + QUANTE + '</b> ' + (QUANTE === 1 ? 'carta' : 'carte') + ' dentro';
+$('quante-dentro').innerHTML = '<b>' + QUANTE + '</b> ' + (QUANTE === 1 ? 'carta' : 'carte') + ' dentro' +
+  (TIPO_PACCHETTO ? ' · solo ' + (TIPO_PACCHETTO === 'eroe' ? 'Eroi' : 'Carte Magiche') : '');
 $('costo-pacchetto').innerHTML = monetaSvg(19) + conNome(OFFERTA.costo);
 
 // Si comincia chiedendo al server chi sono e cosa ho. Finché non
@@ -704,7 +719,7 @@ async function apriIlPacchetto() {
   // che non si capisce e che fa sembrare la pagina rotta. Così invece
   // lo strappo dura il suo secondo abbondante e la risposta arriva
   // dentro quel tempo, senza che nessuno se ne accorga.
-  const inArrivo = SCORTA.compra(QUANTE);
+  const inArrivo = SCORTA.compra(QUANTE, TIPO_PACCHETTO);
   avviaLoStrappo();
 
   const r = await inArrivo;
@@ -850,15 +865,33 @@ function mostraRiepilogo() {
     ? 'Pacchetto garantito!'
     : (migliore.rarita >= 4 ? 'Che fortuna!' : 'Il tuo bottino');
 
-  $('griglia').innerHTML = risultato.carte.map((c, i) => {
-    const st = STILE_RARITA[c.rarita] || STILE_RARITA[1];
-    const t = testo(c.carta.id);
+  // Raggruppate per carta: con un pacchetto grande (25, 50 carte) una
+  // tessera per ogni singola estrazione era un muro illeggibile, e la
+  // stessa carta usciva ripetuta identica più volte senza dire quante.
+  // Qui si conta quante copie di ognuna sono arrivate in QUESTA apertura,
+  // e la tessera lo dice con un "×N" invece di ripetersi.
+  const gruppi = [];
+  const perId = new Map();
+  for (const c of risultato.carte) {
+    let g = perId.get(c.carta.id);
+    if (!g) { g = { carta: c.carta, rarita: c.rarita, quante: 0, nuove: 0 }; perId.set(c.carta.id, g); gruppi.push(g); }
+    g.quante += 1;
+    if (c.nuova) g.nuove += 1;
+  }
+
+  $('griglia').innerHTML = gruppi.map((g, i) => {
+    const st = STILE_RARITA[g.rarita] || STILE_RARITA[1];
+    const t = testo(g.carta.id);
+    const tuttaNuova = g.nuove === g.quante;
+    const parzialeNuova = g.nuove > 0 && g.nuove < g.quante;
+    const etichetta = tuttaNuova ? 'NUOVA' : (parzialeNuova ? (g.nuove + ' NUOVA + ' + (g.quante - g.nuove) + ' DOPPIA') : 'DOPPIA');
     // Nel riepilogo le carte sono piccole: si passa il nome ma non la
     // descrizione, che a quella misura il CSS nasconde comunque.
     return '<div class="mini" style="--bordo:' + st.colore + ';--alone:' + st.alone +
            ';animation-delay:' + (i * 0.09).toFixed(2) + 's">' +
-      cartaIllustrata(c.carta, { nome: t.nome }, { stelle: stelle(c.rarita) }) +
-      '<div class="tag ' + (c.nuova ? 'nuova' : 'doppia') + '">' + (c.nuova ? 'NUOVA' : 'DOPPIA') + '</div>' +
+      cartaIllustrata(g.carta, { nome: t.nome }, { stelle: stelle(g.rarita) }) +
+      (g.quante > 1 ? '<div class="quante">×' + g.quante + '</div>' : '') +
+      '<div class="tag ' + (tuttaNuova ? 'nuova' : 'doppia') + '">' + etichetta + '</div>' +
     '</div>';
   }).join('');
 

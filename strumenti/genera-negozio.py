@@ -4,7 +4,7 @@
 #   - i PACCHETTI si pagano in sharkini, e basta;
 #   - gli SHARKINI si ricaricano con gli euro.
 # Sulle carte non compare mai un prezzo in euro.
-import re, io, os, sys
+import re, io, os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ponte import PONTE
 
@@ -23,6 +23,18 @@ def impacchetta(nome):
             'const {%s} = __%s;\n' % (', '.join(esportati), nome[:3].upper()))
 
 motore = impacchetta('sharkini.js') + impacchetta('pacchetti.js')
+
+# IL CATALOGO, per il ponte di ripiego (pagina aperta col doppio clic,
+# senza server). Senza questo la funzione compra() del ponte di
+# ripiego chiamava apriPacchetto(CATALOGO, ...) con CATALOGO non
+# definito — moriva silenziosa alla prima prova d'acquisto offline.
+# Stesso identico procedimento di genera-spacchetta.py, che il
+# catalogo lo usa per lo stesso motivo.
+carte = {}
+for f in sorted(os.listdir(os.path.join(PROG, 'cards', 'data'))):
+    if f.endswith('.json'):
+        carte[f[:-5]] = json.loads(io.open(os.path.join(PROG, 'cards', 'data', f), encoding='utf-8').read())
+motore += '\nconst CATALOGO = ' + json.dumps(list(carte.values()), ensure_ascii=False) + ';\n'
 
 PAGINA = r'''<!DOCTYPE html>
 <html lang="it">
@@ -125,6 +137,7 @@ PAGINA = r'''<!DOCTYPE html>
     grid-template-columns: repeat(auto-fit, minmax(min(285px, 100%), 1fr));
   }
 
+
   /* ---------- una voce di listino ---------- */
   .offerta {
     position: relative; display: flex; align-items: center; gap: 14px;
@@ -218,11 +231,20 @@ PAGINA = r'''<!DOCTYPE html>
   <div class="sotto">Le carte si pagano in sharkini</div>
 </div>
 
-<!-- BANCO 1: i pacchetti, in sharkini -->
+<!-- BANCO 1a e 1b: i pacchetti, in sharkini — due banchi distinti, non
+     un filtro sopra uno solo, perché sono due acquisti diversi: chi vuole
+     completare gli eroi non deve nemmeno vedere l'offerta delle magie, e
+     viceversa. -->
+<div class="garanzia" id="garanzia"></div>
+
 <div class="banco">
-  <div class="titolo-banco">Pacchetti <span class="spiega">si pagano in sharkini</span></div>
-  <div class="garanzia" id="garanzia"></div>
-  <div class="vetrina" id="vetrina"></div>
+  <div class="titolo-banco">Pacchetti Eroi <span class="spiega">solo personaggi</span></div>
+  <div class="vetrina" id="vetrinaEroi"></div>
+</div>
+
+<div class="banco">
+  <div class="titolo-banco">Pacchetti Carte Magiche <span class="spiega">solo Sorpresa e Trappola</span></div>
+  <div class="vetrina" id="vetrinaMagiche"></div>
 </div>
 
 <a class="strada-gratis" href="home.html#premio">
@@ -342,31 +364,42 @@ function sacchettoSvg(indice) {
 }
 
 // ------------------------------------------------------------
-// BANCO 1 — I PACCHETTI, IN SHARKINI
+// BANCO 1a e 1b — I PACCHETTI, IN SHARKINI
+//
+// Due vetrine, non una vetrina con un filtro: sono due acquisti
+// diversi. Stessi tagli, agli stessi prezzi, ma una pesca solo fra gli
+// eroi e l'altra solo fra le Carte Magiche — chi vuole completare un
+// seme, o mettere insieme le magie che gli mancano, prima era
+// costretto a comprare pacchetti misti e sperare: metà delle carte non
+// gli servivano mai.
 // ------------------------------------------------------------
-$('vetrina').innerHTML = OFFERTE.map((o) => {
-  const sconto = scontoPercentuale(o);
-  const posso = saldoPuoPagare(mio.saldo, o.costo);
-  const manca = o.costo - mio.saldo;
-  return '<a class="offerta' + (o.etichetta ? ' evidenziata' : '') + (posso ? '' : ' spenta') +
-           '" href="spacchetta.html?carte=' + o.carte + '">' +
-    (o.etichetta ? '<span class="bandiera ' + o.etichetta + '">' +
-      (o.etichetta === 'popolare' ? 'Il più scelto' : 'Conviene di più') + '</span>' : '') +
-    '<div class="involucro">' + involucroSvg(o.id, o.carte) + '</div>' +
-    '<div class="dati">' +
-      '<span class="quante">' + o.carte + (o.carte === 1 ? ' carta' : ' carte') + '</span>' +
-      '<span class="nome-taglio">' + (NOMI[o.id] || o.id) + '</span>' +
-      (posso
-        ? '<span class="unitario">' + conNome(costoPerCarta(o)) + ' a carta</span>'
-        : '<span class="manca">Ti ' + (manca === 1 ? 'manca 1 sharkino' : 'mancano ' + conNome(manca)) + '</span>') +
-    '</div>' +
-    '<div class="prezzo-blocco">' +
-      '<span class="prezzo">' + MONETINA() + formattaSharkini(o.costo) +
-        '<em class="moneta-nome">sharkini</em></span>' +
-      (sconto > 0 ? '<span class="sconto">−' + sconto + '%</span>' : '') +
-    '</div>' +
-  '</a>';
-}).join('');
+function disegnaVetrina(elId, tipo) {
+  $(elId).innerHTML = OFFERTE.map((o) => {
+    const sconto = scontoPercentuale(o);
+    const posso = saldoPuoPagare(mio.saldo, o.costo);
+    const manca = o.costo - mio.saldo;
+    return '<a class="offerta' + (o.etichetta ? ' evidenziata' : '') + (posso ? '' : ' spenta') +
+             '" href="spacchetta.html?carte=' + o.carte + '&tipo=' + tipo + '">' +
+      (o.etichetta ? '<span class="bandiera ' + o.etichetta + '">' +
+        (o.etichetta === 'popolare' ? 'Il più scelto' : 'Conviene di più') + '</span>' : '') +
+      '<div class="involucro">' + involucroSvg(o.id, o.carte) + '</div>' +
+      '<div class="dati">' +
+        '<span class="quante">' + o.carte + (o.carte === 1 ? ' carta' : ' carte') + '</span>' +
+        '<span class="nome-taglio">' + (NOMI[o.id] || o.id) + '</span>' +
+        (posso
+          ? '<span class="unitario">' + conNome(costoPerCarta(o)) + ' a carta</span>'
+          : '<span class="manca">Ti ' + (manca === 1 ? 'manca 1 sharkino' : 'mancano ' + conNome(manca)) + '</span>') +
+      '</div>' +
+      '<div class="prezzo-blocco">' +
+        '<span class="prezzo">' + MONETINA() + formattaSharkini(o.costo) +
+          '<em class="moneta-nome">sharkini</em></span>' +
+        (sconto > 0 ? '<span class="sconto">−' + sconto + '%</span>' : '') +
+      '</div>' +
+    '</a>';
+  }).join('');
+}
+disegnaVetrina('vetrinaEroi', 'eroe');
+disegnaVetrina('vetrinaMagiche', 'magia');
 
 // ------------------------------------------------------------
 // LA STRADA GRATIS
@@ -423,9 +456,9 @@ function aggiornaSaldo() {
   c.classList.remove('cambiata');
   void c.offsetWidth;
   c.classList.add('cambiata');
-  // i pacchetti che ora posso permettermi si riaccendono
-  document.querySelectorAll('#vetrina .offerta').forEach((nodo, i) => {
-    const o = OFFERTE[i];
+  // i pacchetti che ora posso permettermi si riaccendono, in tutte e due le vetrine
+  document.querySelectorAll('#vetrinaEroi .offerta, #vetrinaMagiche .offerta').forEach((nodo, i) => {
+    const o = OFFERTE[i % OFFERTE.length];
     const posso = saldoPuoPagare(mio.saldo, o.costo);
     nodo.classList.toggle('spenta', !posso);
     const riga = nodo.querySelector('.unitario, .manca');
@@ -450,7 +483,14 @@ $('garanzia').innerHTML =
   'Te ne mancano <b>' + mio.alleCarteAllaGaranzia + '</b>.</span>';
 }
 
-$('probabilita').innerHTML = [5, 4, 3, 2, 1].map((r) =>
+// IL GIOCO HA TRE LIVELLI, NON CINQUE (vedi engine/pacchetti.js): questa
+// riga girava ancora su [5,4,3,2,1], da quando i livelli erano cinque.
+// PROBABILITA[1] e PROBABILITA[2] non esistono più: .toString() su
+// undefined mandava in errore l'intero script a questo punto, e tutto
+// quello che veniva dopo — la garanzia, il saldo vero dal server —
+// non partiva mai. Ora si elencano solo i livelli che esistono davvero,
+// dal più raro al più comune.
+$('probabilita').innerHTML = [...LIVELLI_RARITA].reverse().map((r) =>
   '<span>' + '★'.repeat(r) + ' ' + PROBABILITA[r].toString().replace('.', ',') + '%</span>'
 ).join('');
 

@@ -31,7 +31,7 @@ import {
   SERIE_NUOVA, statoSerie, ritiraPremio as ritiraDalMotore,
   saldoPuoPagare, spendi, RICARICHE
 } from '../engine/sharkini.js';
-import { OFFERTE, offertaPerCarte, apriPacchetto, SOGLIA_PITY, carteInVendita } from '../engine/pacchetti.js';
+import { OFFERTE, offertaPerCarte, apriPacchetto, SOGLIA_PITY, carteInVendita, carteDiTipo } from '../engine/pacchetti.js';
 import { dotazioneIniziale, aggiungiDotazione } from '../engine/dotazione.js';
 
 const gettoneNuovo = () => randomBytes(32).toString('hex');
@@ -175,7 +175,11 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
   // risultato e lo mette in scena. Non può nemmeno provare a dire
   // cosa gli è uscito.
   // ----------------------------------------------------------
-  async function compraPacchetto(gettone, quanteCarte) {
+  // `tipo` è facoltativo: 'eroe' o 'magia' restringono il catalogo da cui
+  // si pesca, niente (o 'tutti') pesca come sempre da tutto quello che è
+  // in vendita. Non è un secondo prezzario: costa uguale a parità di
+  // taglio, cambia solo COSA può uscire.
+  async function compraPacchetto(gettone, quanteCarte, tipo) {
     const g = await carica(gettone);
     if (!g) return { ok: false, motivo: 'Non ti conosco.' };
 
@@ -192,7 +196,12 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
       };
     }
 
-    const risultato = apriPacchetto(inVendita, g.collezione, g.contatorePity, caso, offerta.carte);
+    let bacino;
+    try { bacino = carteDiTipo(inVendita, tipo); }
+    catch (e) { return { ok: false, motivo: e.message }; }
+    if (!bacino.length) return { ok: false, motivo: 'Nessuna carta di quel tipo è ancora in vendita.' };
+
+    const risultato = apriPacchetto(bacino, g.collezione, g.contatorePity, caso, offerta.carte);
 
     // il conto si aggiorna tutto insieme
     const dopo = spendi(g.serie.saldo, offerta.costo);

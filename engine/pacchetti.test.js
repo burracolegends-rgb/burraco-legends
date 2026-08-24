@@ -2,7 +2,7 @@
 // la garanzia scatti davvero. Uso: node engine/pacchetti.test.js
 
 import {
-  apriPacchetto, rimborsoTotale, verificaProbabilita,
+  apriPacchetto, rimborsoTotale, verificaProbabilita, carteDiTipo,
   PROBABILITA, SOGLIA_PITY, CARTE_PER_PACCHETTO, RIMBORSO_DOPPIONE,
   OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, LIVELLI_RARITA } from './pacchetti.js';
 import { formattaSharkini, giorniPerRaccogliere } from './sharkini.js';
@@ -217,6 +217,32 @@ check('una stella 5 ogni venti carte al massimo, prima della garanzia', PROBABIL
   const r = apriPacchetto(CATALOGO, {}, SOGLIA_PITY - 1, () => 0.5, 1);
   check('con una carta sola la garanzia si riduce a quella carta', r.carte.length === 1);
   check('e quella carta è la ★5 garantita', r.carte[0].rarita === 5);
+}
+
+// --- pacchetti mirati: solo eroi, o solo Carte Magiche ---
+{
+  // un eroe si riconosce dal seme, una Carta Magica no — stessa regola
+  // che usa selezione.html per smistarle
+  const MISTO = [
+    { id: 'eroe_1', seme: '♥', rarita: 3 }, { id: 'eroe_2', seme: '♦', rarita: 4 },
+    { id: 'magia_1', tipo: 'sorpresa', rarita: 3 }, { id: 'magia_2', tipo: 'trappola', rarita: 4 }
+  ];
+  check('senza tipo, il catalogo resta tutto intero', carteDiTipo(MISTO, null).length === 4);
+  check('"tutti" vale come nessun filtro', carteDiTipo(MISTO, 'tutti').length === 4);
+  check('"eroe" tiene solo le carte col seme',
+    carteDiTipo(MISTO, 'eroe').every((c) => !!c.seme) && carteDiTipo(MISTO, 'eroe').length === 2);
+  check('"magia" tiene solo le carte senza seme',
+    carteDiTipo(MISTO, 'magia').every((c) => !c.seme) && carteDiTipo(MISTO, 'magia').length === 2);
+  let sollevato = false;
+  try { carteDiTipo(MISTO, 'boh'); } catch (e) { sollevato = true; }
+  check('un tipo inventato solleva un errore invece di ripiegare in silenzio', sollevato);
+
+  // il bacino ristretto arriva davvero dentro apriPacchetto: le carte
+  // che escono sono SOLO eroi, mai carte magiche
+  const soloEroi = carteDiTipo(MISTO, 'eroe');
+  const r = apriPacchetto(soloEroi, {}, 0, rngFinto(777), 20);
+  check('un pacchetto "solo eroi" non fa uscire nessuna Carta Magica',
+    r.carte.every((c) => !!c.carta.seme));
 }
 
 console.log('\n' + (failures === 0 ? 'Tutti i controlli passati.' : failures + ' controlli falliti.'));

@@ -52,7 +52,7 @@ function creaPonteServer() {
       return r;
     },
     ritiraPremio: () => chiedi('/api/premio', {}),
-    compra: (carte) => chiedi('/api/compra', { carte }),
+    compra: (carte, tipo) => chiedi('/api/compra', { carte, tipo }),
     ricarica: (offerta) => chiedi('/api/ricarica', { offerta })
   };
 }
@@ -98,7 +98,7 @@ function creaPonteBrowser() {
       return { ok: true, diProva: true, guadagno: esito.guadagno,
                serieRotta: esito.stato.serieRotta, ...statoAttuale() };
     },
-    async compra(carte) {
+    async compra(carte, tipo) {
       const st = statoAttuale();
       const offerta = offertaPerCarte(Number(carte));
       if (!offerta) return { ok: false, diProva: true, motivo: 'Quel pacchetto non esiste.' };
@@ -106,7 +106,14 @@ function creaPonteBrowser() {
         return { ok: false, diProva: true, motivo: 'Sharkini insufficienti.',
                  manca: offerta.costo - st.serie.saldo, costo: offerta.costo, saldo: st.serie.saldo };
       }
-      const r = apriPacchetto(CATALOGO, st.collezione, st.contatorePity, Math.random, offerta.carte);
+      // Anche qui, come sul server: dai pacchetti esce solo quello che
+      // è davvero in vendita, i segnaposto della dotazione di benvenuto
+      // restano fuori (vedi carteInVendita in engine/pacchetti.js).
+      let bacino;
+      try { bacino = carteDiTipo(carteInVendita(CATALOGO), tipo); }
+      catch (e) { return { ok: false, diProva: true, motivo: e.message }; }
+      if (!bacino.length) return { ok: false, diProva: true, motivo: 'Nessuna carta di quel tipo è ancora in vendita.' };
+      const r = apriPacchetto(bacino, st.collezione, st.contatorePity, Math.random, offerta.carte);
       const collezione = { ...st.collezione };
       for (const c of r.carte) collezione[c.carta.id] = (collezione[c.carta.id] || 0) + 1;
       scrivi('bb_sharkini', { ...st.serie, saldo: st.serie.saldo - offerta.costo });

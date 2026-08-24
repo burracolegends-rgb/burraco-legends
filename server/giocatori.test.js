@@ -149,6 +149,34 @@ console.log('\n--- I PACCHETTI SI PAGANO ---');
 }
 
 // ============================================================
+console.log('\n--- PACCHETTI MIRATI: SOLO EROI, O SOLO CARTE MAGICHE ---');
+{
+  // catalogo misto: metà eroi (col seme), metà Carte Magiche (col tipo)
+  const MISTO = [];
+  for (let r = 1; r <= 5; r++) {
+    for (let i = 0; i < 4; i++) MISTO.push({ id: 'eroe_' + r + '_' + i, rarita: r, seme: '♥', vita: 100, att: 90 });
+    for (let i = 0; i < 4; i++) MISTO.push({ id: 'magia_' + r + '_' + i, rarita: r, tipo: 'sorpresa' });
+  }
+  const a = creaAnagrafe({ archivio: archivioInMemoria(), catalogo: MISTO, orologio: () => ORA, caso: casoFisso(3) });
+  const { gettone } = await a.entra(null, 'P');
+  await a.ricarica(gettone, 'montagna');   // di che comprare parecchio
+
+  const soloEroi = await a.compraPacchetto(gettone, 10, 'eroe');
+  check('"solo eroi" si apre', soloEroi.ok === true);
+  check('e fa uscire solo carte col seme', soloEroi.carte.every((c) => !!c.carta.seme));
+
+  const soloMagie = await a.compraPacchetto(gettone, 10, 'magia');
+  check('"solo Carte Magiche" si apre', soloMagie.ok === true);
+  check('e fa uscire solo carte senza seme', soloMagie.carte.every((c) => !c.carta.seme));
+
+  const misto = await a.compraPacchetto(gettone, 10);
+  check('senza indicare il tipo si pesca come sempre, da tutto', misto.ok === true);
+
+  const inventato = await a.compraPacchetto(gettone, 10, 'sirena');
+  check('un tipo che non esiste viene rifiutato', inventato.ok === false);
+}
+
+// ============================================================
 console.log('\n--- LE CARTE LE ESTRAE IL SERVER ---');
 {
   const a = nuovaAnagrafe();

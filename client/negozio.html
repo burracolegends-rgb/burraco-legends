@@ -99,6 +99,7 @@
     grid-template-columns: repeat(auto-fit, minmax(min(285px, 100%), 1fr));
   }
 
+
   /* ---------- una voce di listino ---------- */
   .offerta {
     position: relative; display: flex; align-items: center; gap: 14px;
@@ -192,11 +193,20 @@
   <div class="sotto">Le carte si pagano in sharkini</div>
 </div>
 
-<!-- BANCO 1: i pacchetti, in sharkini -->
+<!-- BANCO 1a e 1b: i pacchetti, in sharkini — due banchi distinti, non
+     un filtro sopra uno solo, perché sono due acquisti diversi: chi vuole
+     completare gli eroi non deve nemmeno vedere l'offerta delle magie, e
+     viceversa. -->
+<div class="garanzia" id="garanzia"></div>
+
 <div class="banco">
-  <div class="titolo-banco">Pacchetti <span class="spiega">si pagano in sharkini</span></div>
-  <div class="garanzia" id="garanzia"></div>
-  <div class="vetrina" id="vetrina"></div>
+  <div class="titolo-banco">Pacchetti Eroi <span class="spiega">solo personaggi</span></div>
+  <div class="vetrina" id="vetrinaEroi"></div>
+</div>
+
+<div class="banco">
+  <div class="titolo-banco">Pacchetti Carte Magiche <span class="spiega">solo Sorpresa e Trappola</span></div>
+  <div class="vetrina" id="vetrinaMagiche"></div>
 </div>
 
 <a class="strada-gratis" href="home.html#premio">
@@ -479,6 +489,28 @@ function carteInVendita(catalogo) {
 }
 
 // ------------------------------------------------------------
+// PACCHETTI MIRATI: solo eroi, o solo Carte Magiche.
+//
+// Chi vuole completare gli eroi di un seme, o mettere insieme le Carte
+// Magiche che gli mancano, prima era costretto a comprare pacchetti
+// misti e sperare — metà delle carte che uscivano non gli servivano
+// mai. Qui si restringe il catalogo PRIMA di passarlo ad
+// apriPacchetto, che per il resto non cambia di una riga: continua a
+// pescare "in tutto il catalogo che gli viene dato", senza sapere che
+// esiste la distinzione.
+//
+// Un eroe si riconosce dal seme (♥♦♣♠), una Carta Magica no — è la
+// stessa differenza che usa già selezione.html per smistarle.
+// ------------------------------------------------------------
+function carteDiTipo(catalogo, tipo) {
+  const lista = catalogo || [];
+  if (!tipo || tipo === 'tutti') return lista;
+  if (tipo === 'eroe') return lista.filter((c) => !!c.seme);
+  if (tipo === 'magia') return lista.filter((c) => !c.seme);
+  throw new Error('Tipo di pacchetto sconosciuto: ' + tipo);
+}
+
+// ------------------------------------------------------------
 // GARANZIA (pity)
 // Il contatore conta CARTE, non pacchetti: solo così è giusto anche coi
 // tagli diversi. Chi compra 50 carte in una volta deve ricevere le stesse
@@ -670,9 +702,11 @@ function rimborsoTotale(risultato) {
   return risultato.carte.reduce((t, c) => t + c.rimborso, 0);
 }
 
-return {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, LIVELLI_RARITA, raritaDisponibili, pesiEffettivi, apriPacchetto, rimborsoTotale};
+return {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, carteDiTipo, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, LIVELLI_RARITA, raritaDisponibili, pesiEffettivi, apriPacchetto, rimborsoTotale};
 })();
-const {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, LIVELLI_RARITA, raritaDisponibili, pesiEffettivi, apriPacchetto, rimborsoTotale} = __PAC;
+const {CARTE_PER_PACCHETTO, OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, carteInVendita, carteDiTipo, SOGLIA_PITY, PROBABILITA, RIMBORSO_DOPPIONE, verificaProbabilita, LIVELLI_RARITA, raritaDisponibili, pesiEffettivi, apriPacchetto, rimborsoTotale} = __PAC;
+
+const CATALOGO = [{"id": "personaggio_001", "fuoriCommercio": true, "seme": "♥", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_002", "fuoriCommercio": true, "seme": "♥", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_003", "fuoriCommercio": true, "seme": "♦", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_004", "fuoriCommercio": true, "seme": "♦", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_005", "fuoriCommercio": true, "seme": "♣", "rarita": 3, "vita": 100, "att": 90, "difesa": 1.05, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_006", "fuoriCommercio": true, "seme": "♣", "rarita": 5, "vita": 160, "att": 135, "difesa": 1.18, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_007", "fuoriCommercio": true, "seme": "♠", "rarita": 3, "vita": 120, "att": 105, "difesa": 1.08, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_008", "fuoriCommercio": true, "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1.12, "abilita": {"trigger": "attivazione_manuale", "effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico", "_nota": "UNIFORME PER IL PLAYTEST: costa 4 punti magia e infligge al bersaglio scelto il 30% dell'ATT di questo eroe. Gli eroi non si caricano piu uno per uno: si paga dalla riserva comune di punti magia.", "costo": 4}}, {"id": "personaggio_101", "seme": "♦", "rarita": 5, "vita": 140, "att": 180, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "distruggi_trappole"}, {"effect": "danno_da_attacco", "parametro": "30", "target": "personaggio_specifico"}]}}, {"id": "personaggio_102", "seme": "♥", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, {"id": "personaggio_103", "seme": "♦", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, {"id": "personaggio_104", "seme": "♠", "rarita": 3, "vita": 120, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 1, "effetti": [{"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}, {"effect": "danno_diretto", "parametro": "10", "target": "se_stesso"}]}}, {"id": "personaggio_105", "seme": "♣", "rarita": 3, "vita": 130, "att": 80, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "cura_diretta", "parametro": "30", "target": "tutti_alleati"}]}}, {"id": "personaggio_106", "seme": "♥", "rarita": 3, "vita": 90, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "danno_da_attacco", "parametro": "30", "target": "avversario"}]}}, {"id": "personaggio_107", "seme": "♦", "rarita": 3, "vita": 80, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "15", "target": "tutti_avversari"}]}}, {"id": "personaggio_108", "seme": "♠", "rarita": 3, "vita": 120, "att": 85, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "boost_difesa", "parametro": "25", "target": "tutti_alleati", "durata_turni": 3}]}}, {"id": "personaggio_109", "seme": "♣", "rarita": 3, "vita": 110, "att": 100, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "personaggio_specifico"}, {"effect": "riduci_difesa", "parametro": "20", "target": "tutti_avversari", "durata_turni": 2}]}}, {"id": "personaggio_110", "seme": "♥", "rarita": 4, "vita": 160, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "cura_diretta", "parametro": "50", "target": "tutti_alleati"}]}}, {"id": "personaggio_111", "seme": "♦", "rarita": 4, "vita": 120, "att": 140, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}, {"effect": "danno_da_attacco", "parametro": "20", "target": "avversario"}], "_nota": "Il foglio dice \"due cariche da 20% ognuna\" senza dire se sullo stesso nemico: qui sono due colpi indipendenti, quindi possono finire su due nemici diversi."}}, {"id": "personaggio_112", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_danno", "parametro": "25", "target": "se_stesso", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, {"id": "personaggio_113", "seme": "♣", "rarita": 4, "vita": 120, "att": 140, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "danno_da_attacco", "parametro": "25", "target": "personaggio_specifico"}, {"effect": "riduci_difesa", "parametro": "20", "target": "bersaglio_colpito", "durata_turni": 2}]}}, {"id": "personaggio_114", "seme": "♥", "rarita": 4, "vita": 130, "att": 130, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "15", "target": "tutti_avversari"}, {"effect": "riduci_punti_magia", "parametro": "2", "target": "avversario"}]}}, {"id": "personaggio_115", "seme": "♦", "rarita": 4, "vita": 150, "att": 110, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "riduci_difesa", "parametro": "25", "target": "tutti_avversari", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, {"id": "personaggio_116", "seme": "♠", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 3, "effetti": [{"effect": "boost_difesa", "parametro": "25", "target": "tutti_alleati", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni: presa la durata predefinita di 2 turni."}}, {"id": "personaggio_117", "seme": "♣", "rarita": 4, "vita": 140, "att": 120, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 6, "effetti": [{"effect": "danno_da_attacco", "parametro": "40", "target": "personaggio_specifico"}]}}, {"id": "personaggio_118", "seme": "♠", "rarita": 5, "vita": 150, "att": 170, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "tutti_avversari"}, {"effect": "boost_difesa", "parametro": "20", "target": "tutti_alleati", "durata_turni": 2}], "_nota": "Il foglio non dice per quanti turni duri il bonus di difesa: presa la durata predefinita."}}, {"id": "personaggio_119", "seme": "♣", "rarita": 5, "vita": 145, "att": 175, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "danno_da_attacco", "parametro": "40", "target": "personaggio_specifico"}, {"effect": "riduci_punti_magia", "parametro": "1", "target": "avversario"}]}}, {"id": "personaggio_120", "seme": "♥", "rarita": 5, "vita": 170, "att": 150, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 5, "effetti": [{"effect": "cura_percentuale", "parametro": "20", "target": "tutti_alleati"}, {"effect": "pulisci_malus_difesa", "target": "tutti_alleati"}]}}, {"id": "personaggio_121", "seme": "♣", "rarita": 5, "vita": 130, "att": 180, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "danno_da_attacco", "parametro": "20", "target": "personaggio_specifico"}, {"effect": "costo_abilita_extra", "parametro": "1", "target": "bersaglio_colpito"}]}}, {"id": "personaggio_122", "seme": "♥", "rarita": 5, "vita": 160, "att": 160, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_att_percentuale", "parametro": "30", "target": "alleato_casuale", "durata_turni": 2}, {"effect": "cura_percentuale", "parametro": "30", "target": "alleato_casuale"}, {"effect": "boost_difesa", "parametro": "30", "target": "alleato_casuale", "durata_turni": 2}]}}, {"id": "personaggio_123", "seme": "♦", "rarita": 5, "vita": 140, "att": 190, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "boost_att_percentuale", "parametro": "100", "target": "se_stesso", "durata_turni": 2}]}}, {"id": "personaggio_124", "seme": "♠", "rarita": 5, "vita": 160, "att": 160, "difesa": 1, "abilita": {"trigger": "attivazione_manuale", "costo": 4, "effetti": [{"effect": "riduci_punti_magia", "parametro": "3", "target": "avversario"}, {"effect": "riduci_difesa", "parametro": "30", "target": "tutti_avversari", "durata_turni": 2}], "_nota": "Il foglio dice \"la difesa avversaria\" senza dire se uno o tutti: preso \"tutti gli avversari\"."}}, {"id": "sorpresa_001", "fuoriCommercio": true, "tipo": "sorpresa", "rarita": 3, "effect": "danno_diretto", "parametro": "30", "trigger": "on_activate", "target": "avversario", "durata_turni": 0}, {"id": "sorpresa_002", "fuoriCommercio": true, "tipo": "sorpresa", "rarita": 4, "effect": "boost_att", "parametro": "20", "trigger": "on_activate", "target": "se_stesso", "durata_turni": 2}, {"id": "sorpresa_003", "fuoriCommercio": true, "tipo": "sorpresa", "rarita": 4, "trigger": "on_activate", "_nota": "ESEMPIO DI CARTA A PIÙ EFFETTI: ne fa tre in sequenza.", "effetti": [{"effect": "danno_diretto", "parametro": "25", "target": "avversario", "durata_turni": 0}, {"effect": "cura_diretta", "parametro": "15", "target": "se_stesso", "durata_turni": 0}, {"effect": "pesca_extra", "parametro": "1", "target": "se_stesso", "durata_turni": 1}]}, {"id": "sorpresa_101", "tipo": "sorpresa", "rarita": 3, "trigger": "on_activate", "effetti": [{"effect": "danno_diretto", "parametro": "50", "target": "avversario"}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}, {"id": "sorpresa_102", "tipo": "sorpresa", "rarita": 3, "trigger": "on_activate", "effetti": [{"effect": "aumenta_punti_magia", "parametro": "2", "target": "se_stesso"}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}, {"id": "sorpresa_103", "tipo": "sorpresa", "rarita": 4, "trigger": "on_activate", "effetti": [{"effect": "pesca_extra", "parametro": "2", "target": "se_stesso", "durata_turni": 1}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}, {"id": "trappola_001", "fuoriCommercio": true, "tipo": "trappola", "rarita": 3, "effect": "scarto_forzato", "parametro": "1", "trigger": "avversario_pesca", "target": "avversario", "durata_turni": 0}, {"id": "trappola_002", "fuoriCommercio": true, "tipo": "trappola", "rarita": 5, "effect": "riflette_danno", "parametro": "50", "trigger": "subisco_danno", "target": "se_stesso", "durata_turni": 0}, {"id": "trappola_003", "fuoriCommercio": true, "tipo": "trappola", "rarita": 5, "trigger": "avversario_usa_abilita", "target": "avversario", "effect": "skip_fase_attacco", "parametro": "", "durata_turni": 1, "_nota": "ESEMPIO DI CARTA CON CONDIZIONE: si schiera solo quando sei in difficoltà. Scatta quando l'avversario usa l'abilità di un eroe.", "condizione": {"tipo": "pv_totali_sotto", "parametro": 50, "chi": "io"}}, {"id": "trappola_101", "tipo": "trappola", "rarita": 5, "trigger": "avversario_usa_abilita", "effetti": [{"effect": "riflette_danno", "parametro": "100", "target": "se_stesso"}], "durata_turni": 0, "_nota": "Rimanda il 100% del danno: la carta dice \"il danno viene restituito\", non una parte. Rarita' provvisoria."}, {"id": "trappola_102", "tipo": "trappola", "rarita": 4, "trigger": "avversario_tocca_difesa", "effetti": [{"effect": "converti_difesa", "target": "se_stesso"}], "durata_turni": 0, "_nota": "La rarita' e' provvisoria: serve solo perche' oggi i pacchetti pescano per rarita'."}];
 
 
 
@@ -724,7 +758,7 @@ function creaPonteServer() {
       return r;
     },
     ritiraPremio: () => chiedi('/api/premio', {}),
-    compra: (carte) => chiedi('/api/compra', { carte }),
+    compra: (carte, tipo) => chiedi('/api/compra', { carte, tipo }),
     ricarica: (offerta) => chiedi('/api/ricarica', { offerta })
   };
 }
@@ -770,7 +804,7 @@ function creaPonteBrowser() {
       return { ok: true, diProva: true, guadagno: esito.guadagno,
                serieRotta: esito.stato.serieRotta, ...statoAttuale() };
     },
-    async compra(carte) {
+    async compra(carte, tipo) {
       const st = statoAttuale();
       const offerta = offertaPerCarte(Number(carte));
       if (!offerta) return { ok: false, diProva: true, motivo: 'Quel pacchetto non esiste.' };
@@ -778,7 +812,14 @@ function creaPonteBrowser() {
         return { ok: false, diProva: true, motivo: 'Sharkini insufficienti.',
                  manca: offerta.costo - st.serie.saldo, costo: offerta.costo, saldo: st.serie.saldo };
       }
-      const r = apriPacchetto(CATALOGO, st.collezione, st.contatorePity, Math.random, offerta.carte);
+      // Anche qui, come sul server: dai pacchetti esce solo quello che
+      // è davvero in vendita, i segnaposto della dotazione di benvenuto
+      // restano fuori (vedi carteInVendita in engine/pacchetti.js).
+      let bacino;
+      try { bacino = carteDiTipo(carteInVendita(CATALOGO), tipo); }
+      catch (e) { return { ok: false, diProva: true, motivo: e.message }; }
+      if (!bacino.length) return { ok: false, diProva: true, motivo: 'Nessuna carta di quel tipo è ancora in vendita.' };
+      const r = apriPacchetto(bacino, st.collezione, st.contatorePity, Math.random, offerta.carte);
       const collezione = { ...st.collezione };
       for (const c of r.carte) collezione[c.carta.id] = (collezione[c.carta.id] || 0) + 1;
       scrivi('bb_sharkini', { ...st.serie, saldo: st.serie.saldo - offerta.costo });
@@ -901,31 +942,42 @@ function sacchettoSvg(indice) {
 }
 
 // ------------------------------------------------------------
-// BANCO 1 — I PACCHETTI, IN SHARKINI
+// BANCO 1a e 1b — I PACCHETTI, IN SHARKINI
+//
+// Due vetrine, non una vetrina con un filtro: sono due acquisti
+// diversi. Stessi tagli, agli stessi prezzi, ma una pesca solo fra gli
+// eroi e l'altra solo fra le Carte Magiche — chi vuole completare un
+// seme, o mettere insieme le magie che gli mancano, prima era
+// costretto a comprare pacchetti misti e sperare: metà delle carte non
+// gli servivano mai.
 // ------------------------------------------------------------
-$('vetrina').innerHTML = OFFERTE.map((o) => {
-  const sconto = scontoPercentuale(o);
-  const posso = saldoPuoPagare(mio.saldo, o.costo);
-  const manca = o.costo - mio.saldo;
-  return '<a class="offerta' + (o.etichetta ? ' evidenziata' : '') + (posso ? '' : ' spenta') +
-           '" href="spacchetta.html?carte=' + o.carte + '">' +
-    (o.etichetta ? '<span class="bandiera ' + o.etichetta + '">' +
-      (o.etichetta === 'popolare' ? 'Il più scelto' : 'Conviene di più') + '</span>' : '') +
-    '<div class="involucro">' + involucroSvg(o.id, o.carte) + '</div>' +
-    '<div class="dati">' +
-      '<span class="quante">' + o.carte + (o.carte === 1 ? ' carta' : ' carte') + '</span>' +
-      '<span class="nome-taglio">' + (NOMI[o.id] || o.id) + '</span>' +
-      (posso
-        ? '<span class="unitario">' + conNome(costoPerCarta(o)) + ' a carta</span>'
-        : '<span class="manca">Ti ' + (manca === 1 ? 'manca 1 sharkino' : 'mancano ' + conNome(manca)) + '</span>') +
-    '</div>' +
-    '<div class="prezzo-blocco">' +
-      '<span class="prezzo">' + MONETINA() + formattaSharkini(o.costo) +
-        '<em class="moneta-nome">sharkini</em></span>' +
-      (sconto > 0 ? '<span class="sconto">−' + sconto + '%</span>' : '') +
-    '</div>' +
-  '</a>';
-}).join('');
+function disegnaVetrina(elId, tipo) {
+  $(elId).innerHTML = OFFERTE.map((o) => {
+    const sconto = scontoPercentuale(o);
+    const posso = saldoPuoPagare(mio.saldo, o.costo);
+    const manca = o.costo - mio.saldo;
+    return '<a class="offerta' + (o.etichetta ? ' evidenziata' : '') + (posso ? '' : ' spenta') +
+             '" href="spacchetta.html?carte=' + o.carte + '&tipo=' + tipo + '">' +
+      (o.etichetta ? '<span class="bandiera ' + o.etichetta + '">' +
+        (o.etichetta === 'popolare' ? 'Il più scelto' : 'Conviene di più') + '</span>' : '') +
+      '<div class="involucro">' + involucroSvg(o.id, o.carte) + '</div>' +
+      '<div class="dati">' +
+        '<span class="quante">' + o.carte + (o.carte === 1 ? ' carta' : ' carte') + '</span>' +
+        '<span class="nome-taglio">' + (NOMI[o.id] || o.id) + '</span>' +
+        (posso
+          ? '<span class="unitario">' + conNome(costoPerCarta(o)) + ' a carta</span>'
+          : '<span class="manca">Ti ' + (manca === 1 ? 'manca 1 sharkino' : 'mancano ' + conNome(manca)) + '</span>') +
+      '</div>' +
+      '<div class="prezzo-blocco">' +
+        '<span class="prezzo">' + MONETINA() + formattaSharkini(o.costo) +
+          '<em class="moneta-nome">sharkini</em></span>' +
+        (sconto > 0 ? '<span class="sconto">−' + sconto + '%</span>' : '') +
+      '</div>' +
+    '</a>';
+  }).join('');
+}
+disegnaVetrina('vetrinaEroi', 'eroe');
+disegnaVetrina('vetrinaMagiche', 'magia');
 
 // ------------------------------------------------------------
 // LA STRADA GRATIS
@@ -982,9 +1034,9 @@ function aggiornaSaldo() {
   c.classList.remove('cambiata');
   void c.offsetWidth;
   c.classList.add('cambiata');
-  // i pacchetti che ora posso permettermi si riaccendono
-  document.querySelectorAll('#vetrina .offerta').forEach((nodo, i) => {
-    const o = OFFERTE[i];
+  // i pacchetti che ora posso permettermi si riaccendono, in tutte e due le vetrine
+  document.querySelectorAll('#vetrinaEroi .offerta, #vetrinaMagiche .offerta').forEach((nodo, i) => {
+    const o = OFFERTE[i % OFFERTE.length];
     const posso = saldoPuoPagare(mio.saldo, o.costo);
     nodo.classList.toggle('spenta', !posso);
     const riga = nodo.querySelector('.unitario, .manca');
@@ -1009,7 +1061,14 @@ $('garanzia').innerHTML =
   'Te ne mancano <b>' + mio.alleCarteAllaGaranzia + '</b>.</span>';
 }
 
-$('probabilita').innerHTML = [5, 4, 3, 2, 1].map((r) =>
+// IL GIOCO HA TRE LIVELLI, NON CINQUE (vedi engine/pacchetti.js): questa
+// riga girava ancora su [5,4,3,2,1], da quando i livelli erano cinque.
+// PROBABILITA[1] e PROBABILITA[2] non esistono più: .toString() su
+// undefined mandava in errore l'intero script a questo punto, e tutto
+// quello che veniva dopo — la garanzia, il saldo vero dal server —
+// non partiva mai. Ora si elencano solo i livelli che esistono davvero,
+// dal più raro al più comune.
+$('probabilita').innerHTML = [...LIVELLI_RARITA].reverse().map((r) =>
   '<span>' + '★'.repeat(r) + ' ' + PROBABILITA[r].toString().replace('.', ',') + '%</span>'
 ).join('');
 
