@@ -222,11 +222,19 @@
       'box-shadow: 0 0 0 6000px rgba(6,4,10,0.72), 0 0 26px rgba(232,196,106,0.85); ' +
       'animation: bbTutPulsa 1.6s ease-in-out infinite; }' +
     '@keyframes bbTutPulsa { 0%,100% { outline-color: #e8c46a; } 50% { outline-color: #fff3cf; } }' +
+    // POINTER-EVENTS: NONE sul riquadro — segnalato da chi ci ha sbattuto
+    // contro davvero: nella schermata del riepilogo il bottone vero
+    // "torna al negozio" finisce proprio sotto questo pannello (fisso in
+    // basso, a tutta larghezza), e senza questa riga il pannello
+    // INTERCETTAVA il tocco al posto del bottone — invisibile, intoccabile,
+    // bloccato li' per sempre. Riacceso solo sui bottoni del pannello
+    // stesso (Avanti/Salta), che devono restare premibili.
     '.bb-tut-pannello { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; ' +
       'background: linear-gradient(180deg, rgba(30,20,12,0.97), rgba(14,9,5,0.99)); ' +
       'border-top: 1px solid #8a6a2a; padding: 16px 18px max(16px, env(safe-area-inset-bottom)); ' +
       'font-family: "Segoe UI", system-ui, sans-serif; color: #ece3d2; ' +
-      'box-shadow: 0 -10px 30px rgba(0,0,0,0.6); }' +
+      'box-shadow: 0 -10px 30px rgba(0,0,0,0.6); pointer-events: none; }' +
+    '.bb-tut-pannello button { pointer-events: auto; }' +
     '.bb-tut-pannello h3 { margin: 0 0 6px; font-size: 1.05rem; color: #e8c46a; }' +
     '.bb-tut-pannello p { margin: 0 0 12px; font-size: 0.92rem; line-height: 1.5; color: #d8cdb8; }' +
     '.bb-tut-righe { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }' +
