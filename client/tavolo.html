@@ -1663,6 +1663,32 @@
     #bcardPop .pdesc { font-size: 11px; color: #b9acd6; line-height: 1.45; }
     #bcardPop .ptipo { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; }
 
+    /* COL DITO, IL PANNELLINO DA 200px ACCANTO ALLA CARTA NON SI LEGGE.
+       Su schermo grande basta avvicinare l'occhio; su telefono il testo
+       a 11px sotto un pollice che ha appena toccato e' troppo piccolo.
+       Diventa un pannello centrato che occupa quasi tutta l'altezza:
+       la posizione calcolata in JS (accanto alla carta) viene scavalcata
+       qui con !important — l'inline style di li' perde sempre contro una
+       regola del foglio che dichiara !important, anche se scritto dopo. */
+    @media (hover: none), (pointer: coarse) {
+      #bcardPop {
+        left: 50% !important; top: 50% !important; right: auto !important; bottom: auto !important;
+        transform: translate(-50%, -50%);
+        width: min(88vw, 420px) !important; max-height: 82vh; overflow-y: auto;
+        padding: 20px 22px; border-radius: 16px;
+      }
+      /* l'animazione di ingresso spostava la carta con translateY, che
+         avrebbe cancellato il centraggio sopra: qui basta una dissolvenza */
+      #bcardPop.mostra { animation: popInCentrato 0.15s ease-out; }
+      @keyframes popInCentrato { from { opacity: 0; } to { opacity: 1; } }
+      #bcardPop .pnome { font-size: 22px; margin-bottom: 6px; }
+      #bcardPop .pstelle { font-size: 17px; margin-bottom: 10px; }
+      #bcardPop .pstat { font-size: 16px; margin-bottom: 10px; }
+      #bcardPop .pcarica { font-size: 16px; margin-bottom: 10px; }
+      #bcardPop .pdesc { font-size: 17px; line-height: 1.55; }
+      #bcardPop .ptipo { font-size: 13px; margin-bottom: 4px; }
+    }
+
     /* Le mie 7 carte stanno nella riga di mazzo e scarti, a destra.
        Il monte scarti ha flex:1 1 auto, quindi si restringe da solo man mano
        che cresce, senza mai invadere questa zona (che è flex:0 0 auto). */
@@ -1991,18 +2017,14 @@
        di carta non serve più a nessuno. */
     .table-resources-row { position: static; top: auto; margin-bottom: 0; }
 
-    /* I MIEI GIOCHI CALATI CRESCONO DAL BASSO, non dall'alto.
-       .meld-side (di Burraco Pulito) ancora entrambe le colonne in cima
-       col contenitore: giusto per l'avversario, che sta in alto — sbagliato
-       per me, che sto in basso. All'inizio partita, con poche carte calate
-       e il campo che (giustamente) prende tutto lo spazio verticale che
-       avanza, la mia colonna restava appesa in cima e sotto si apriva un
-       vuoto enorme fino alla riga di mazzo/scarti e alla mano: sembrava
-       spazio sprecato proprio dove si gioca davvero. Ancorando la MIA
-       colonna in basso, i giochi che calo restano vicini alla mano da cui
-       arrivano, e il vuoto (quando c'è) finisce in alto, verso l'avversario
-       — dove già c'è la sua fascia a fare da cornice. */
-    .meld-side.mine { align-items: flex-end; }
+    /* I MIEI GIOCHI CALATI: ANCORATI IN CIMA, COME QUELLI DELL'AVVERSARIO.
+       C'era stato un tentativo di ancorarli in basso (vicino alla mano,
+       lasciando il vuoto in alto) per non sembrare spazio sprecato a
+       inizio partita. Ma un gioco che cresce da sotto in su, mentre lo si
+       costruisce carta dopo carta, e' confuso da vedere: le carte
+       nuove finiscono sotto quelle vecchie invece che sopra, ed e'
+       innaturale. Meglio la regola di Burraco Pulito, uguale per me e
+       per l'avversario: si cresce dall'alto verso il basso, sempre. */
 
     /* IL PADDING SOPRA LA MANO NON SI RIDUCEVA MAI, SU NESSUN TELEFONO.
        Il foglio di Burraco Pulito ha già la regola giusta — .hand-center-box
@@ -2286,26 +2308,21 @@
 
     /* ============================================================
        IL JOLLY
-       Si riconosce da lontano senza dover leggere niente: fondo scuro,
-       bordo e stella d'oro, e la parola JOLLY di taglio sul fianco —
-       che resta visibile anche quando la carta e' quasi tutta coperta
-       dalla successiva nel ventaglio.
-       ============================================================ */
-    /* La carta jolly aveva solo un gradiente e la scritta "JOLLY" di
-       taglio: niente illustrazione, mentre tutto il resto del gioco ne
-       ha una. Ora è una faccia vera — la maschera del burlante fra i
-       rovi — e tutto il testo che serviva a "arredare" un gradiente
-       vuoto (semi, numeri, la scritta di taglio) sparisce: l'immagine
-       si spiega da sola, aggiungere lettere sopra la affollerebbe. */
+       Si riconosce da lontano senza dover leggere niente: fondo bianco
+       come una carta vera, bordo e stella d'oro, e la parola JOLLY di
+       taglio sul fianco — che resta visibile anche quando la carta e'
+       quasi tutta coperta dalla successiva nel ventaglio.
+       Un tentativo con un'illustrazione vera (la maschera del burlante
+       fra i rovi) e' stato tolto: il genere "carta normale" si legge
+       meglio in mezzo alle altre, dove tutto il resto e' testo e numeri
+       su fondo chiaro. La carta bianca resta un'eccezione voluta anche
+       oggi — le altre carte del mazzo restano scure — ma "eccezione
+       bianca su un mazzo scuro" e' proprio il modo in cui si riconosce
+       da lontano, non una stonatura. */
     .card.jolly {
-      background: url('immagini/decorazioni/jolly.webp') center / cover no-repeat !important;
+      background: #ffffff !important;
       border-color: var(--oro, #e8c46a) !important;
       box-shadow: inset 0 0 0 1px rgba(232,196,106,0.55), 0 0 10px rgba(232,196,106,0.35);
-    }
-    .card.jolly .v, .card.jolly .s, .card.jolly .centro,
-    .card.jolly .fil, .card.jolly .numgrande, .card.jolly .semino,
-    .card.jolly .banda, .card.jolly .scritta-jolly {
-      display: none !important;
     }
 
     /* --- NUMERO DEL DANNO CHE SALE DALLA CARTA ---
@@ -7121,6 +7138,21 @@ function ordinaCarte(carte) {
 // arrivato, invece di doverlo ricercare in mezzo alla mano.
 let carteNuove = [];        // id delle carte arrivate e non ancora riordinate
 
+// Chi ha fatto l'ultima mossa: serve a far volare una carta scartata dal
+// punto giusto (vedi origineDiUnaCartaNuova piu' sotto). 0 = io, 1 = avversario.
+let ultimoAgente = 0;
+
+// L'AVVERSARIO STA ANCORA "RECITANDO" IL SUO TURNO?
+// Il motore risolve tutto il turno del bot in un colpo solo — quando
+// botGiocaTurno() torna, S.currentPlayerIndex e' gia' il mio. Ma passo()
+// (vedi turnoBot piu' sotto) mostra le sue mosse una alla volta, scaglionate
+// nel tempo per poterle leggere: un colpo d'abilita' puo' restare in coda
+// per secondi dopo che, sulla carta, e' gia' tocca a me. Senza questo
+// paletto potevo pescare mentre l'ultima mossa dell'avversario doveva
+// ancora andare in scena, e mi vedevo arrivare addosso un colpo suo
+// mentre credevo di stare gia' giocando il mio turno.
+let animazioneAvversarioInCorso = false;
+
 function manoDaMostrare(mano) {
   if (!carteNuove.length) return ordinaCarte(mano);
   const nuoveSet = new Set(carteNuove);
@@ -7402,7 +7434,12 @@ function origineDiUnaCartaNuova(el) {
     return n ? n.getBoundingClientRect() : null;
   };
   if (el.closest('#handBox')) return rettangolo('palTallone') || rettangolo('palScarti');
-  if (el.closest('#palScarti')) return rettangolo('handBox');
+  // Una carta nuova sul monte scarti arriva dalla mano di CHI l'ha
+  // scartata — la mia se l'ho scartata io, quella dell'avversario se
+  // l'ha scartata lui. Prima veniva sempre da 'handBox' (la mia), quindi
+  // uno scarto dell'avversario sembrava volare da un punto a caso invece
+  // che dalla sua mano.
+  if (el.closest('#palScarti')) return rettangolo(ultimoAgente === 1 ? 'oppHandBox' : 'handBox');
   if (el.closest('#myMelds')) return rettangolo('handBox');
   if (el.closest('#oppMelds')) return rettangolo('oppHandBox');
   return null;
@@ -8234,6 +8271,10 @@ async function esegui(azione, fn) {
     avviso('Si comincia fra ' + attesa + ' second' + (attesa === 1 ? 'o' : 'i') + ': per ora guarda il tavolo.');
     return { ok: false, reason: 'studio' };
   }
+  if (animazioneAvversarioInCorso) {
+    avviso('Aspetta: l\'avversario sta ancora giocando.');
+    return { ok: false, reason: 'avversario-in-scena' };
+  }
   if (ONLINE) return eseguiInRete(azione);
   const chiAgisce = S.currentPlayerIndex;
   const turnoPrima = S.currentPlayerIndex;
@@ -8260,6 +8301,7 @@ async function esegui(azione, fn) {
   selezione.clear();
   // se il turno è passato, il nuovo giocatore torna a poter usare una magia
   if (S.currentPlayerIndex !== turnoPrima) resetTurnoMagie(magie[S.currentPlayerIndex]);
+  ultimoAgente = chiAgisce;
   disegna();
   if (r.damage) setTimeout(() => lampeggiaColpiti(chiAgisce === 0 ? 'battleAvversario' : 'battleGiocatore', r), attesaTrappole);
   // DOPO il colpo, non insieme: il danno e gli effetti raccontano due
@@ -8283,12 +8325,15 @@ function turnoBot() {
   if (ONLINE) return;                     // dall'altra parte c'è una persona
   if (S.status !== 'in_progress' || S.currentPlayerIndex !== 1) return;
   avviso('L\'avversario sta giocando…');
+  ultimoAgente = 1;
+  animazioneAvversarioInCorso = true;
   const mosse = botGiocaTurno(S, 1, Date.now());
   disegna();
 
   let i = 0;
   const passo = () => {
     if (i >= mosse.length) {
+      animazioneAvversarioInCorso = false;
       if (S.status === 'in_progress') { resetTurnoMagie(magie[0]); avviso('Tocca a te.'); }
       disegna();
       return;
@@ -9450,6 +9495,7 @@ window.ui = ui;
 window.__tavolo = () => (S ? JSON.parse(JSON.stringify({
   status: S.status, winner: S.winner, winReason: S.winReason,
   currentPlayerIndex: S.currentPlayerIndex, scarti: S.scarti, tallone: S.tallone,
+  animazioneAvversarioInCorso,
   players: S.players.map((p) => ({
     hand: p.hand, melds: p.melds, characters: p.characters,
     hasDrawnThisTurn: p.hasDrawnThisTurn, puntiMagia: p.puntiMagia,

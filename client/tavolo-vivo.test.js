@@ -45,12 +45,16 @@ const attendi = (ms) => new Promise((r) => setTimeout(r, ms));
 // CHI COMINCIA LO DECIDE IL MAZZO, non piu' sempre il giocatore.
 // Se il sorteggio da' il via al bot, il tavolo lo fa giocare da solo:
 // qui si aspetta che il turno torni a noi, invece di dare per scontato
-// che sia nostro fin dal primo istante.
-const aspettaIlMioTurno = async (w, quanto = 6000) => {
+// che sia nostro fin dal primo istante. Si aspetta anche che finisca di
+// "recitare" le sue mosse (animazioneAvversarioInCorso): il motore segna
+// il turno come nostro subito, ma provare a giocare mentre l'ultima mossa
+// dell'avversario e' ancora in scena viene rifiutato apposta — vedi
+// genera-tavolo.py, esegui().
+const aspettaIlMioTurno = async (w, quanto = 16000) => {
   const fine = Date.now() + quanto;
   while (Date.now() < fine) {
     const s = w.__tavolo();
-    if (s && s.status === 'in_progress' && s.currentPlayerIndex === 0) return true;
+    if (s && s.status === 'in_progress' && s.currentPlayerIndex === 0 && !s.animazioneAvversarioInCorso) return true;
     await attendi(80);
   }
   return false;
@@ -149,7 +153,7 @@ check('finito lo studio, il conto sparisce', !studioVisibile());
 check('il turno arriva a noi (dopo il bot, se ha cominciato lui)', await aspettaIlMioTurno(w));
 const manoPrima = w.__tavolo().players[0].hand.length;
 w.ui.pesca();
-await attendi(60);
+await attendi(150);
 check('e la pescata funziona', w.__tavolo().players[0].hand.length === manoPrima + 1);
 check('la carta pescata e\' l\'ultima della mano, per riconoscerla',
   d.querySelectorAll('#handBox .card').length === manoPrima + 1);
