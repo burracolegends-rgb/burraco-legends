@@ -8039,15 +8039,34 @@ const ONLINE = RETE !== null;
 // partita vera non si puo' scriptare, e nemmeno avrebbe senso provarci.
 // `?tutorial=1` la riaccende a mano, per chi la vuole rivedere o per chi
 // sta provando questa pagina (vedi avviaTutorialTavolo piu' sotto).
+//
+// RIPARTE DA SOLA SE L'ACCOUNT NON C'E' PIU', come il tutorial gestionale
+// (client/tutorial-gestionale.js, stessa logica commentata li' per
+// esteso): il flag "completato" vive nel browser, l'account vive sul
+// server, e se il magazzino del server perde i dati (deploy senza disco
+// persistente, vedi DOVE_SALVO in server/server.js) i due si
+// disallineano.
+// NIENTE CHIAMATA DI RETE: si confronta il gettone con cui il tutorial
+// e' stato completato l'ultima volta (salvato in tutorialFinisci(), piu'
+// in basso) con quello di adesso. Se sono diversi, il server ha dovuto
+// darne uno nuovo da allora — quello vecchio e' sparito, e con lui le
+// carte. Si controlla PRIMA se c'e' gia' un mazzo salvato valido
+// (mazzoScelto()): chi ne ha uno non ha bisogno di essere ricontrollato.
 // ------------------------------------------------------------
-const MODALITA_TUTORIAL = !ONLINE && (function () {
+let MODALITA_TUTORIAL = false;   // deciso da decidiModalitaTutorial(), dentro avvia()
+
+async function decidiModalitaTutorial() {
+  if (ONLINE) return false;
   try {
     if (new URLSearchParams(location.search).get('tutorial') === '1') return true;
-    if (localStorage.getItem('bb_tutorial_tavolo_completato') === 'si') return false;
     if (localStorage.getItem('bb_tutorial_completato') !== 'si') return false;
-    return true;
+    if (localStorage.getItem('bb_tutorial_tavolo_completato') !== 'si') return true;
+    if (mazzoScelto()) return false;
+    const gettoneOra = localStorage.getItem('bb_gettone');
+    const gettoneAllora = localStorage.getItem('bb_tutorial_tavolo_gettone');
+    return !!(gettoneAllora && gettoneOra && gettoneOra !== gettoneAllora);
   } catch (e) { return false; }
-})();
+}
 
 // una carta che non si può vedere: il disegno le mostra a faccia in giù
 function cartaCoperta(prefisso, i) {
@@ -10088,7 +10107,11 @@ function tutorialAvanti() {
 function tutorialFinisci() {
   if (tutorialElementoIlluminato) { tutorialElementoIlluminato.classList.remove('tutorial-tavolo-alone'); tutorialElementoIlluminato = null; }
   if (tutorialPannelloEl) { tutorialPannelloEl.remove(); tutorialPannelloEl = null; }
-  try { localStorage.setItem('bb_tutorial_tavolo_completato', 'si'); } catch (e) {}
+  try {
+    localStorage.setItem('bb_tutorial_tavolo_completato', 'si');
+    // con quale gettone si e' finito: vedi decidiModalitaTutorial piu' in alto
+    localStorage.setItem('bb_tutorial_tavolo_gettone', localStorage.getItem('bb_gettone') || '');
+  } catch (e) {}
   // si ricomincia sulla stessa pagina, pulita: una partita vera contro il computer
   location.href = location.pathname;
 }
@@ -10151,8 +10174,9 @@ function avviaTutorialTavolo() {
     return;
   }
 
-  // LA PRIMA MANO GUIDATA (vedi MODALITA_TUTORIAL piu' sopra): prende il
-  // posto della partita normale, non si aggiunge a lei.
+  // LA PRIMA MANO GUIDATA (vedi decidiModalitaTutorial piu' sopra): prende
+  // il posto della partita normale, non si aggiunge a lei.
+  MODALITA_TUTORIAL = await decidiModalitaTutorial();
   if (MODALITA_TUTORIAL) { avviaTutorialTavolo(); return; }
 
   // IL MAZZO SCELTO NELLA PAGINA "IL TUO MAZZO"

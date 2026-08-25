@@ -38,9 +38,14 @@
 // nuovo senza ricaricare — mostraPassoCorrente() è pensata apposta per
 // essere richiamata più volte sulla stessa pagina, non solo all'avvio.
 //
-// UNA VOLTA SOLA. Finito l'ultimo passo, bb_tutorial_completato='si' e
-// non riparte mai più — nemmeno cancellando bb_tutorial_passo a mano,
-// perché sono due chiavi diverse.
+// UNA VOLTA SOLA — MA LEGATA ALL'ACCOUNT, NON SOLO AL BROWSER. Finito
+// l'ultimo passo, bb_tutorial_completato='si' e non riparte più — a
+// meno che, tornando in home, il server non riconosca più il gettone
+// salvato (vedi accountNonRiconosciuto più sotto): il flag vive nel
+// browser, l'account vive sul server, e se il magazzino del server
+// perde i dati i due si disallineano. In quel caso il tour riparte da
+// solo, una volta, invece di lasciare chi torna senza carte e senza
+// guida.
 //
 // SKIP TOTALE — DA TOGLIERE PRIMA DEL LANCIO VERO.
 // Il magazzino del server, in sviluppo, non è garantito che sopravviva
@@ -66,15 +71,57 @@
   function scrivi(chiave, v) { try { localStorage.setItem(chiave, v); } catch (e) {} }
   function cancella(chiave) { try { localStorage.removeItem(chiave); } catch (e) {} }
 
-  if (leggi(CHIAVE_FATTO) === 'si') return;
-
   var pagina = (location.pathname.split('/').pop() || 'home.html');
 
-  // La primissima visita di sempre: nessun passo salvato, e siamo in
-  // home. È l'UNICO punto in cui il tour si accende da solo.
-  if (!leggi(CHIAVE_PASSO)) {
-    if (pagina !== 'home.html') return;
+  // ------------------------------------------------------------
+  // IL TOUR RIPARTE DA SOLO SE L'ACCOUNT NON C'È PIÙ
+  // Il flag "fatto" vive nel browser, l'account vive sul server
+  // (server/giocatori.js): se il magazzino del server perde i dati —
+  // succede a ogni nuovo deploy finché non c'è un disco vero, vedi
+  // DOVE_SALVO in server/server.js — i due si disallineano.
+  //
+  // NIENTE CHIAMATA DI RETE PROPRIA — e non per pigrizia. home.html fa
+  // già la sua a /api/io all'avvio (per mostrare saldo e collezione), e
+  // se il gettone salvato non era più riconosciuto quella stessa
+  // chiamata lo sostituisce SUBITO con uno nuovo, in localStorage. Una
+  // seconda chiamata di qui, in corsa con quella, leggerebbe quasi
+  // sempre il gettone già aggiornato: il confronto risulterebbe sempre
+  // "va tutto bene" anche quando non è vero (verificato dal vivo: capita
+  // davvero, non è un'ipotesi).
+  //
+  // Si confronta invece qualcosa che non ha corse: il gettone con cui il
+  // tour è stato completato l'ultima volta (salvato in avanza(), qui
+  // sotto) contro quello di adesso. Se sono diversi, il server ha dovuto
+  // darne uno nuovo da allora — vuol dire che quello vecchio è sparito.
+  // ------------------------------------------------------------
+  var CHIAVE_GETTONE_AL_COMPLETAMENTO = 'bb_tutorial_gettone';
+
+  function avviaDaCapo() {
+    cancella(CHIAVE_FATTO);
     scrivi(CHIAVE_PASSO, '1');
+    mostraPassoCorrente();
+  }
+
+  function decidiSePartire() {
+    if (leggi(CHIAVE_FATTO) === 'si') {
+      // Già fatto: si ricontrolla SOLO dalla home e SOLO se non c'è già
+      // un giro in corso.
+      if (pagina !== 'home.html' || leggi(CHIAVE_PASSO)) return;
+      var gettoneOra = leggi('bb_gettone');
+      var gettoneAllora = leggi(CHIAVE_GETTONE_AL_COMPLETAMENTO);
+      // Se non sappiamo con quale gettone si era finito (tour completato
+      // prima di questo controllo) non si tocca nulla: non c'è modo di
+      // dire se è davvero cambiato qualcosa.
+      if (gettoneAllora && gettoneOra && gettoneOra !== gettoneAllora) avviaDaCapo();
+      return;
+    }
+    // La primissima visita di sempre: nessun passo salvato, e siamo in
+    // home. È l'UNICO altro punto in cui il tour si accende da solo.
+    if (!leggi(CHIAVE_PASSO)) {
+      if (pagina !== 'home.html') return;
+      scrivi(CHIAVE_PASSO, '1');
+    }
+    mostraPassoCorrente();
   }
 
   // ------------------------------------------------------------
@@ -191,7 +238,14 @@
 
   function avanza(def) {
     pulisciPassoPrecedente();
-    if (def.fine) { scrivi(CHIAVE_FATTO, 'si'); cancella(CHIAVE_PASSO); return; }
+    if (def.fine) {
+      scrivi(CHIAVE_FATTO, 'si');
+      // con quale gettone si e' finito: vedi CHIAVE_GETTONE_AL_COMPLETAMENTO
+      // piu' in alto
+      scrivi(CHIAVE_GETTONE_AL_COMPLETAMENTO, leggi('bb_gettone') || '');
+      cancella(CHIAVE_PASSO);
+      return;
+    }
     var nuovo = Number(leggi(CHIAVE_PASSO) || 0) + 1;
     scrivi(CHIAVE_PASSO, String(nuovo));
     mostraPassoCorrente(); // puo' darsi che il passo nuovo sia ANCORA su questa pagina
@@ -294,5 +348,5 @@
     }
   }
 
-  mostraPassoCorrente();
+  decidiSePartire();
 })();
