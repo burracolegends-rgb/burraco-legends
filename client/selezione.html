@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Burraco Legends — Selezione</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2a1e12">
@@ -75,7 +75,25 @@
   .slot .rarity { color: var(--gold); font-size: 0.85rem; margin-top: 2px; }
 
   .picker { margin-top: 10px; display: none; flex-direction: column; gap: 6px; }
-  .picker.open { display: flex; }
+  /* Aperto, il picker non spinge più via il resto della pagina: si
+     sovrappone a tutto schermo, come un pannello vero, invece di
+     allungare la colonna e far scorrere via ciò che sta sotto. */
+  .picker.open {
+    display: flex; position: fixed; inset: 0; z-index: 200; margin: 0;
+    padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+    background: rgba(10, 7, 16, 0.94); overflow-y: auto;
+  }
+  .picker-testata {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; flex: 0 0 auto;
+  }
+  .picker-testata .titolo { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .picker-chiudi {
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
+    width: 34px; height: 34px; border-radius: 8px; font-size: 1.1rem; cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .picker-chiudi:hover { border-color: var(--gold); }
   .picker-item {
     background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
     padding: 8px 10px; cursor: pointer; font-size: 0.85rem;
@@ -139,7 +157,7 @@
   #summaryPanel.open { display: block; }
   #summaryPanel h3 { margin-top: 0; color: var(--ok); }
   #summaryPanel pre { background: var(--bg); padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; }
-  .torna { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 2.55rem;
+  .torna { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 1.275rem;
            color: var(--muted, #9a8fb5); text-decoration: none; }
   .torna .icona-torna { width: 60px; height: 60px; object-fit: contain; }
   .torna:hover { color: var(--ok, #d4af37); }
@@ -1378,6 +1396,16 @@ function renderSuits() {
 
     const picker = document.createElement('div');
     picker.className = 'picker' + (state.openPicker === seme ? ' open' : '');
+    const testata = document.createElement('div');
+    testata.className = 'picker-testata';
+    testata.innerHTML = `<span class="titolo"><span class="suit-symbol ${redSuit(seme) ? 'red' : 'pale'}">${seme}</span>${t('scegli')}</span>`;
+    const chiudi = document.createElement('button');
+    chiudi.className = 'picker-chiudi';
+    chiudi.setAttribute('aria-label', 'Chiudi');
+    chiudi.textContent = '✕';
+    chiudi.onclick = (ev) => { ev.stopPropagation(); state.openPicker = null; renderSuits(); };
+    testata.appendChild(chiudi);
+    picker.appendChild(testata);
     const disponibili = sortCards(PERSONAGGI.filter((c) => c.seme === seme), state.sort.personaggi);
     for (const p of disponibili) {
       const txt = cardText(p.id);
