@@ -107,6 +107,10 @@
   }
   .picker-item .stats { color: var(--text-dim); flex: 0 0 auto; white-space: nowrap; }
   .picker-item .pi-desc { color: var(--text-dim); font-size: 0.78rem; line-height: 1.3; }
+  .picker-vuoto {
+    color: var(--text-dim); font-size: 0.85rem; line-height: 1.4;
+    padding: 14px 10px; text-align: center; border: 1px dashed var(--border); border-radius: 6px;
+  }
 
   .magic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
   .magic-card {
@@ -1267,7 +1271,9 @@ const I18N = {
       scegli: 'Scegli...', vita: 'VITA', att: 'ATT', difesa: 'DIF',
       ordinaPer: 'Ordina per:', ordinaPunteggio: 'Punteggio (raritÃ )', ordinaNome: 'Nome',
       entraBtn: 'Conferma il mazzo', riepilogoTitolo: 'Squadra pronta',
-      progresso: (p, m) => `Personaggi: ${p}/4 Â· Carte Magiche: ${m}/3`
+      progresso: (p, m) => `Personaggi: ${p}/4 Â· Carte Magiche: ${m}/3`,
+      pickerVuotoPersonaggi: 'Non possiedi ancora nessun eroe di questo seme. Vai al negozio per comprarne uno.',
+      pickerVuotoMagiche: 'Non possiedi ancora nessuna Carta Magica. Vai al negozio per comprarne una.'
   } },
   en: { ui: {
       sottotitolo: 'Select 4 Characters (one per suit) and, if you want, up to 3 Magic Cards before entering the match list.',
@@ -1276,7 +1282,9 @@ const I18N = {
       scegli: 'Choose...', vita: 'HP', att: 'ATK', difesa: 'DEF',
       ordinaPer: 'Sort by:', ordinaPunteggio: 'Score (rarity)', ordinaNome: 'Name',
       entraBtn: 'Confirm this deck', riepilogoTitolo: 'Team ready',
-      progresso: (p, m) => `Characters: ${p}/4 Â· Magic Cards: ${m}/3`
+      progresso: (p, m) => `Characters: ${p}/4 Â· Magic Cards: ${m}/3`,
+      pickerVuotoPersonaggi: 'You don\'t own any hero of this suit yet. Go to the shop to buy one.',
+      pickerVuotoMagiche: 'You don\'t own any Magic Card yet. Go to the shop to buy one.'
   } },
   es: { ui: {
       sottotitolo: 'Selecciona 4 Personajes (uno por palo) y, si quieres, hasta 3 Cartas MÃ¡gicas antes de entrar en la lista de partidas.',
@@ -1285,7 +1293,9 @@ const I18N = {
       scegli: 'Elegir...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
       ordinaPer: 'Ordenar por:', ordinaPunteggio: 'PuntuaciÃ³n (rareza)', ordinaNome: 'Nombre',
       entraBtn: 'Confirmar la baraja', riepilogoTitolo: 'Equipo listo',
-      progresso: (p, m) => `Personajes: ${p}/4 Â· Cartas MÃ¡gicas: ${m}/3`
+      progresso: (p, m) => `Personajes: ${p}/4 Â· Cartas MÃ¡gicas: ${m}/3`,
+      pickerVuotoPersonaggi: 'Aun no tienes ningun heroe de este palo. Ve a la tienda para comprar uno.',
+      pickerVuotoMagiche: 'Aun no tienes ninguna Carta Magica. Ve a la tienda para comprar una.'
   } },
   pt: { ui: {
       sottotitolo: 'Selecione 4 Personagens (um por naipe) e, se quiser, atÃ© 3 Cartas MÃ¡gicas antes de entrar na lista de partidas.',
@@ -1294,7 +1304,9 @@ const I18N = {
       scegli: 'Escolher...', vita: 'VIDA', att: 'ATQ', difesa: 'DEF',
       ordinaPer: 'Ordenar por:', ordinaPunteggio: 'PontuaÃ§Ã£o (raridade)', ordinaNome: 'Nome',
       entraBtn: 'Confirmar o baralho', riepilogoTitolo: 'Equipe pronta',
-      progresso: (p, m) => `Personagens: ${p}/4 Â· Cartas MÃ¡gicas: ${m}/3`
+      progresso: (p, m) => `Personagens: ${p}/4 Â· Cartas MÃ¡gicas: ${m}/3`,
+      pickerVuotoPersonaggi: 'Voce ainda nao tem nenhum heroi deste naipe. Va a loja para comprar um.',
+      pickerVuotoMagiche: 'Voce ainda nao tem nenhuma Carta Magica. Va a loja para comprar uma.'
   } },
 };
 
@@ -1308,6 +1320,44 @@ function detectLocale() {
   const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
   return SUPPORTED_LANGS.includes(nav) ? nav : 'en';
 }
+
+// ------------------------------------------------------------
+// SOLO LE CARTE CHE SI POSSIEDONO DAVVERO
+// Questa pagina mostrava l'intero catalogo, comprate o no: si poteva
+// mettere in squadra qualunque eroe, anche uno mai visto in album.
+// Sharkini, album e pacchetti stanno sul server (vedi server/giocatori.js
+// e strumenti/ponte.py, usati da negozio/album/spacchetta): qui manca
+// lo stesso controllo, ed e' un buco vero — un giocatore poteva schierare
+// carte che non aveva comprato. Si legge la collezione con lo stesso
+// gettone delle altre pagine, non un ponte nuovo: qui basta sapere COSA
+// si possiede, non comprare o aprire pacchetti.
+// ------------------------------------------------------------
+const CI_SONO_ARRIVATO_DAL_SERVER = location.protocol === 'http:' || location.protocol === 'https:';
+let COLLEZIONE = {};
+
+async function caricaCollezione() {
+  if (!CI_SONO_ARRIVATO_DAL_SERVER) {
+    // pagina aperta col doppio clic, senza server: si legge quello che
+    // ha lasciato il ponte di ripiego delle altre pagine (di prova)
+    try { COLLEZIONE = JSON.parse(localStorage.getItem('bb_collezione') || '{}'); } catch (e) { COLLEZIONE = {}; }
+    return;
+  }
+  let gettone = null;
+  try { gettone = localStorage.getItem('bb_gettone'); } catch (e) {}
+  try {
+    const risposta = await fetch('/api/io', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gettone })
+    });
+    const r = await risposta.json();
+    if (r && r.gettone) { try { localStorage.setItem('bb_gettone', r.gettone); } catch (e) {} }
+    COLLEZIONE = (r && r.collezione) || {};
+  } catch (e) {
+    console.warn('Non riesco a leggere la collezione dal server:', e);
+    COLLEZIONE = {};
+  }
+}
+function posseggo(id) { return (COLLEZIONE[id] || 0) > 0; }
 
 let currentLang = detectLocale();
 const state = {
@@ -1406,7 +1456,15 @@ function renderSuits() {
     chiudi.onclick = (ev) => { ev.stopPropagation(); state.openPicker = null; renderSuits(); };
     testata.appendChild(chiudi);
     picker.appendChild(testata);
-    const disponibili = sortCards(PERSONAGGI.filter((c) => c.seme === seme), state.sort.personaggi);
+    // SOLO QUELLI CHE SI POSSIEDONO: vedi caricaCollezione() e posseggo()
+    // piu' in alto. Prima qui c'era l'intero catalogo, comprato o no.
+    const disponibili = sortCards(PERSONAGGI.filter((c) => c.seme === seme && posseggo(c.id)), state.sort.personaggi);
+    if (!disponibili.length) {
+      const vuoto = document.createElement('div');
+      vuoto.className = 'picker-vuoto';
+      vuoto.textContent = t('pickerVuotoPersonaggi');
+      picker.appendChild(vuoto);
+    }
     for (const p of disponibili) {
       const txt = cardText(p.id);
       const item = document.createElement('div');
@@ -1428,7 +1486,14 @@ function renderSuits() {
 function renderMagic() {
   const grid = document.getElementById('magicGrid');
   grid.innerHTML = '';
-  const ordinate = sortCards(MAGICHE, state.sort.magiche);
+  // Stesso filtro dei personaggi: solo le Carte Magiche possedute davvero.
+  const ordinate = sortCards(MAGICHE.filter((m) => posseggo(m.id)), state.sort.magiche);
+  if (!ordinate.length) {
+    const vuoto = document.createElement('div');
+    vuoto.className = 'picker-vuoto';
+    vuoto.textContent = t('pickerVuotoMagiche');
+    grid.appendChild(vuoto);
+  }
   for (const m of ordinate) {
     const txt = cardText(m.id);
     const isSelected = state.magiche.includes(m.id);
@@ -1531,21 +1596,28 @@ document.getElementById('entraBtn').addEventListener('click', () => {
 });
 
 // Se un mazzo era gia' stato scelto, si ritrova selezionato: rifarlo da
-// capo ogni volta sarebbe una punizione per chi torna.
-(function riprendiIlMazzoDiPrima() {
+// capo ogni volta sarebbe una punizione per chi torna. Ma solo se le
+// carte sono ancora possedute: una scelta fatta prima di questo
+// controllo (o una carta persa da allora) non deve ritrovarsi in
+// squadra senza che sia mai passata dal picker filtrato.
+function riprendiIlMazzoDiPrima() {
   let salvato = null;
   try { salvato = JSON.parse(localStorage.getItem(DOVE_SI_SALVA_IL_MAZZO) || 'null'); } catch (e) {}
   if (!salvato || !salvato.personaggi) return;
   for (const [seme, id] of Object.entries(salvato.personaggi)) {
-    const carta = PERSONAGGI.find((c) => c.id === id);
+    const carta = PERSONAGGI.find((c) => c.id === id && posseggo(c.id));
     if (carta && state.personaggi[seme] !== undefined) state.personaggi[seme] = carta;
   }
   if (Array.isArray(salvato.carteMagiche)) {
-    state.magiche = salvato.carteMagiche.filter((id) => MAGICHE.some((c) => c.id === id)).slice(0, 3);
+    state.magiche = salvato.carteMagiche.filter((id) => MAGICHE.some((c) => c.id === id) && posseggo(id)).slice(0, 3);
   }
-})();
+}
 
-renderAll();
+(async function avvia() {
+  await caricaCollezione();
+  riprendiIlMazzoDiPrima();
+  renderAll();
+})();
 </script>
 <script src="tutorial-gestionale.js" defer></script>
 </body>
