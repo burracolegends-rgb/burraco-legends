@@ -100,7 +100,7 @@ function creaPonteBrowser() {
     },
     async compra(carte, tipo) {
       const st = statoAttuale();
-      const offerta = offertaPerCarte(Number(carte));
+      const offerta = offertaPerCarte(Number(carte), tipo);
       if (!offerta) return { ok: false, diProva: true, motivo: 'Quel pacchetto non esiste.' };
       if (st.serie.saldo < offerta.costo) {
         return { ok: false, diProva: true, motivo: 'Sharkini insufficienti.',

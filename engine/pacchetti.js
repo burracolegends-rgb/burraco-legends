@@ -42,16 +42,39 @@ export const OFFERTE = [
   { id: 'tesoro',   carte: 50, costo: 108000, etichetta: 'conviene' }
 ];
 
+// ------------------------------------------------------------
+// I TAGLI SOLO PER LE CARTE MAGIA — un terzo del prezzo.
+//
+// Una Carta Magica vale un solo utilizzo, poi sparisce dalla collezione:
+// pagarla come un eroe (che si tiene per sempre) sarebbe pagare tre
+// volte tanto per un terzo della vita utile. Stessi ID dei tagli eroe
+// (busta/trio/pacco/scrigno) apposta: la vetrina delle magie riusa gli
+// stessi nomi e involucri (vedi genera-negozio.py), non ne servono di
+// nuovi. Si ferma a dieci carte — sopra i dieci si ricomprano prima di
+// finire le copie che si hanno, il taglio grande non serve quanto per
+// gli eroi.
+export const OFFERTE_MAGIA = [
+  { id: 'busta',   carte: 1,  costo:  2000, etichetta: null },
+  { id: 'trio',    carte: 3,  costo:  4000, etichetta: null },
+  { id: 'pacco',   carte: 5,  costo:  6000, etichetta: null },
+  { id: 'scrigno', carte: 10, costo: 10000, etichetta: 'popolare' }
+];
+
 export function costoPerCarta(offerta) { return offerta.costo / offerta.carte; }
 
-// Quanto si risparmia rispetto al costo della singola carta.
-export function scontoPercentuale(offerta) {
-  const base = OFFERTE[0].costo;                  // 1 carta = prezzo pieno
+// Quanto si risparmia rispetto al costo della singola carta. `tabella`
+// facoltativa: le magie hanno la loro base (la busta da 1 magia), non
+// quella degli eroi.
+export function scontoPercentuale(offerta, tabella = OFFERTE) {
+  const base = tabella[0].costo;                  // 1 carta = prezzo pieno
   return Math.round((1 - costoPerCarta(offerta) / base) * 100);
 }
 
-export function offertaPerCarte(quante) {
-  return OFFERTE.find((o) => o.carte === quante) || null;
+// `tipo` facoltativo: 'magia' pesca dal listino scontato, qualunque
+// altra cosa (o niente) da quello normale — stessa idea di carteDiTipo.
+export function offertaPerCarte(quante, tipo) {
+  const tabella = tipo === 'magia' ? OFFERTE_MAGIA : OFFERTE;
+  return tabella.find((o) => o.carte === quante) || null;
 }
 
 // ------------------------------------------------------------

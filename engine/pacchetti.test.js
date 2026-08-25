@@ -4,7 +4,7 @@
 import {
   apriPacchetto, rimborsoTotale, verificaProbabilita, carteDiTipo,
   PROBABILITA, SOGLIA_PITY, CARTE_PER_PACCHETTO, RIMBORSO_DOPPIONE,
-  OFFERTE, costoPerCarta, scontoPercentuale, offertaPerCarte, LIVELLI_RARITA } from './pacchetti.js';
+  OFFERTE, OFFERTE_MAGIA, costoPerCarta, scontoPercentuale, offertaPerCarte, LIVELLI_RARITA } from './pacchetti.js';
 import { formattaSharkini, giorniPerRaccogliere } from './sharkini.js';
 
 let failures = 0;
@@ -176,6 +176,29 @@ check('una stella 5 ogni venti carte al massimo, prima della garanzia', PROBABIL
   }
   console.log('');
 
+}
+
+// --- I TAGLI SOLO PER LE CARTE MAGIA: un terzo del prezzo ---
+{
+  check('quattro tagli per le magie, non sei', OFFERTE_MAGIA.length === 4);
+  check('i tagli sono 1, 3, 5, 10 carte',
+    OFFERTE_MAGIA.map((o) => o.carte).join(',') === '1,3,5,10');
+  check('si trova il taglio giusto, e con offertaPerCarte(n) senza tipo resta quello degli eroi',
+    offertaPerCarte(5, 'magia').costo === 6000 && offertaPerCarte(5).costo === 18000);
+  check('non esiste un taglio da 25 o 50 magie',
+    offertaPerCarte(25, 'magia') === null && offertaPerCarte(50, 'magia') === null);
+
+  // IL CONTO CHE CONTA: ogni taglio costa esattamente un terzo del suo
+  // equivalente eroe, non un numero a caso vicino.
+  check('ogni taglio magia costa esattamente un terzo del taglio eroe pari',
+    OFFERTE_MAGIA.every((om) => {
+      const oe = offertaPerCarte(om.carte);
+      return oe && om.costo === oe.costo / 3;
+    }));
+  check('anche per le magie il costo per carta scende salendo di taglio',
+    OFFERTE_MAGIA.map(costoPerCarta).every((p, i, tutti) => i === 0 || p < tutti[i - 1]));
+  check('anche qui i costi sono cifre tonde',
+    OFFERTE_MAGIA.every((o) => o.costo % 1000 === 0));
 }
 
 // --- TAGLI DIVERSI: il pacchetto contiene quello che promette ---

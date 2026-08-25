@@ -209,13 +209,14 @@ export function creaAnagrafe({
   // ----------------------------------------------------------
   // `tipo` è facoltativo: 'eroe' o 'magia' restringono il catalogo da cui
   // si pesca, niente (o 'tutti') pesca come sempre da tutto quello che è
-  // in vendita. Non è un secondo prezzario: costa uguale a parità di
-  // taglio, cambia solo COSA può uscire.
+  // in vendita. Cambia anche il prezzario: 'magia' costa un terzo — una
+  // Carta Magica si consuma con un solo utilizzo, un eroe no (vedi
+  // OFFERTE_MAGIA in engine/pacchetti.js).
   async function compraPacchetto(gettone, quanteCarte, tipo) {
     const g = await carica(gettone);
     if (!g) return { ok: false, motivo: 'Non ti conosco.' };
 
-    const offerta = offertaPerCarte(quanteCarte);
+    const offerta = offertaPerCarte(quanteCarte, tipo);
     if (!offerta) return { ok: false, motivo: 'Quel pacchetto non esiste.' };
 
     if (!saldoPuoPagare(g.serie.saldo, offerta.costo)) {

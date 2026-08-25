@@ -376,8 +376,9 @@ function sacchettoSvg(indice) {
 // gli servivano mai.
 // ------------------------------------------------------------
 function disegnaVetrina(elId, tipo) {
-  $(elId).innerHTML = OFFERTE.map((o) => {
-    const sconto = scontoPercentuale(o);
+  const listino = tipo === 'magia' ? OFFERTE_MAGIA : OFFERTE;
+  $(elId).innerHTML = listino.map((o) => {
+    const sconto = scontoPercentuale(o, listino);
     const posso = saldoPuoPagare(mio.saldo, o.costo);
     const manca = o.costo - mio.saldo;
     return '<a class="offerta' + (o.etichetta ? ' evidenziata' : '') + (posso ? '' : ' spenta') +
@@ -458,20 +459,25 @@ function aggiornaSaldo() {
   c.classList.remove('cambiata');
   void c.offsetWidth;
   c.classList.add('cambiata');
-  // i pacchetti che ora posso permettermi si riaccendono, in tutte e due le vetrine
-  document.querySelectorAll('#vetrinaEroi .offerta, #vetrinaMagiche .offerta').forEach((nodo, i) => {
-    const o = OFFERTE[i % OFFERTE.length];
-    const posso = saldoPuoPagare(mio.saldo, o.costo);
-    nodo.classList.toggle('spenta', !posso);
-    const riga = nodo.querySelector('.unitario, .manca');
-    if (posso) {
-      riga.className = 'unitario';
-      riga.textContent = conNome(costoPerCarta(o)) + ' a carta';
-    } else {
-      riga.className = 'manca';
-      const m = o.costo - mio.saldo;
-      riga.textContent = 'Ti ' + (m === 1 ? 'manca 1 sharkino' : 'mancano ' + conNome(m));
-    }
+  // i pacchetti che ora posso permettermi si riaccendono, in tutte e due
+  // le vetrine — ciascuna col SUO listino: quello delle magie e' piu'
+  // corto (niente forziere/tesoro) e coi prezzi scontati, quindi le due
+  // liste non si possono piu' scorrere insieme con un solo indice.
+  [['vetrinaEroi', OFFERTE], ['vetrinaMagiche', OFFERTE_MAGIA]].forEach(([elId, listino]) => {
+    document.querySelectorAll('#' + elId + ' .offerta').forEach((nodo, i) => {
+      const o = listino[i % listino.length];
+      const posso = saldoPuoPagare(mio.saldo, o.costo);
+      nodo.classList.toggle('spenta', !posso);
+      const riga = nodo.querySelector('.unitario, .manca');
+      if (posso) {
+        riga.className = 'unitario';
+        riga.textContent = conNome(costoPerCarta(o)) + ' a carta';
+      } else {
+        riga.className = 'manca';
+        const m = o.costo - mio.saldo;
+        riga.textContent = 'Ti ' + (m === 1 ? 'manca 1 sharkino' : 'mancano ' + conNome(m));
+      }
+    });
   });
 }
 

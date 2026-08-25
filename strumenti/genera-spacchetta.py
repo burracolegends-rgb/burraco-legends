@@ -599,7 +599,7 @@ let risultato = null, indice = 0, girata = false;
 // si strappa. Metterlo nel negozio sembrava più comodo, ma chi arriva
 // direttamente a questo indirizzo passerebbe alla cassa senza pagare.
 // ------------------------------------------------------------
-const OFFERTA = offertaPerCarte(QUANTE);
+const OFFERTA = offertaPerCarte(QUANTE, TIPO_PACCHETTO);
 if (!OFFERTA) location.replace('negozio.html');
 
 // la moneta: un tondo d'oro con una pinna incisa. Disegnata, non
