@@ -28,7 +28,7 @@ const fintoFornitore = (nome) => async (credenziale) => {
 
 function nuovoMondo(conFornitori = ['google', 'facebook']) {
   const archivio = archivioInMemoria();
-  const anagrafe = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA });
+  const anagrafe = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA, bonusBenvenuto: 0, codaBenvenuto: [] });
   const verificatori = {};
   for (const f of conFornitori) verificatori[f] = fintoFornitore(f);
   const accessi = creaAccessi({ archivio, anagrafe, verificatori, orologio: () => ORA });

@@ -36,8 +36,15 @@ function casoFisso(seme) {
   return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
 }
 
-const nuovaAnagrafe = (archivio = archivioInMemoria()) =>
-  creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(7) });
+// Bonus di benvenuto e coda garantita SPENTI di default: tutti i
+// controlli scritti prima che esistessero continuano a valere alla
+// lettera (saldo zero, ecc.). Il blocco dedicato piu' sotto li accende
+// apposta, con ID del catalogo finto al posto di quelli veri.
+const nuovaAnagrafe = (archivio = archivioInMemoria(), extra = {}) =>
+  creaAnagrafe({
+    archivio, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(7),
+    bonusBenvenuto: 0, codaBenvenuto: [], ...extra
+  });
 
 // ============================================================
 console.log('--- CHI SEI ---');
@@ -149,6 +156,42 @@ console.log('\n--- I PACCHETTI SI PAGANO ---');
 }
 
 // ============================================================
+console.log('\n--- IL BONUS DI BENVENUTO ---');
+// Qui il bonus e la coda sono accesi apposta, con ID del catalogo
+// finto (non quelli veri: quelli li controlla engine/carte-lint.test.js
+// contro cards/data). La coda ha sei carte: le prime cinque bastano per
+// il primo pacchetto, la sesta trabocca nel secondo insieme a carte vere.
+{
+  const CODA_FINTA = ['carta_3_0', 'carta_3_1', 'carta_3_2', 'carta_3_3', 'carta_3_0', 'carta_4_0'];
+  const a = nuovaAnagrafe(undefined, { bonusBenvenuto: 36000, codaBenvenuto: CODA_FINTA });
+  const { gettone } = await a.entra(null, 'P');
+
+  check('si parte col bonus, non da zero', (await a.stato(gettone)).saldo === 36000);
+
+  const primo = await a.compraPacchetto(gettone, 5);
+  check('il primo pacchetto si apre gratis (col bonus)', primo.ok === true);
+  check('e sono le prime cinque della coda, in ordine',
+    JSON.stringify(primo.carte.map((c) => c.carta.id).sort()) ===
+    JSON.stringify(CODA_FINTA.slice(0, 5).sort()));
+  check('le garantite non fanno maturare il pity', primo.contatorePity === 0 && primo.pityScattato === false);
+  check('il prezzo e\' comunque scalato', primo.saldo === 36000 - 18000);
+
+  const secondo = await a.compraPacchetto(gettone, 3);
+  check('il secondo pacchetto si apre', secondo.ok === true);
+  check('tre carte, come chiesto', secondo.carte.length === 3);
+  check('la sesta e ultima carta della coda c\'e\' davvero',
+    secondo.carte.some((c) => c.carta.id === 'carta_4_0'));
+  check('il resto (due carte) e\' vero, non piu\' garantito',
+    secondo.carte.filter((c) => c.carta.id !== 'carta_4_0').length === 2);
+  check('quelle due hanno fatto maturare il pity', secondo.contatorePity === 2);
+  check('il saldo scala anche qui', secondo.saldo === 36000 - 18000 - 12000);
+
+  const terzo = await a.compraPacchetto(gettone, 1);
+  check('finita la coda, il terzo pacchetto e\' del tutto vero', terzo.ok === true && terzo.carte.length === 1);
+  check('il pity continua a contare da dove aveva lasciato', terzo.contatorePity === 3);
+}
+
+// ============================================================
 console.log('\n--- PACCHETTI MIRATI: SOLO EROI, O SOLO CARTE MAGICHE ---');
 {
   // catalogo misto: metà eroi (col seme), metà Carte Magiche (col tipo)
@@ -157,7 +200,7 @@ console.log('\n--- PACCHETTI MIRATI: SOLO EROI, O SOLO CARTE MAGICHE ---');
     for (let i = 0; i < 4; i++) MISTO.push({ id: 'eroe_' + r + '_' + i, rarita: r, seme: '♥', vita: 100, att: 90 });
     for (let i = 0; i < 4; i++) MISTO.push({ id: 'magia_' + r + '_' + i, rarita: r, tipo: 'sorpresa' });
   }
-  const a = creaAnagrafe({ archivio: archivioInMemoria(), catalogo: MISTO, orologio: () => ORA, caso: casoFisso(3) });
+  const a = creaAnagrafe({ archivio: archivioInMemoria(), catalogo: MISTO, orologio: () => ORA, caso: casoFisso(3), bonusBenvenuto: 0, codaBenvenuto: [] });
   const { gettone } = await a.entra(null, 'P');
   await a.ricarica(gettone, 'montagna');   // di che comprare parecchio
 
@@ -201,7 +244,7 @@ console.log('\n--- LE CARTE LE ESTRAE IL SERVER ---');
 
   // due giocatori diversi non ricevono le stesse carte
   const b = creaAnagrafe({ archivio: archivioInMemoria(), catalogo: CATALOGO,
-                           orologio: () => ORA, caso: casoFisso(99) });
+                           orologio: () => ORA, caso: casoFisso(99), bonusBenvenuto: 0, codaBenvenuto: [] });
   const g2 = (await b.entra(null, 'Q')).gettone;
   await b.ricarica(g2, 'montagna');
   const r2 = await b.compraPacchetto(g2, 50);
@@ -276,7 +319,7 @@ console.log('\n--- IL MAGAZZINO SU FILE ---');
   const percorso = path.join(cartella, 'giocatori.json');
 
   const archivio = archivioSuFile(percorso, { attesaScrittura: 5 });
-  const a = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(3) });
+  const a = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(3), bonusBenvenuto: 0, codaBenvenuto: [] });
   const { gettone } = await a.entra(null, 'Pietro');
   await a.ritiraIlPremio(gettone);
   await a.ricarica(gettone, 'borsa');
@@ -290,7 +333,7 @@ console.log('\n--- IL MAGAZZINO SU FILE ---');
 
   // e adesso la prova vera: si riparte da zero e ci si ritrova
   const archivio2 = archivioSuFile(percorso, { attesaScrittura: 5 });
-  const a2 = creaAnagrafe({ archivio: archivio2, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(3) });
+  const a2 = creaAnagrafe({ archivio: archivio2, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(3), bonusBenvenuto: 0, codaBenvenuto: [] });
   const ripreso = await a2.stato(gettone);
   check('spegnendo e riaccendendo, il giocatore c\'è ancora', ripreso.ok === true);
   check('col suo saldo', ripreso.saldo === comprato.saldo);
@@ -300,7 +343,7 @@ console.log('\n--- IL MAGAZZINO SU FILE ---');
   // un file rovinato non deve far perdere tutto in silenzio
   fs.writeFileSync(percorso, '{ questo non è json', 'utf-8');
   const archivio3 = archivioSuFile(percorso, { attesaScrittura: 5 });
-  const a3 = creaAnagrafe({ archivio: archivio3, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(3) });
+  const a3 = creaAnagrafe({ archivio: archivio3, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(3), bonusBenvenuto: 0, codaBenvenuto: [] });
   check('con un file rovinato il server riparte lo stesso',
     (await a3.stato(gettone)).ok === false);
   const messiDaParte = fs.readdirSync(cartella).filter((f) => f.includes('.rotto-'));
@@ -319,7 +362,7 @@ console.log('\n--- IL MAGAZZINO È INTERCAMBIABILE ---');
   // database.
   const cartella = fs.mkdtempSync(path.join(os.tmpdir(), 'bb2-'));
   const prova = async (archivio) => {
-    const a = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(21) });
+    const a = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA, caso: casoFisso(21), bonusBenvenuto: 0, codaBenvenuto: [] });
     const { gettone } = await a.entra(null, 'X');
     await a.ritiraIlPremio(gettone);
     await a.ricarica(gettone, 'cassa');

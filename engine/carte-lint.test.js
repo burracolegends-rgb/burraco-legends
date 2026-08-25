@@ -136,21 +136,33 @@ check('ci sono carte da controllare', carte.length > 0);
 }
 
 // --- 4quater. CHE COSA ESCE DAVVERO DAI PACCHETTI ---
-// Due guasti silenziosi, tutti e due già capitati:
-//  1. le carte della dotazione finivano anche nei pacchetti, quindi si
-//     comprava quello che si era già ricevuto gratis;
-//  2. la tabella delle probabilità chiedeva rarità che nel roster non
-//     esistono (il 50% puntava a 1 stella, che nessuna carta ha), e la
-//     pescata ripiegava su una carta a caso fra TUTTE — leggendarie
-//     comprese. I pacchetti si aprivano lo stesso: nessuno protestava.
+// Un guasto silenzioso, gia' capitato:
+//  - la tabella delle probabilità chiedeva rarità che nel roster non
+//    esistono (il 50% puntava a 1 stella, che nessuna carta ha), e la
+//    pescata ripiegava su una carta a caso fra TUTTE — leggendarie
+//    comprese. I pacchetti si aprivano lo stesso: nessuno protestava.
+//
+// UNA COSA CHE PRIMA ERA UN GUASTO E ORA NON LO E' PIU':
+// le carte della dotazione iniziale finire ANCHE nei pacchetti era un
+// controllo apposta, perche' allora un doppione era puro spreco — non
+// c'era verso di rivenderlo. Da quando i doppioni danno un rimborso in
+// sharkini (RIMBORSO_DOPPIONE), non e' piu' uno spreco: e' pity system
+// normale, la stessa cosa che succede con qualunque altra carta comune.
+// Anzi, ora e' voluto il contrario: la dotazione di benvenuto (vedi
+// engine/dotazione.js) pesca apposta dal roster VERO e comprabile — le
+// vecchie carte fuoriCommercio, quelle sì escluse per sempre dai
+// pacchetti, restano fuori solo per quello (vedi il controllo sotto).
 {
   const perId = Object.fromEntries(carte.map(({ dati }) => [dati.id, dati]));
   const inVendita = carteInVendita(carte.map((c) => c.dati));
   check('c\'è qualcosa da comprare', inVendita.length > 0);
 
-  const regalate = Object.keys(dotazioneIniziale()).filter((id) => perId[id] && !perId[id].fuoriCommercio);
-  check('le carte della dotazione NON si comprano anche nei pacchetti', regalate.length === 0,
-    'sono in vendita pur essendo regalate: ' + regalate.join(', '));
+  const fuoriProduzioneInVendita = Object.keys(dotazioneIniziale())
+    .filter((id) => perId[id] && perId[id].fuoriCommercio)
+    .filter((id) => inVendita.some((c) => c.id === id));
+  check('le vecchie carte fuori produzione restano fuori dai pacchetti',
+    fuoriProduzioneInVendita.length === 0,
+    'in vendita per errore: ' + fuoriProduzioneInVendita.join(', '));
 
   // ogni rarità che il motore può estrarre deve avere almeno una carta,
   // altrimenti si ricade nella pescata piatta

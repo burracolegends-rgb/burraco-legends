@@ -77,6 +77,7 @@ const dom = new JSDOM(html, {
     const veroAdesso = w.Date.now.bind(w.Date);
     w.Date.now = () => veroAdesso() + salto;
     w.onerror = (msg, src, riga, col, err) => { guasti.push(String((err && err.stack) || msg)); };
+    w.addEventListener('unhandledrejection', (e) => { guasti.push('promise rifiutata: ' + String((e.reason && e.reason.stack) || e.reason)); });
   }
 });
 const w = dom.window, d = w.document;
@@ -171,25 +172,41 @@ check('la carta pescata e\' l\'ultima della mano, per riconoscerla',
 
 // ---------- 5. l'abilita' di un eroe ----------
 // I punti magia crescono di 2 a turno: si gioca finche' non bastano.
-for (let giro = 0; giro < 10; giro++) {
-  const s = w.__tavolo();
-  if (!s || s.status !== 'in_progress') break;
-  if (s.players[0].puntiMagia >= 4 && s.currentPlayerIndex === 0) break;
-  if (s.currentPlayerIndex !== 0) { await attendi(200); continue; }
-  if (!s.players[0].hasDrawnThisTurn) w.ui.pesca();
-  const mano = w.__tavolo().players[0].hand;
-  w.ui.tocca(mano[0].id);
-  w.ui.clicScarti();
-  await attendi(1500);
+// Un GIRO conta solo se ha davvero mosso qualcosa: aspettare che tocchi
+// a me (compresa la fine dell'animazione dell'avversario, altrimenti
+// pesca()/clicScarti() vengono rifiutati in silenzio — vedi esegui() in
+// genera-tavolo.py) puo' costare molti più di 200ms se l'avversario ha
+// giocato piu' mosse di fila. Il paletto e' sul TEMPO totale, non su
+// quante volte si e' girato il ciclo.
+{
+  // Fino a 40s: un turno del bot puo' usare fino a 4 abilita' (una per
+  // eroe) piu' una Carta Magica, ognuna con la sua animazione — se serve
+  // piu' di un turno mio per arrivare a 4 punti magia, nel mezzo c'e' un
+  // turno INTERO del bot da aspettare, non solo una mossa.
+  const fine = Date.now() + 40000;
+  while (Date.now() < fine) {
+    const s = w.__tavolo();
+    if (!s || s.status !== 'in_progress') break;
+    if (s.players[0].puntiMagia >= 5 && s.currentPlayerIndex === 0 && !s.animazioneAvversarioInCorso) break;
+    if (s.currentPlayerIndex !== 0 || s.animazioneAvversarioInCorso) { await attendi(200); continue; }
+    if (!s.players[0].hasDrawnThisTurn) w.ui.pesca();
+    const mano = w.__tavolo().players[0].hand;
+    w.ui.tocca(mano[0].id);
+    w.ui.clicScarti();
+    await attendi(1500);
+  }
 }
 
 const prima = w.__tavolo();
-if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 && prima.players[0].puntiMagia >= 4) {
+if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 && prima.players[0].puntiMagia >= 5) {
   const istruzione = () => {
     const e = d.getElementById('istruzioneBersaglio');
     return !!(e && e.classList.contains('mostra'));
   };
-  w.ui.attivaAbilita('♥');
+  // ♣ apposta: e' l'unico dei quattro semi di partenza la cui abilita'
+  // chiede di scegliere il bersaglio (target: personaggio_specifico) —
+  // le altre tre colpiscono da sole, senza aprire nessuna scelta.
+  w.ui.attivaAbilita('♣');
   check('premendo un eroe si apre la scelta del bersaglio', istruzione());
 
   const avversaria = d.querySelector('#battleAvversario .bcard[data-seme]');
@@ -206,7 +223,7 @@ if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 &&
       dopo.players[1].characters[seme].pv < pvPrima,
       'era ' + Math.round(pvPrima) + ', e\' ' + Math.round(dopo.players[1].characters[seme].pv));
     check('e i punti magia vengono spesi',
-      dopo.players[0].puntiMagia === prima.players[0].puntiMagia - 4,
+      dopo.players[0].puntiMagia === prima.players[0].puntiMagia - 5,
       'da ' + prima.players[0].puntiMagia + ' a ' + dopo.players[0].puntiMagia);
     check('la scelta del bersaglio si richiude', !istruzione());
   }

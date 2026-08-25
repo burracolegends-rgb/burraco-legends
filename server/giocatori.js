@@ -31,23 +31,37 @@ import {
   SERIE_NUOVA, statoSerie, ritiraPremio as ritiraDalMotore,
   saldoPuoPagare, spendi, RICARICHE
 } from '../engine/sharkini.js';
-import { OFFERTE, offertaPerCarte, apriPacchetto, SOGLIA_PITY, carteInVendita, carteDiTipo } from '../engine/pacchetti.js';
-import { dotazioneIniziale, aggiungiDotazione } from '../engine/dotazione.js';
+import {
+  OFFERTE, offertaPerCarte, apriPacchetto, apriPacchettoGarantito,
+  SOGLIA_PITY, carteInVendita, carteDiTipo
+} from '../engine/pacchetti.js';
+import {
+  dotazioneIniziale, aggiungiDotazione,
+  BONUS_BENVENUTO_SHARKINI, CODA_PACCHETTO_BENVENUTO
+} from '../engine/dotazione.js';
 
 const gettoneNuovo = () => randomBytes(32).toString('hex');
 
-// Come nasce un giocatore. Sharkini a zero — il primo premio
-// giornaliero è lì apposta — ma le CARTE no: senza una dotazione
+// Come nasce un giocatore. Le CARTE no: senza una dotazione
 // iniziale non avrebbe niente con cui scendere in campo, ora che si
 // gioca solo con le carte che si possiedono davvero.
-function giocatoreNuovo(nome, quando) {
+//
+// Gli SHARKINI invece partono da BONUS_BENVENUTO_SHARKINI, non da zero:
+// il premio giornaliero da solo impiegherebbe una settimana intera per
+// dare meno di quanto costa una singola carta. Il bonus di benvenuto
+// serve a far vedere SUBITO come funziona comprare un pacchetto — e le
+// carte che ne escono sono garantite (vedi codaBenvenuto sotto), non
+// lasciate al caso: un giocatore nuovo deve vedere coperti tutti e
+// quattro i semi, non sperarci.
+function giocatoreNuovo(nome, quando, bonusBenvenuto, codaBenvenuto) {
   return {
     creatoIl: quando,
     ultimaVisita: quando,
     nome: nome || null,
-    serie: { ...SERIE_NUOVA },     // saldo, giorno, ultimoRitiro
+    serie: { ...SERIE_NUOVA, saldo: bonusBenvenuto },
     collezione: dotazioneIniziale(),  // idCarta → quante copie
     dotazioneRicevuta: true,       // il regalo si fa una volta sola
+    codaBenvenuto: [...codaBenvenuto],  // le prossime carte "vinte" dai pacchetti, in ordine
     contatorePity: 0,              // carte aperte dall'ultima garanzia
     pacchettiAperti: 0,
     carteAperte: 0,
@@ -55,7 +69,17 @@ function giocatoreNuovo(nome, quando) {
   };
 }
 
-export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = Math.random }) {
+export function creaAnagrafe({
+  archivio, catalogo, orologio = Date.now, caso = Math.random,
+  // I due valori veri stanno in engine/dotazione.js. Configurabili qui
+  // solo perché i test dell'economia usano un catalogo finto (carta_1_0,
+  // carta_2_3...) apposta per restare indipendenti dal roster vero: una
+  // coda di ID reali (personaggio_102...) lì dentro non troverebbe le
+  // carte e romperebbe apriPacchettoGarantito. In produzione nessuno
+  // passa questi due argomenti: si usano sempre i valori veri.
+  bonusBenvenuto = BONUS_BENVENUTO_SHARKINI,
+  codaBenvenuto = CODA_PACCHETTO_BENVENUTO
+}) {
   if (!archivio) throw new Error('L\'anagrafe ha bisogno di un magazzino.');
   if (!Array.isArray(catalogo) || !catalogo.length) throw new Error('L\'anagrafe ha bisogno del catalogo delle carte.');
 
@@ -88,6 +112,14 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
           trovato.collezione = aggiungiDotazione(trovato.collezione);
           trovato.dotazioneRicevuta = true;
         }
+        // CHI C'ERA GIÀ PRIMA DEL BONUS DI BENVENUTO.
+        // Stesso discorso della dotazione, ma per gli sharkini e la coda
+        // garantita: si aggiunge quello che manca, una volta sola, senza
+        // toccare il saldo che ha già (non glielo si azzera).
+        if (trovato.codaBenvenuto === undefined) {
+          trovato.serie = { ...trovato.serie, saldo: trovato.serie.saldo + bonusBenvenuto };
+          trovato.codaBenvenuto = [...codaBenvenuto];
+        }
         await archivio.scrivi(chiaveDi(gettone), trovato);
         return { ok: true, gettone, nuovo: false, giocatore: trovato };
       }
@@ -97,7 +129,7 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
       // un'identità che poi qualcun altro potrebbe indovinare.
     }
     const mio = gettoneNuovo();
-    const g = giocatoreNuovo(nome, adesso);
+    const g = giocatoreNuovo(nome, adesso, bonusBenvenuto, codaBenvenuto);
     await archivio.scrivi(chiaveDi(mio), g);
     return { ok: true, gettone: mio, nuovo: true, giocatore: g };
   }
@@ -201,15 +233,43 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
     catch (e) { return { ok: false, motivo: e.message }; }
     if (!bacino.length) return { ok: false, motivo: 'Nessuna carta di quel tipo è ancora in vendita.' };
 
-    const risultato = apriPacchetto(bacino, g.collezione, g.contatorePity, caso, offerta.carte);
+    // LA CODA DI BENVENUTO SI CONSUMA PRIMA DEL CASO.
+    // Vale solo per i pacchetti che possono contenere eroi (misti o
+    // 'eroe': la coda e' fatta di personaggio_*, non di Carte Magiche —
+    // un pacchetto 'magia' non la tocca). Se il taglio comprato e' piu'
+    // grande di quel che resta in coda, il resto si estrae a sorte come
+    // sempre, nello stesso acquisto: chi compra uno scrigno da dieci con
+    // in coda solo tre carte garantite si ritrova tre carte sicure e
+    // sette vere.
+    let carte, contatorePityDopo = g.contatorePity, pityScattato = false;
+    const dallaCoda = (tipo === 'magia') ? 0 : Math.min(offerta.carte, (g.codaBenvenuto || []).length);
+    if (dallaCoda > 0) {
+      const ids = g.codaBenvenuto.slice(0, dallaCoda);
+      g.codaBenvenuto = g.codaBenvenuto.slice(dallaCoda);
+      carte = apriPacchettoGarantito(inVendita, g.collezione, ids).carte;
+      const restano = offerta.carte - dallaCoda;
+      if (restano > 0) {
+        const conteggioProvvisorio = { ...g.collezione };
+        for (const c of carte) conteggioProvvisorio[c.carta.id] = (conteggioProvvisorio[c.carta.id] || 0) + 1;
+        const resto = apriPacchetto(bacino, conteggioProvvisorio, g.contatorePity, caso, restano);
+        carte = carte.concat(resto.carte);
+        contatorePityDopo = resto.contatore;
+        pityScattato = resto.pityScattato;
+      }
+    } else {
+      const risultato = apriPacchetto(bacino, g.collezione, g.contatorePity, caso, offerta.carte);
+      carte = risultato.carte;
+      contatorePityDopo = risultato.contatore;
+      pityScattato = risultato.pityScattato;
+    }
 
     // il conto si aggiorna tutto insieme
     const dopo = spendi(g.serie.saldo, offerta.costo);
     g.serie = { ...g.serie, saldo: dopo.saldo };
-    g.contatorePity = risultato.contatore;
+    g.contatorePity = contatorePityDopo;
     g.pacchettiAperti += 1;
     g.carteAperte += offerta.carte;
-    for (const c of risultato.carte) {
+    for (const c of carte) {
       g.collezione[c.carta.id] = (g.collezione[c.carta.id] || 0) + 1;
     }
     await salva(gettone, g);
@@ -217,8 +277,8 @@ export function creaAnagrafe({ archivio, catalogo, orologio = Date.now, caso = M
     return {
       ok: true,
       costo: offerta.costo,
-      carte: risultato.carte,
-      pityScattato: risultato.pityScattato,
+      carte,
+      pityScattato,
       ...vetrina(g, orologio())
     };
   }

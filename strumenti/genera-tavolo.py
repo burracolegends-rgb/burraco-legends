@@ -1688,13 +1688,22 @@ SCRIPT = r'''
 // ============================================================
 const SEMI = ['♥', '♦', '♣', '♠'];
 const SUIT_CLASS = { '♥': 'cuori', '♦': 'quadri', '♣': 'fiori', '♠': 'picche' };
+// Squadra predefinita, usata quando non c'e' (o non e' valido) un mazzo
+// salvato in bb_mazzo — vedi mazzoScelto() piu' sotto. Erano
+// personaggio_001/003/005/007 + sorpresa_001/trappola_001/002: le
+// stesse carte fuoriCommercio della vecchia dotazione di benvenuto
+// (vedi engine/dotazione.js), sostituite qui per lo stesso motivo.
 const IDS_PERSONAGGI = {
-  io:  ['personaggio_001', 'personaggio_003', 'personaggio_005', 'personaggio_007'],
-  avv: ['personaggio_002', 'personaggio_004', 'personaggio_006', 'personaggio_008']
+  // ♣ e' personaggio_109, non 105 come nella dotazione vera di un nuovo
+  // giocatore (vedi engine/dotazione.js): qui serve un'abilita' che
+  // chiede di scegliere il bersaglio, e nessuno dei quattro semi bassi
+  // ce l'ha tranne i Fiori — 109 e' il piu' semplice fra quelli.
+  io:  ['personaggio_106', 'personaggio_107', 'personaggio_108', 'personaggio_109'],
+  avv: ['personaggio_110', 'personaggio_111', 'personaggio_112', 'personaggio_113']
 };
 const IDS_MAGICHE = {
-  io:  ['sorpresa_001', 'trappola_001', 'trappola_002'],
-  avv: ['sorpresa_002', 'trappola_001', 'trappola_002']
+  io:  ['sorpresa_101', 'trappola_101', 'trappola_102'],
+  avv: ['sorpresa_102', 'trappola_101', 'trappola_102']
 };
 
 // ------------------------------------------------------------

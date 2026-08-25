@@ -78,14 +78,18 @@ function leggiCarte(cartella) {
 }
 const CARTE = leggiCarte('data');
 
+// Squadra predefinita per chi entra senza un mazzo valido. Erano
+// personaggio_001/003/005/007 + sorpresa_001/trappola_001/002 — le
+// stesse carte fuoriCommercio della vecchia dotazione di benvenuto
+// (vedi engine/dotazione.js): sostituite per lo stesso motivo.
 const SQUADRE_DI_PROVA = {
   personaggi: [
-    ['personaggio_001', 'personaggio_003', 'personaggio_005', 'personaggio_007'],
-    ['personaggio_002', 'personaggio_004', 'personaggio_006', 'personaggio_008']
+    ['personaggio_106', 'personaggio_107', 'personaggio_108', 'personaggio_109'],
+    ['personaggio_110', 'personaggio_111', 'personaggio_112', 'personaggio_113']
   ],
   magiche: [
-    ['sorpresa_001', 'trappola_001', 'trappola_002'],
-    ['sorpresa_002', 'trappola_001', 'trappola_002']
+    ['sorpresa_101', 'trappola_101', 'trappola_102'],
+    ['sorpresa_102', 'trappola_101', 'trappola_102']
   ]
 };
 

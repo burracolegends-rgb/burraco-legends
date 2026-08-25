@@ -285,3 +285,36 @@ export function apriPacchetto(catalogo, posseduto = {}, contatore = 0, rng = Mat
 export function rimborsoTotale(risultato) {
   return risultato.carte.reduce((t, c) => t + c.rimborso, 0);
 }
+
+/**
+ * Come apriPacchetto(), ma le carte non sono a sorte: sono quelle
+ * passate in `ids`, nell'ordine dato. Serve al pacchetto di benvenuto
+ * (vedi engine/dotazione.js, CODA_PACCHETTO_BENVENUTO): un nuovo
+ * giocatore deve vedere subito i quattro semi coperti, non sperarci.
+ *
+ * La FORMA del risultato è identica a quella di apriPacchetto — stessi
+ * campi per ogni carta (nuova, copiePossedute, rimborso) — cosi' tutto
+ * quello che sta a valle (spacchetta.html, il calcolo dei doppioni)
+ * continua a funzionare senza saperne niente.
+ *
+ * Non tocca il contatore della garanzia: le carte garantite non sono
+ * un'estrazione, quindi non fanno maturare né consumano il pity.
+ */
+export function apriPacchettoGarantito(catalogo, posseduto, ids) {
+  const conteggio = { ...(posseduto || {}) };
+  const carte = ids.map((id) => {
+    const carta = (catalogo || []).find((c) => c.id === id);
+    if (!carta) throw new Error('Carta garantita non trovata nel catalogo: ' + id);
+    const giaAvute = conteggio[id] || 0;
+    conteggio[id] = giaAvute + 1;
+    return {
+      carta,
+      rarita: Number(carta.rarita) || 1,
+      nuova: giaAvute === 0,
+      copiePossedute: giaAvute + 1,
+      rimborso: giaAvute === 0 ? 0 : (RIMBORSO_DOPPIONE[Number(carta.rarita)] || 0)
+    };
+  });
+  carte.sort((a, b) => a.rarita - b.rarita);
+  return { carte, garantito: true };
+}

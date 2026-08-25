@@ -20,7 +20,7 @@ for (let r = 1; r <= 5; r++) for (let i = 0; i < 6; i++)
 
 function nuovoMondo({ conPosta = false } = {}) {
   const archivio = archivioInMemoria();
-  const anagrafe = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA });
+  const anagrafe = creaAnagrafe({ archivio, catalogo: CATALOGO, orologio: () => ORA, bonusBenvenuto: 0, codaBenvenuto: [] });
   const spedite = [];
   const conti = creaAccessoEmail({
     archivio, anagrafe, orologio: () => ORA,
