@@ -36,7 +36,7 @@ import {
   SOGLIA_PITY, carteInVendita, carteDiTipo
 } from '../engine/pacchetti.js';
 import {
-  dotazioneIniziale, aggiungiDotazione,
+  dotazioneIniziale, aggiungiDotazione, EROI_DI_PARTENZA,
   BONUS_BENVENUTO_SHARKINI, CODA_PACCHETTO_BENVENUTO
 } from '../engine/dotazione.js';
 
@@ -111,6 +111,22 @@ export function creaAnagrafe({
         if (!trovato.dotazioneRicevuta) {
           trovato.collezione = aggiungiDotazione(trovato.collezione);
           trovato.dotazioneRicevuta = true;
+        }
+        // CHI HA IL SEGNO 'dotazioneRicevuta' MA NON HA NEMMENO UN EROE.
+        // Capitato per davvero durante lo sviluppo di questa stessa
+        // dotazione: un account nato quando il regalo esisteva già come
+        // segno ma non ancora come eroi veri (o con un roster poi
+        // cambiato) resta segnato "ricevuto" per sempre — la riga sopra
+        // non rientra più, e quel giocatore non ha modo di procurarsi un
+        // eroe se non li possiede già tutti. Si controlla la cosa che
+        // conta davvero (possiede almeno un personaggio?), non solo il
+        // segno, e si aggiungono SOLO gli eroi mancanti — non si tocca
+        // il resto della collezione, comprese le Carte Magiche che
+        // potrebbe già avere.
+        const possiedeUnEroe = Object.keys(trovato.collezione || {}).some((id) => id.startsWith('personaggio_'));
+        if (!possiedeUnEroe) {
+          trovato.collezione = { ...trovato.collezione };
+          for (const id of EROI_DI_PARTENZA) trovato.collezione[id] = (trovato.collezione[id] || 0) + 1;
         }
         // CHI C'ERA GIÀ PRIMA DEL BONUS DI BENVENUTO.
         // Stesso discorso della dotazione, ma per gli sharkini e la coda
