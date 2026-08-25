@@ -2014,11 +2014,22 @@
        ritrovava comunque 20px di vuoto sopra la mano, un terzo
        dell'altezza della fascia sprecato. Qui la regola si riscrive DOPO
        tutto il resto — in Legends questo blocco è l'ultima parola —
-       cosi' vince per davvero. Il 10px/2px non e' arbitrario: la carta
-       selezionata sale di 9px (riga piu' sotto in questo stesso file),
-       e serve un pixel di margine perche' non resti tagliata in cima. */
+       cosi' vince per davvero.
+
+       LO STESSO IDENTICO BUG, PERO', COLPIVA ANCHE .card.selected.
+       Il foglio base riduce ANCHE il sollevamento della carta selezionata
+       da 16px (da monitor) a 9px (touch) — apposta perche' 10px di
+       padding bastino a non tagliarla in cima — ma scrive pure quella
+       regola PRIMA di quella generale, quindi perdeva allo stesso modo.
+       Prima di questo fix la carta si sollevava comunque di 16px dentro
+       un padding di 20px (appena 4px di margine, gia' risicato); dopo
+       aver corretto SOLO il padding a 10px, il margine per una carta che
+       si alzava ancora di 16px e' diventato negativo — la carta finiva
+       tagliata in cima, un problema nuovo creato riparandone un altro.
+       Va corretta la stessa identica cosa, nello stesso posto. */
     @media (hover: none), (pointer: coarse) {
       .hand-center-box { padding-top: 10px !important; padding-bottom: 2px !important; }
+      .card.selected { transform: translateY(-9px) !important; }
     }
 
     /* IL DORSO DELLE CARTE, ILLUSTRATO INVECE DEL GRADIENTE ROSSO-ORO.
