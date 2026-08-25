@@ -179,12 +179,14 @@
   var elementoIlluminato = null;
   var attesaInCorso = null;   // l'intervalId dell'attesa del passo mostrato adesso
   var listenerClicAttuale = null;
+  var riprovaAlone = null;    // il setTimeout dei ritentativi di illumina()
 
   function pulisciPassoPrecedente() {
     if (pannelloAttuale) { pannelloAttuale.remove(); pannelloAttuale = null; }
     if (elementoIlluminato) { elementoIlluminato.classList.remove('bb-tut-alone'); elementoIlluminato = null; }
     if (attesaInCorso) { clearInterval(attesaInCorso); attesaInCorso = null; }
     if (listenerClicAttuale) { document.removeEventListener('click', listenerClicAttuale, true); listenerClicAttuale = null; }
+    if (riprovaAlone) { clearTimeout(riprovaAlone); riprovaAlone = null; }
   }
 
   function avanza(def) {
@@ -195,13 +197,30 @@
     mostraPassoCorrente(); // puo' darsi che il passo nuovo sia ANCORA su questa pagina
   }
 
-  function illumina(selettore) {
-    if (!selettore) return;
-    var el = document.querySelector(selettore);
-    if (!el) return; // l'elemento non c'e' ancora: niente alone, non e' un errore
-    elementoIlluminato = el;
-    el.classList.add('bb-tut-alone');
-    if (el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  // RETE DI SICUREZZA. Se il selettore non trova niente (una vetrina che
+  // carica lento, un id rinominato in futuro senza aggiornare questo
+  // file...) non ci si ferma al primo colpo: si riprova per qualche
+  // secondo, nel caso l'elemento arrivi solo dopo. `onEsito` dice come è
+  // andata a finire — serve a decidere se offrire comunque un modo per
+  // proseguire, invece di lasciare chi sta imparando bloccato a fissare
+  // un pannello che chiede di toccare qualcosa che non c'è.
+  function illumina(selettore, onEsito) {
+    if (!selettore) { if (onEsito) onEsito(true); return; }
+    var tentativi = 0;
+    function prova() {
+      var el = document.querySelector(selettore);
+      if (el) {
+        elementoIlluminato = el;
+        el.classList.add('bb-tut-alone');
+        if (el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        if (onEsito) onEsito(true);
+        return;
+      }
+      tentativi++;
+      if (tentativi >= 15) { if (onEsito) onEsito(false); return; } // ~6 secondi, poi si arrende
+      riprovaAlone = setTimeout(prova, 400);
+    }
+    prova();
   }
 
   function mostraPassoCorrente() {
@@ -210,7 +229,20 @@
     if (!def) { scrivi(CHIAVE_FATTO, 'si'); cancella(CHIAVE_PASSO); return; }
     if (def.pagina !== pagina) return; // questo passo e' altrove: qui non si mostra nulla
 
-    illumina(def.illumina);
+    illumina(def.illumina, function (trovato) {
+      // Il pannello (se previsto) è già a schermo: qui si aggiunge SOLO il
+      // bottone di emergenza, se serve — non si ridisegna nulla.
+      if (trovato || !pannelloAttuale) return;
+      var righe = pannelloAttuale.querySelector('.bb-tut-righe');
+      if (!righe || document.getElementById('bbTutEmergenza')) return;
+      var emergenza = document.createElement('button');
+      emergenza.className = 'bb-tut-btn';
+      emergenza.id = 'bbTutEmergenza';
+      emergenza.textContent = 'Vai avanti comunque';
+      emergenza.title = 'Non trovo l\'elemento da evidenziare: puoi comunque proseguire da qui.';
+      emergenza.addEventListener('click', function () { avanza(def); });
+      righe.insertBefore(emergenza, righe.lastChild);
+    });
 
     if (def.clic) {
       listenerClicAttuale = function (e) {
