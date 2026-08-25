@@ -106,7 +106,7 @@ check('nessuno dei due tavoli va in errore aprendosi', guasti.length === 0, guas
   for (let giro = 0; giro < 12; giro++) {
     const s = attaccante.w.__tavolo();
     if (!s || s.status !== 'in_progress') break;
-    if (s.currentPlayerIndex === 0 && s.players[0].puntiMagia >= 4) break;
+    if (s.currentPlayerIndex === 0 && s.players[0].puntiMagia >= 5) break;
     const chiTocca = s.currentPlayerIndex === 0 ? attaccante : vittima;
     const suoSegreto = chiTocca === A ? casa.segreto : ospite.segreto;
     const suo = chiTocca.w.__tavolo();
@@ -120,14 +120,21 @@ check('nessuno dei due tavoli va in errore aprendosi', guasti.length === 0, guas
   }
 
   const prima = attaccante.w.__tavolo();
-  if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 && prima.players[0].puntiMagia >= 4) {
+  if (prima && prima.status === 'in_progress' && prima.currentPlayerIndex === 0 && prima.players[0].puntiMagia >= 5) {
     const pvVittimaPrima = ['♥', '♦', '♣', '♠']
       .reduce((t, s) => t + vittima.w.__tavolo().players[0].characters[s].pv, 0);
 
     vittima.animate.length = 0;              // si guarda solo quello che succede da qui
+    // SEME ♦, NON ♥: l'eroe di cuori delle due squadre di prova non fa
+    // la stessa cosa — quello di chi apre il tavolo attacca (personaggio_106),
+    // quello di chi entra CURA i propri (personaggio_110, cura_diretta).
+    // Con ♥ questo controllo falliva un turno su due, a seconda di chi
+    // vinceva il sorteggio e finiva a fare l'"attaccante" qui sotto: non
+    // un colpo mai arrivato, un colpo mai partito. L'eroe di quadri
+    // invece attacca per entrambe le squadre (personaggio_107 e 111).
     const colpo = await posta('/api/mossa', {
       codice: casa.codice, segreto: segretoAttaccante,
-      azione: { tipo: 'abilita', seme: '♥', bersaglio: '♦' }
+      azione: { tipo: 'abilita', seme: '♦', bersaglio: '♥' }
     });
     check('il colpo passa dal server', colpo.ok === true, colpo.motivo);
 
