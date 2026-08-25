@@ -8064,7 +8064,15 @@ async function decidiModalitaTutorial() {
     if (mazzoScelto()) return false;
     const gettoneOra = localStorage.getItem('bb_gettone');
     const gettoneAllora = localStorage.getItem('bb_tutorial_tavolo_gettone');
-    return !!(gettoneAllora && gettoneOra && gettoneOra !== gettoneAllora);
+    // Nessun riferimento salvato (completato prima di questo controllo,
+    // o saltato prima che anche Salta lo salvasse): non c'e' modo di
+    // dire se e' cambiato qualcosa. Si registra ORA, cosi' almeno il
+    // PROSSIMO cambio di gettone verra' notato.
+    if (!gettoneAllora) {
+      if (gettoneOra) try { localStorage.setItem('bb_tutorial_tavolo_gettone', gettoneOra); } catch (e) {}
+      return false;
+    }
+    return !!(gettoneOra && gettoneOra !== gettoneAllora);
   } catch (e) { return false; }
 }
 
@@ -10124,7 +10132,17 @@ function tutorialFinisci() {
 // imparare come funziona il tavolo — quando il gioco sara' pubblico, si
 // toglie questo bottone (e la riga che lo aggiunge, qui sopra).
 function tutorialSaltaTutto() {
-  try { localStorage.setItem('bb_tutorial_tavolo_completato', 'si'); } catch (e) {}
+  try {
+    localStorage.setItem('bb_tutorial_tavolo_completato', 'si');
+    // ANCHE SALTANDO SERVE IL GETTONE DI RIFERIMENTO — dimenticato la
+    // prima volta: solo tutorialFinisci() (il tour finito per davvero)
+    // lo salvava. Chi saltava restava "completato" ma senza baseline, e
+    // decidiModalitaTutorial() non aveva più modo di dire "il gettone e'
+    // cambiato": il tour non ripartiva mai più, nemmeno dopo che
+    // l'account spariva davvero. Bug vero, segnalato da chi aveva usato
+    // Salta piu' volte durante le prove.
+    localStorage.setItem('bb_tutorial_tavolo_gettone', localStorage.getItem('bb_gettone') || '');
+  } catch (e) {}
   location.href = location.pathname;
 }
 

@@ -103,16 +103,30 @@
   }
 
   function decidiSePartire() {
+    // ?tutorial=1 lo riaccende a mano, senza toccare account o carte:
+    // serve a chi vuole rivederlo o sta provando questa pagina — stesso
+    // meccanismo gia' in uso per il tutorial del tavolo.
+    if (new URLSearchParams(location.search).get('tutorial') === '1' && pagina === 'home.html') {
+      pulisciPassoPrecedente();
+      cancella(CHIAVE_FATTO);
+      scrivi(CHIAVE_PASSO, '1');
+      mostraPassoCorrente();
+      return;
+    }
     if (leggi(CHIAVE_FATTO) === 'si') {
       // Già fatto: si ricontrolla SOLO dalla home e SOLO se non c'è già
       // un giro in corso.
       if (pagina !== 'home.html' || leggi(CHIAVE_PASSO)) return;
       var gettoneOra = leggi('bb_gettone');
       var gettoneAllora = leggi(CHIAVE_GETTONE_AL_COMPLETAMENTO);
-      // Se non sappiamo con quale gettone si era finito (tour completato
-      // prima di questo controllo) non si tocca nulla: non c'è modo di
-      // dire se è davvero cambiato qualcosa.
-      if (gettoneAllora && gettoneOra && gettoneOra !== gettoneAllora) avviaDaCapo();
+      // Se non sappiamo con quale gettone si era finito (tour segnato
+      // completato prima che questo controllo esistesse, o completato
+      // saltandolo prima che anche Salta lo salvasse) non c'è modo di
+      // dire se e' cambiato qualcosa: si registra ORA come riferimento,
+      // cosi' almeno il PROSSIMO cambio di gettone verra' notato — non
+      // si resta scoperti per sempre.
+      if (!gettoneAllora) { if (gettoneOra) scrivi(CHIAVE_GETTONE_AL_COMPLETAMENTO, gettoneOra); return; }
+      if (gettoneOra && gettoneOra !== gettoneAllora) avviaDaCapo();
       return;
     }
     // La primissima visita di sempre: nessun passo salvato, e siamo in
@@ -342,6 +356,14 @@
       bottoneSalta.addEventListener('click', function () {
         pulisciPassoPrecedente();
         scrivi(CHIAVE_FATTO, 'si');
+        // ANCHE SALTANDO SERVE IL GETTONE DI RIFERIMENTO — dimenticato la
+        // prima volta: solo avanza() (il tour finito per davvero) lo
+        // salvava. Chi saltava restava con CHIAVE_FATTO='si' ma senza
+        // baseline, e decidiSePartire() non aveva più modo di dire "il
+        // gettone e' cambiato": il tour non ripartiva mai più, nemmeno
+        // dopo che l'account spariva davvero. Bug vero, segnalato da chi
+        // aveva usato Salta più volte durante le prove.
+        scrivi(CHIAVE_GETTONE_AL_COMPLETAMENTO, leggi('bb_gettone') || '');
         cancella(CHIAVE_PASSO);
         location.href = 'home.html';
       });
