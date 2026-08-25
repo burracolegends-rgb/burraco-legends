@@ -82,10 +82,17 @@ const CARTE = leggiCarte('data');
 // personaggio_001/003/005/007 + sorpresa_001/trappola_001/002 — le
 // stesse carte fuoriCommercio della vecchia dotazione di benvenuto
 // (vedi engine/dotazione.js): sostituite per lo stesso motivo.
+//
+// LA SQUADRA 1 (chi entra col codice) ERA ★4 (110-113), una rarita'
+// intera sopra la dotazione di partenza (★3): un giocatore nuovo, alla
+// sua prima partita vera, si scontrava con colpi subiti circa il 28%
+// piu' forti dei propri — segnalato da chi l'ha giocata per davvero.
+// Ora e' la stessa squadra della dotazione iniziale (EROI_DI_PARTENZA in
+// engine/dotazione.js): la prima partita e' alla pari.
 const SQUADRE_DI_PROVA = {
   personaggi: [
     ['personaggio_106', 'personaggio_107', 'personaggio_108', 'personaggio_109'],
-    ['personaggio_110', 'personaggio_111', 'personaggio_112', 'personaggio_113']
+    ['personaggio_106', 'personaggio_107', 'personaggio_108', 'personaggio_105']
   ],
   magiche: [
     ['sorpresa_101', 'trappola_101', 'trappola_102'],

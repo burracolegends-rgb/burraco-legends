@@ -157,10 +157,19 @@
     { pagina: 'negozio.html', titolo: 'Il tuo bonus di benvenuto',
       testo: 'Questi sono i tuoi sharkini di partenza — bastano per cominciare a costruire il tuo mazzo, senza spendere nulla di vero.',
       illumina: '#saldo' },
-    { pagina: 'negozio.html', titolo: 'Compra un pacchetto di eroi',
+    // IL TAGLIO E' FISSO A 10, NON A SCELTA — segnalato da chi ci e'
+    // rimasto bloccato per davvero: col bonus di benvenuto (36.000)
+    // prendendo pacchetti piu' piccoli (due da 5, per esempio) restava
+    // senza sharkini per la Carta Magica del passo successivo, e li' il
+    // tutorial si impantanava senza modo di proseguire. Il pacchetto da
+    // 10 costa 30.000: ne restano sempre 6.000, abbastanza anche per la
+    // Carta Magica piu' cara (5 carte, 6.000). Con qualunque altro taglio
+    // non e' garantito.
+    { pagina: 'negozio.html', titolo: 'Compra il pacchetto da 10 eroi',
       testo: 'Qui sotto trovi i pacchetti di <b>eroi</b>, uno per ogni taglio. Gli eroi restano tuoi per ' +
-             'sempre: si riusano partita dopo partita. Scegline uno da comprare.',
-      illumina: '#vetrinaEroi', clic: '#vetrinaEroi .offerta' },
+             'sempre: si riusano partita dopo partita. Prendi quello da <b>10 carte</b>: con questo bonus ti ' +
+             'lascia gli sharkini anche per le Carte Magiche, fra un attimo.',
+      illumina: '#vetrinaEroi a[href*="carte=10"]', clic: '#vetrinaEroi a[href*="carte=10"]' },
 
     { pagina: 'spacchetta.html',
       aspetta: function () {
@@ -172,9 +181,14 @@
              'costano meno degli eroi, perché a differenza loro si usano <b>una sola volta</b> e poi spariscono.',
       illumina: 'a.bottone.principale[href="negozio.html"]', clic: 'a.bottone.principale[href="negozio.html"]' },
 
+    // Stesso motivo del taglio fisso sugli eroi: con 6.000 sharkini
+    // rimasti (36.000 − 30.000 del pacchetto da 10 eroi) il taglio da
+    // 5 carte (6.000) e' l'unico che li usa tutti senza sforare — quello
+    // da 10 (10.000) non sarebbe nemmeno acquistabile a questo punto.
     { pagina: 'negozio.html', titolo: 'Le Carte Magiche costano meno',
-      testo: 'Stesso principio, prezzo più basso: un terzo di quello degli eroi. Prendine un pacchetto.',
-      illumina: '#vetrinaMagiche', clic: '#vetrinaMagiche .offerta' },
+      testo: 'Stesso principio, prezzo più basso: un terzo di quello degli eroi. Prendi il pacchetto da ' +
+             '<b>5 carte</b>: è quello che i tuoi sharkini rimasti coprono esattamente.',
+      illumina: '#vetrinaMagiche a[href*="carte=5"]', clic: '#vetrinaMagiche a[href*="carte=5"]' },
 
     { pagina: 'spacchetta.html',
       aspetta: function () {
@@ -266,6 +280,7 @@
   var attesaInCorso = null;   // l'intervalId dell'attesa del passo mostrato adesso
   var listenerClicAttuale = null;
   var riprovaAlone = null;    // il setTimeout dei ritentativi di illumina()
+  var pannelloEmergenzaAspetta = null;
 
   function pulisciPassoPrecedente() {
     if (pannelloAttuale) { pannelloAttuale.remove(); pannelloAttuale = null; }
@@ -273,6 +288,42 @@
     if (attesaInCorso) { clearInterval(attesaInCorso); attesaInCorso = null; }
     if (listenerClicAttuale) { document.removeEventListener('click', listenerClicAttuale, true); listenerClicAttuale = null; }
     if (riprovaAlone) { clearTimeout(riprovaAlone); riprovaAlone = null; }
+    if (pannelloEmergenzaAspetta) { pannelloEmergenzaAspetta.remove(); pannelloEmergenzaAspetta = null; }
+  }
+
+  // RETE DI SICUREZZA PER "aspetta" — segnalato da chi ci e' rimasto
+  // bloccato per davvero: comprando un pacchetto di eroi piu' piccolo e
+  // poi un altro, gli sharkini rimasti non bastavano piu' per la Carta
+  // Magica che il passo successivo si aspettava. spacchetta.html mostra
+  // una sua schermata "ti mancano N sharkini" — ma quel passo e' MUTO
+  // (aspetta solo che compaia il riepilogo dell'apertura, nessun
+  // pannello proprio) e il riepilogo, senza acquisto riuscito, non
+  // compare mai: si resta li' per sempre, senza nemmeno un pannello da
+  // guardare. Dopo un po' di tentativi si mostra comunque un piccolo
+  // aiuto, anche sui passi muti, con un modo per tornare indietro o
+  // saltare tutto.
+  function mostraEmergenzaAspetta() {
+    if (pannelloEmergenzaAspetta) return;
+    pannelloEmergenzaAspetta = document.createElement('div');
+    pannelloEmergenzaAspetta.className = 'bb-tut-pannello in-basso';
+    pannelloEmergenzaAspetta.innerHTML =
+      '<h3>Qualcosa si e\' fermato</h3>' +
+      '<p>Forse non hai abbastanza sharkini per questo acquisto, o la pagina ha impiegato piu\' ' +
+      'tempo del previsto. Puoi tornare al negozio e riprovare, o saltare la guida.</p>' +
+      '<div class="bb-tut-righe">' +
+        '<button class="bb-tut-salta" id="bbTutSaltaEmergenzaAspetta">Salta tutto (prova)</button>' +
+        '<button class="bb-tut-btn" id="bbTutIndietroEmergenzaAspetta">Torna al negozio</button>' +
+      '</div>';
+    document.body.appendChild(pannelloEmergenzaAspetta);
+    document.getElementById('bbTutSaltaEmergenzaAspetta').addEventListener('click', function () {
+      scrivi(CHIAVE_FATTO, 'si');
+      scrivi(CHIAVE_GETTONE_AL_COMPLETAMENTO, leggi('bb_gettone') || '');
+      cancella(CHIAVE_PASSO);
+      location.href = 'home.html';
+    });
+    document.getElementById('bbTutIndietroEmergenzaAspetta').addEventListener('click', function () {
+      location.href = 'negozio.html';
+    });
   }
 
   function avanza(def) {
@@ -345,8 +396,13 @@
       document.addEventListener('click', listenerClicAttuale, true);
     }
     if (def.aspetta) {
+      var tentativiAspetta = 0;
       attesaInCorso = setInterval(function () {
-        if (def.aspetta()) avanza(def);
+        var fatto = false;
+        try { fatto = !!def.aspetta(); } catch (e) { fatto = false; }
+        if (fatto) { avanza(def); return; }
+        tentativiAspetta++;
+        if (tentativiAspetta === 30) mostraEmergenzaAspetta(); // ~9 secondi
       }, 300);
     }
 
