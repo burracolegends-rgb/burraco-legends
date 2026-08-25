@@ -525,6 +525,7 @@ window.__prova = {
 };
 })();
 </script>
+<script src="tutorial-gestionale.js" defer></script>
 </body>
 </html>
 '''

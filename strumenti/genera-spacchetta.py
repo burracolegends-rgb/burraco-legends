@@ -916,7 +916,7 @@ function mostraRiepilogo() {
   $('incasso').innerHTML =
     '<b>' + nuove + '</b> carte nuove su ' + risultato.carte.length +
     (monete ? ' · doppioni convertiti in <b>' + monete + '</b> monete' : '') +
-    ' · ancora <b>' + Math.max(0, SOGLIA_PITY - contatore) + '</b> carte alla ★5 garantita';
+    ' · ancora <b>' + risultato.alleCarteAllaGaranzia + '</b> carte alla ★5 garantita';
 
   $('riepilogo').classList.add('viva');
   if (migliore.rarita >= 4) coriandoli(60);
@@ -930,6 +930,7 @@ window.__prova = {
 };
 })();
 </script>
+<script src="tutorial-gestionale.js" defer></script>
 </body>
 </html>
 '''

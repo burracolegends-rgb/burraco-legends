@@ -516,6 +516,7 @@ $('probabilita').innerHTML = [...LIVELLI_RARITA].reverse().map((r) =>
 window.__prova = { offerte: OFFERTE, ricariche: RICARICHE, saldo: () => mio.saldo, dove: () => SCORTA.dove };
 })();
 </script>
+<script src="tutorial-gestionale.js" defer></script>
 </body>
 </html>
 '''
