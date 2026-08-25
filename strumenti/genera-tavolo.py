@@ -2844,6 +2844,24 @@ function dimenticaIlTavolo() {
 }
 const ONLINE = RETE !== null;
 
+// ------------------------------------------------------------
+// LA PRIMA MANO GUIDATA SUL TAVOLO
+// Si accende da sola una volta sola per account — dopo il tutorial
+// gestionale (senza eroi scelti la squadra sarebbe quella predefinita
+// comunque, ma prima ancora non ha senso mostrarla) e mai in rete: una
+// partita vera non si puo' scriptare, e nemmeno avrebbe senso provarci.
+// `?tutorial=1` la riaccende a mano, per chi la vuole rivedere o per chi
+// sta provando questa pagina (vedi avviaTutorialTavolo piu' sotto).
+// ------------------------------------------------------------
+const MODALITA_TUTORIAL = !ONLINE && (function () {
+  try {
+    if (new URLSearchParams(location.search).get('tutorial') === '1') return true;
+    if (localStorage.getItem('bb_tutorial_tavolo_completato') === 'si') return false;
+    if (localStorage.getItem('bb_tutorial_completato') !== 'si') return false;
+    return true;
+  } catch (e) { return false; }
+})();
+
 // una carta che non si può vedere: il disegno le mostra a faccia in giù
 function cartaCoperta(prefisso, i) {
   return { id: prefisso + i, suit: null, value: 0, isJolly: false, isPinella: false, coperta: true };
@@ -3145,6 +3163,9 @@ async function esegui(azione, fn) {
 // ------------------------------------------------------------
 function turnoBot() {
   if (ONLINE) return;                     // dall'altra parte c'è una persona
+  // Nella prima mano guidata l'avversario non deve improvvisare: gioca
+  // un copione scritto (vedi avviaTutorialTavolo), non l'IA vera.
+  if (MODALITA_TUTORIAL) { turnoBotDidattico(); return; }
   if (S.status !== 'in_progress' || S.currentPlayerIndex !== 1) return;
   avviso('L\'avversario sta giocando…');
   ultimoAgente = 1;
@@ -4240,8 +4261,12 @@ const ui = {
         }, i * 130));
       }, 3450);
       // 3,2s: il tempo di vedere la carta ingrandirsi, restare ferma e leggerla
+      // BUG PREESISTENTE (dal primo commit): qui c'era `ov`, mai definito in
+      // questo scope (esiste solo dentro apriCartaMagica). Ogni volta che si
+      // giocava una Carta Magica Sorpresa l'errore interrompeva il timeout in
+      // silenzio, e il velo "sorpresaOverlay" restava a schermo per sempre.
       clearTimeout(ui._sorpresaT);
-      ui._sorpresaT = setTimeout(() => ov.classList.remove('mostra'), 3200);
+      ui._sorpresaT = setTimeout(() => $('sorpresaOverlay').classList.remove('mostra'), 3200);
     } else {
       apriCartaMagica({
         tipo: 'trappola', chi: 'Trappola posata',
@@ -4347,6 +4372,565 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'p' || e.key === 'P') ui.pesca();
 });
 
+// ============================================================
+// LA PRIMA MANO GUIDATA SUL TAVOLO
+//
+// Si accende una volta sola per account (vedi MODALITA_TUTORIAL, piu' in
+// alto), dopo il tutorial gestionale: qui non e' una controfigura come
+// quello, perche' una partita vera non si puo' guidare passo passo senza
+// rischiare di bloccare chi impara su una mano sfortunata. Il mazzo e
+// l'avversario sono scritti a tavolino — stesso principio del tutorial
+// del "Circolo Burraco" (Ultima app burraco/tutorial-v1.js), da cui
+// riprende la struttura (mano/avversario scriptati, PASSI con
+// titolo/testo/illumina/azione/aiuto) e persino le carte della prima
+// meta' della mano: la mano vale undici carte anche qui,
+// e le regole di calata sono le stesse.
+//
+// COSA CAMBIA DAVVERO DAL TAVOLO NORMALE
+// Non si passa da createMatch() con un mazzo mescolato a caso: si crea
+// la partita per avere eroi, abilita' e Carte Magiche VERI e collegati
+// come in una partita reale (preparaTavoloDidattico chiama comunque
+// createMatch), e SUBITO DOPO si sostituiscono mano, mazzo, scarti e
+// pozzetti con quelli scritti qui sotto. L'avversario, durante il
+// tutorial, non usa l'IA vera (turnoBotDidattico prende il posto di
+// turnoBot: vedi il gancio piu' in alto): pesca e scarta seguendo un
+// copione, mai un'abilita' ne' una Carta Magica, cosi' chi impara vede
+// solo quello che questo passo gli sta insegnando.
+//
+// L'OROLOGIO NON GIRA. Come nel tutorial di riferimento: leggere non e'
+// perdere tempo, e con un minuto a turno (TURN_SECONDS) un principiante
+// che legge rischierebbe lo scarto d'ufficio prima ancora di capire cosa
+// fare. Qui gli orologi si disegnano una volta sola e restano fermi
+// (nessun setInterval su aggiornaOrologiTurno).
+// ============================================================
+
+// ------------------------------------------------------------
+// LA MANO DI CHI IMPARA E QUELLA DELL'AVVERSARIO
+// Non sono a caso: ogni carta serve alla lezione che la usa.
+// IL TRIS E' DI J, NON DI 7: con quattro carte sul 7 (tre per il tris +
+// il 7 di fiori per la scala) l'aggancio del 7 di fiori potrebbe andare
+// in due posti — due mosse valide, ma il passo ne accetta una sola.
+// ------------------------------------------------------------
+function manoTutorial() {
+  const C = (seme, valore) => makeCard(seme, valore);
+  return [
+    C('♠', 11), C('♥', 11), C('♦', 11),   // il tris gia' pronto
+    C('♣', 4), C('♣', 5), C('♣', 6),      // la scala gia' pronta
+    C('♣', 7),                             // si attacca alla scala: 4-5-6-7
+    C('♥', 2),                             // la pinella, diventera' il 10 del burraco
+    C('♦', 13), C('♠', 3), C('♥', 10)     // carte da buttare
+  ];
+}
+
+// L'avversario del tutorial e' prevedibile per necessita': se le carte
+// che servono non arrivassero, chi impara resterebbe bloccato su un
+// passo impossibile. Non e' un imbroglio — la partita vera comincia
+// dopo, col mazzo mescolato per davvero.
+const SCARTI_AVVERSARIO_TUTORIAL = ['♦8', '♣9'];   // il secondo completa il burraco
+
+function manoAvversarioTutorial() {
+  const C = (seme, valore) => makeCard(seme, valore);
+  return [
+    C('♦', 8),                             // primo scarto: innocuo
+    C('♣', 9),                             // secondo scarto: serve a chi impara
+    C('♠', 9), C('♥', 9), C('♦', 4), C('♣', 11), C('♠', 12),
+    C('♥', 6), C('♣', 13), C('♠', 5), C('♥', 3)
+  ];
+}
+
+// Il resto del mazzo (108 carte, due copie di 52 piu' quattro jolly):
+// si toglie una copia sola per ogni carta gia' assegnata a mano, mano
+// avversaria o primo scarto — l'altra copia, quella "gemella", resta
+// nel mazzo, perche' nel burraco vero ogni carta esiste due volte.
+function restoDelMazzoDidattico(giaUsate) {
+  const mazzo = [];
+  for (let copia = 0; copia < 2; copia++) {
+    for (const s of SEMI) for (let v = 1; v <= 13; v++) mazzo.push(makeCard(s, v));
+    mazzo.push(makeCard(null, 0, true, 'red'));
+    mazzo.push(makeCard(null, 0, true, 'black'));
+  }
+  for (const usata of giaUsate) {
+    const i = mazzo.findIndex((c) => !c.isJolly && c.suit === usata.suit && c.value === usata.value);
+    if (i >= 0) mazzo.splice(i, 1);
+  }
+  return mazzo;
+}
+
+function preparaTavoloDidattico() {
+  const a = squadra(IDS_PERSONAGGI.io);
+  const b = squadra(IDS_PERSONAGGI.avv);
+  const mieMagiche = IDS_MAGICHE.io.map((id) => dati.magiche[id]);
+  const sueMagiche = IDS_MAGICHE.avv.map((id) => dati.magiche[id]);
+
+  // Si passa comunque da createMatch(): e' l'unico posto che sa collegare
+  // abilita' ed effetti agli eroi e costruire lo stato
+  // delle Carte Magiche (makeMagicState). Mano, mazzo, scarti e pozzetti
+  // che ne escono sono casuali e si buttano via subito dopo.
+  S = createMatch({
+    characters: [a.characters, b.characters],
+    abilities: [a.abilities, b.abilities],
+    magiche: [mieMagiche, sueMagiche],
+    chiInizia: 0,       // qui comincia sempre chi impara, non il sorteggio
+    studioSecondi: 0     // niente attesa: si comincia subito
+  });
+  magie = [S.players[0].magic, S.players[1].magic];
+
+  const mia = manoTutorial();
+  const sua = manoAvversarioTutorial();
+  const scartoIniziale = makeCard('♥', 9);
+  const resto = restoDelMazzoDidattico([].concat(mia, sua, [scartoIniziale]));
+
+  // LE TRE PESCATE SONO DECISE, nell'ordine in cui vengono estratte.
+  // actionDraw pesca dal FRONTE del tallone (splice(0, n)), non dal
+  // fondo: si tolgono qui le tre carte e si rimettono in testa, nello
+  // stesso ordine in cui verranno pescate.
+  // Fra la prima e la seconda pescata di chi impara c'e' il turno
+  // dell'avversario, che pesca anche lui: per questo le carte scriptate
+  // sono tre, non due.
+  const togli = (seme, valore) => {
+    const i = resto.findIndex((c) => c.suit === seme && c.value === valore);
+    return i >= 0 ? resto.splice(i, 1)[0] : makeCard(seme, valore);
+  };
+  const primaPescata  = togli('♦', 12);   // 1a: la pesca chi impara, solo per il gesto
+  const perAvversario = togli('♠', 8);    // 2a: la pesca il computer, innocua
+  const ottoFiori     = togli('♣', 8);    // 3a: la pesca chi impara, fa crescere la scala
+
+  S.players[0].hand = mia;
+  S.players[1].hand = sua;
+  S.players[0].melds = [];
+  S.players[1].melds = [];
+  S.players[0].pozzetto = resto.splice(Math.max(0, resto.length - 11));
+  S.players[1].pozzetto = resto.splice(Math.max(0, resto.length - 11));
+  S.scarti = [scartoIniziale];
+  S.tallone = [primaPescata, perAvversario, ottoFiori].concat(resto);
+  S.players[0].puntiMagia = 0;
+  S.players[1].puntiMagia = 0;
+}
+
+// ------------------------------------------------------------
+// IL TURNO DELL'AVVERSARIO, SCRITTO
+// Prende il posto di turnoBot() durante il tutorial (vedi il gancio
+// dentro turnoBot piu' sopra). Pesca, non cala mai nulla — non deve
+// rubare la scena — e scarta la carta prevista da SCARTI_AVVERSARIO_TUTORIAL.
+// ------------------------------------------------------------
+let scartiFattiDidattico = 0;
+
+function turnoBotDidattico() {
+  if (S.status !== 'in_progress' || S.currentPlayerIndex !== 1) return;
+  avviso('L\'avversario sta giocando…');
+  ultimoAgente = 1;
+  animazioneAvversarioInCorso = true;
+  setTimeout(() => {
+    try {
+      if (!S.players[1].hasDrawnThisTurn) actionDraw(S, 1, Date.now());
+      disegna();
+    } catch (e) { console.warn('avversario didattico, pesca:', e); }
+    setTimeout(() => {
+      try {
+        const mano = S.players[1].hand;
+        const atteso = SCARTI_AVVERSARIO_TUTORIAL[scartiFattiDidattico] || '';
+        const seme = atteso.charAt(0), valore = Number(atteso.slice(1));
+        let carta = mano.find((c) => c.suit === seme && c.value === valore);
+        // se la carta prevista non c'e' piu' (non dovrebbe succedere), il
+        // turno deve finire lo stesso: si butta la prima carta libera
+        if (!carta) carta = mano.find((c) => !c.isJolly && !c.isPinella) || mano[0];
+        if (carta) { scartiFattiDidattico++; actionDiscard(S, 1, carta.id, Date.now()); }
+      } catch (e) { console.warn('avversario didattico, scarto:', e); }
+      animazioneAvversarioInCorso = false;
+      if (S.status === 'in_progress') { resetTurnoMagie(magie[0]); avviso('Tocca a te.'); }
+      disegna();
+    }, 900);
+  }, 700);
+}
+
+// ------------------------------------------------------------
+// I PASSI
+// `azione` assente = si va avanti col pulsante. `azione` presente = si
+// aspetta che sia vera, trenta volte al secondo, guardando SOLO lo stato
+// S — mai le funzioni del tavolo: cosi' il tutorial resta vero anche se
+// domani il tavolo cambia il modo in cui si gioca una mossa.
+// ------------------------------------------------------------
+const tutMieiMelds = () => (S && S.players && S.players[0].melds) || [];
+const tutQuanteInMano = () => (S && S.players && S.players[0].hand.length) || 0;
+const tutMeldConValore = (v) => tutMieiMelds().find((m) => m.type === 'group' && m.value === v);
+const tutMeldScala = () => tutMieiMelds().find((m) => m.type === 'sequence');
+const tutCarteNellaScala = () => { const m = tutMeldScala(); return m ? m.cards.length : 0; };
+const tutPvTotaliAvv = () => SEMI.reduce((t, s) => t + ((S.players[1].characters[s] || {}).pv || 0), 0);
+let tutorialPvAvvPrimaAbilita = 0;
+
+const TUTORIAL_PASSI = [
+  { passo: 1, titolo: 'Benvenuto in Burraco Legends',
+    testo: 'Sul tavolo giochi lo stesso burraco che gia\' conosci: mano, mazzo, scarti, ' +
+           'combinazioni. La differenza e\' che qui ogni combinazione colpisce anche i ' +
+           '<b>personaggi</b> dell\'avversario — quattro eroi, uno per seme, con la loro vita.' },
+  { passo: 1, titolo: 'I tuoi eroi e i tuoi punti magia',
+    testo: 'Questa e\' la tua squadra: un eroe per seme, con vita e attacco. Sotto, la riserva ' +
+           'dei <b>punti magia</b>: serve per le loro abilita\' speciali. Ci arriviamo piu\' avanti — ' +
+           'prima il burraco.',
+    illumina: '#battleGiocatore' },
+  { passo: 1, titolo: 'Si impara facendo',
+    testo: 'Ti guidero\' passo dopo passo, con una mano gia\' pronta. Premi <b>Avanti</b> per ' +
+           'scoprire il tavolo.' },
+
+  { passo: 2, titolo: 'Le tue carte e il tavolo',
+    testo: 'Queste <b>undici carte</b> in basso sono la tua mano. Nessun altro puo\' vederle.',
+    illumina: '#handBox' },
+  { passo: 2, titolo: 'Le tue carte e il tavolo',
+    testo: 'Questa e\' la <b>tua meta\' del tavolo</b>, a sinistra: qui poserai le combinazioni ' +
+           'che calerai. Quelle dell\'avversario vanno a destra.',
+    illumina: '#myMelds' },
+
+  { passo: 3, titolo: 'Il mazzo e gli scarti',
+    testo: 'Si gioca con <b>due mazzi</b>, jolly compresi. Questo al centro e\' il <b>MAZZO</b>, ' +
+           'da cui si pesca.',
+    illumina: '#palTallone' },
+  { passo: 3, titolo: 'Il mazzo e gli scarti',
+    testo: 'Accanto trovi gli <b>scarti</b>: il mucchietto dove si butta a fine turno. Non e\' un ' +
+           'cestino — si puo\' <b>raccogliere tutto</b> per recuperare cio\' che serve. Lo farai fra poco.',
+    illumina: '#palScarti' },
+
+  { passo: 4, titolo: 'I pozzetti',
+    testo: 'Questi sono i <b>due pozzetti</b>: undici carte a testa, messe da parte.',
+    illumina: '#pozzettiCross' },
+  { passo: 4, titolo: 'I pozzetti',
+    testo: 'L\'obiettivo del gioco e\' <b>finire le carte in mano</b> per prendere il pozzetto, poi ' +
+           'liberarsi anche di quelle, fino a scartare l\'ultima e <b>chiudere</b>.',
+    illumina: '#pozzettiCross' },
+
+  { passo: 5, titolo: 'Il tempo per muovere',
+    testo: 'Hai <b>un minuto</b> per ogni turno: il cerchietto attorno al tuo avatar si consuma ' +
+           'mentre pensi. Se finisce, la mossa parte da sola — pesca e scarta la carta piu\' cara.',
+    illumina: '#myAvatarBasso' },
+  { passo: 5, titolo: 'Il tempo di partita',
+    testo: 'E questo e\' il <b>tuo</b> monte tempo per l\'intera partita: <b>sei minuti</b>, che ' +
+           'scorrono solo durante i tuoi turni.',
+    illumina: '#myMatchTimer' },
+  { passo: 5, titolo: 'Il tempo di partita',
+    testo: 'Quello dell\'avversario sta in alto, uguale al tuo. Se un monte tempo finisce, vince ' +
+           'chi ha piu\' vita rimasta sui suoi eroi.<br><br>Qui nella guida gli orologi sono fermi. Cominciamo.',
+    illumina: '#oppMatchTimer' },
+
+  { passo: 6, titolo: 'Comincia il turno: pesca o raccogli',
+    testo: 'Ogni turno comincia con una scelta: <b>pescare</b> dal mazzo coperto, oppure ' +
+           '<b>raccogliere</b> tutto il monte degli scarti.<br><br>Per adesso pesca: tocca il <b>MAZZO</b>.',
+    illumina: '#palTallone',
+    azione: () => tutQuanteInMano() === 12,
+    aiuto: 'Tocca il rettangolo con scritto MAZZO, al centro del tavolo.' },
+
+  { passo: 7, titolo: 'Il tris: tre carte uguali',
+    testo: 'Ora hai dodici carte: ne hai <b>tre J</b>, di semi diversi. Tre carte dello stesso ' +
+           'valore formano un <b>tris</b>. Toccale tutte e tre, poi tocca lo <b>spazio a sinistra</b> ' +
+           'per calarle — e guarda cosa succede alla vita dell\'avversario.',
+    illumina: '#myMelds',
+    azione: () => !!tutMeldConValore(11),
+    aiuto: 'Il J di picche, il J di cuori e il J di quadri. Toccali uno alla volta: si alzano. Poi tocca lo spazio a sinistra.' },
+
+  { passo: 8, titolo: 'La scala: carte in fila',
+    testo: 'L\'altro modo di raggruppare e\' la <b>scala</b>: tre o piu\' carte <b>consecutive dello ' +
+           'stesso seme</b>. Hai il <b>4, 5 e 6 di fiori</b>: toccali e calali nello stesso spazio.',
+    illumina: '#myMelds',
+    azione: () => !!tutMeldScala(),
+    aiuto: 'Il 4, il 5 e il 6 di fiori (♣). Tutti e tre dello stesso seme, in fila.' },
+
+  { passo: 9, titolo: 'Allungare un gioco gia\' calato',
+    testo: 'Le combinazioni sul tavolo si possono <b>allungare</b> in qualsiasi momento. Hai ' +
+           'ancora il <b>7 di fiori</b>: toccalo, poi tocca la <b>scala</b> per allungarla — e ogni ' +
+           'carta in piu\' fa piu\' danno.',
+    illumina: '#myMelds',
+    azione: () => tutCarteNellaScala() >= 4,
+    aiuto: 'Tocca il 7 di fiori, poi la scala 4-5-6 che hai appena calato.' },
+
+  { passo: 10, titolo: 'Il 2 e\' la pinella',
+    testo: 'Quel <b>2 di cuori</b> in mano e\' una <b>pinella</b>: come il jolly, prende il posto di ' +
+           'qualunque carta ti serva.',
+    illumina: '#handBox' },
+  { passo: 10, titolo: 'Il 2 e\' la pinella',
+    testo: 'Usala con criterio: un gioco <b>senza</b> matte vale di piu\'. Ma fra non usarla e ' +
+           'chiudere un burraco, si usa.',
+    illumina: '#handBox' },
+
+  { passo: 11, titolo: 'Il turno finisce scartando',
+    testo: 'Ogni turno si chiude <b>scartando una carta</b>. Sempre, senza eccezioni.<br><br>' +
+           'Butta il <b>Re di quadri</b>: toccalo, poi tocca il monte degli scarti.',
+    illumina: '#palScarti',
+    azione: () => S && S.scarti && S.scarti.length >= 2,
+    aiuto: 'Tocca prima il Re di quadri, poi il mazzetto degli scarti accanto al MAZZO.' },
+
+  { passo: 12, titolo: 'Tocca all\'avversario',
+    testo: 'Guarda: pesca e scarta anche lui. Il gioco e\' tutto qui, e si ripete.<br><br>Quando ha ' +
+           'finito, tocca di nuovo a te.',
+    illumina: '#palScarti',
+    azione: () => S && S.currentPlayerIndex === 0 && !S.players[0].hasDrawnThisTurn,
+    aiuto: 'Aspetta: sta giocando il computer.' },
+
+  { passo: 13, titolo: 'Costruiamo un burraco',
+    testo: 'Un gioco che arriva a <b>sette carte</b> si chiama <b>burraco</b>, e senza almeno uno ' +
+           'non puoi chiudere la mano. La tua scala di fiori ne ha quattro: portiamola a sette.<br><br>' +
+           'Comincia pescando: <b>tocca il MAZZO</b>.',
+    illumina: '#palTallone',
+    azione: () => S && S.players[0].hasDrawnThisTurn,
+    aiuto: 'Tocca il MAZZO per pescare.' },
+  { passo: 13, titolo: 'Costruiamo un burraco',
+    testo: 'Hai pescato l\'<b>8 di fiori</b>. Attaccalo alla scala: diventa 4-5-6-7-8.',
+    illumina: '#myMelds',
+    azione: () => tutCarteNellaScala() >= 5,
+    aiuto: 'Tocca l\'8 di fiori, poi la scala di fiori sul tavolo.' },
+
+  { passo: 14, titolo: 'Scarta e aspetta',
+    testo: 'Chiudi il turno scartando una carta che non ti serve — il <b>10 di cuori</b> va bene. ' +
+           'Poi guarda cosa butta l\'avversario.',
+    illumina: '#palScarti',
+    azione: () => S && S.currentPlayerIndex === 0 && !S.players[0].hasDrawnThisTurn && S.scarti.length >= 3,
+    aiuto: 'Tocca il 10 di cuori, poi il monte degli scarti. Poi aspetta il computer.' },
+
+  { passo: 15, titolo: 'Adesso raccogli il monte',
+    testo: 'L\'avversario ha buttato il <b>9 di fiori</b> — proprio quello che ti serve.<br><br>' +
+           'Non pescare: <b>tocca il monte degli scarti</b> e prenditi tutto. Tornano anche le carte ' +
+           'che avevi buttato tu: e\' normale, fa parte del gioco.',
+    illumina: '#palScarti',
+    azione: () => S && S.scarti && S.scarti.length === 0,
+    aiuto: 'Tocca il mazzetto degli scarti, non il MAZZO.' },
+
+  { passo: 16, titolo: 'Il burraco e\' servito',
+    testo: 'Ora attacca alla scala il <b>9 di fiori</b> e la <b>pinella</b>: la pinella fara\' da 10.<br><br>' +
+           'Sette carte. Burraco.',
+    illumina: '#myMelds',
+    azione: () => tutCarteNellaScala() >= 7,
+    aiuto: 'Tocca il 9 di fiori e il 2 di cuori insieme, poi la scala di fiori.' },
+  { passo: 16, titolo: 'Il burraco e\' servito',
+    testo: 'Fatto: la tua scala ha <b>sette carte</b>, e ogni carta in piu\' ha aumentato il danno ' +
+           'alla squadra avversaria.',
+    illumina: '#myMelds' },
+
+  { passo: 17, titolo: 'Arrivare al pozzetto',
+    testo: 'Appena resti <b>senza carte in mano</b>, prendi automaticamente le undici carte del ' +
+           'pozzetto e continui a giocare.',
+    illumina: '#pozzettiCross' },
+  { passo: 17, titolo: 'Arrivare al pozzetto',
+    testo: 'Regola d\'oro: chi <b>non</b> riesce a prendere il pozzetto colpisce piu\' debole a fine ' +
+           'smazzata. E\' la ragione per cui non conviene riempirsi la mano di carte inutili.',
+    illumina: '#pozzettiCross' },
+
+  { passo: 18, titolo: 'I punti magia',
+    testo: 'Guarda la tua riserva: cresce di due punti a ogni tuo turno, fino a un massimo di 15, ' +
+           'e si spende per le <b>abilita\' speciali</b> dei tuoi eroi.',
+    illumina: '#magiaGiocatore',
+    onEntra: () => { S.players[0].puntiMagia = 15; disegna(); } },
+
+  { passo: 19, titolo: 'Usa l\'abilita\' di un eroe',
+    testo: 'Tocca il tuo eroe di <b>Fiori</b>, poi premi <b>USA ABILITA\'</b> nella scheda che si apre.',
+    illumina: '.bcard[data-seme="♣"][data-lato="mio"]',
+    onEntra: () => { tutorialPvAvvPrimaAbilita = tutPvTotaliAvv(); },
+    azione: () => bersaglioAttivo === '♣',
+    aiuto: 'Tocca la carta del tuo eroe di Fiori, poi il bottone dorato nella scheda che si apre.' },
+
+  { passo: 20, titolo: 'Scegli il bersaglio',
+    testo: 'Alcune abilita\' chiedono <b>chi colpire</b>: tocca uno dei personaggi avversari che ' +
+           'hanno il bordo acceso.',
+    illumina: '.bcard.mirabile',
+    azione: () => tutPvTotaliAvv() < tutorialPvAvvPrimaAbilita,
+    aiuto: 'Tocca uno qualsiasi dei personaggi avversari con il bordo acceso.' },
+
+  { passo: 21, titolo: 'Lo scudo',
+    testo: 'Quel simbolo su ogni eroe e\' il suo <b>Scudo</b>: piu\' e\' pieno, meno danno incassa. ' +
+           'Alcune Carte Magiche e abilita\' lo alzano o lo abbassano per qualche turno.',
+    illumina: '#battleAvversario .scudo' },
+
+  { passo: 22, titolo: 'Le Carte Magiche',
+    testo: 'Accanto ai tuoi eroi trovi anche le <b>Carte Magiche</b>: non costano punti magia, ma ' +
+           'ogni copia si usa <b>una sola volta</b>. Tocca la tua carta <b>Sorpresa</b>, poi <b>USA</b>.',
+    illumina: '#battleGiocatore .bcard.magica[data-tipo="sorpresa"]',
+    azione: () => magie && magie[0] && (magie[0].consumate || []).length > 0,
+    aiuto: 'La carta col sigillo ✦ e la scritta SORPRESA, nella tua fila.' },
+
+  { passo: 23, titolo: 'Le Trappole',
+    testo: 'Le carte <b>Trappola</b> invece restano coperte sul tavolo: l\'avversario sa che ne hai ' +
+           'piazzata una, ma non quale, finche\' non scatta da sola al momento giusto.',
+    illumina: '#battleGiocatore .bcard.magica[data-tipo="trappola"]' },
+
+  { passo: 24, titolo: 'Sei pronto',
+    testo: 'Ora sai leggere il tavolo, costruire le combinazioni, usare le abilita\' e le Carte ' +
+           'Magiche. Da qui in poi ogni partita conta davvero — buona fortuna.',
+    finale: true }
+];
+
+// ------------------------------------------------------------
+// IL PANNELLO
+// In alto a destra: e' l'unico angolo che in questa mano resta sempre
+// libero, lontano dalla mano in basso, dai propri giochi a sinistra e
+// dal mazzo al centro (stessa scelta, e stesso motivo, del tutorial di
+// riferimento). Non intercetta i tocchi (pointer-events: none sul
+// riquadro, riacceso solo sui bottoni): se copre una carta, la carta si
+// tocca comunque.
+// ------------------------------------------------------------
+let tutorialElementoIlluminato = null;
+let tutorialRiprovaAlone = null;
+let tutorialGuardia = null;
+let tutorialTimerAiuto = null;
+let tutorialIndicePasso = 0;
+let tutorialUltimoIndiceMostrato = -1;
+let tutorialPannelloEl = null;
+
+function tutorialCostruisciPannello() {
+  const stile = document.createElement('style');
+  stile.textContent = [
+    '#tutorialPannello{position:fixed;right:max(10px,env(safe-area-inset-right));',
+    '  top:calc(max(10px,env(safe-area-inset-top)) + 62px);',
+    '  width:min(320px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
+    '  border:1px solid rgba(255,204,0,.45);border-radius:12px;padding:13px 15px;z-index:9000;',
+    '  font-family:sans-serif;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:none;}',
+    '#tutorialPannello button{pointer-events:auto;}',
+    '#tutorialPannello h4{margin:0 0 6px;font-size:14px;color:#ffcc00;}',
+    '#tutorialPannello .txt{font-size:12.5px;line-height:1.5;}',
+    '#tutorialPannello .txt b{color:#ffe58a;}',
+    '#tutorialPannello .fondo{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap;}',
+    '#tutorialPannello .passo{font-size:10.5px;opacity:.55;}',
+    '#tutorialPannello .principale{margin-left:auto;border:none;border-radius:8px;padding:7px 15px;',
+    '  font-weight:bold;font-size:12.5px;cursor:pointer;background:#ffcc00;color:#1a1a1a;font-family:inherit;}',
+    '#tutorialPannello .salta{background:transparent;color:rgba(255,255,255,.5);',
+    '  border:1px solid rgba(255,255,255,.25);padding:6px 10px;font-size:11px;border-radius:8px;',
+    '  cursor:pointer;font-family:inherit;}',
+    '#tutorialPannello .aiuto{margin-top:8px;font-size:11.5px;color:#ffcc00;opacity:0;transition:opacity .5s;}',
+    '#tutorialPannello .aiuto.visibile{opacity:.9;}',
+    '@keyframes tutorialTavoloAlone{0%,100%{box-shadow:0 0 0 2px rgba(255,204,0,.30),0 0 12px 3px rgba(255,204,0,.18);}',
+    '  50%{box-shadow:0 0 0 3px rgba(255,204,0,.95),0 0 26px 8px rgba(255,204,0,.50);}}',
+    '.tutorial-tavolo-alone{animation:tutorialTavoloAlone 1.9s ease-in-out infinite;border-radius:10px;position:relative;z-index:20;}',
+    '#myMelds.tutorial-tavolo-alone{background:rgba(255,204,0,.10);outline:2px dashed rgba(255,204,0,.5);outline-offset:-4px;}',
+    '#myMatchTimer.tutorial-tavolo-alone,#oppMatchTimer.tutorial-tavolo-alone,',
+    '#myAvatarBasso.tutorial-tavolo-alone,#magiaGiocatore.tutorial-tavolo-alone{',
+    '  background:rgba(255,204,0,.22)!important;outline:2px solid #ffcc00;outline-offset:2px;}'
+  ].join('\n');
+  document.head.appendChild(stile);
+
+  const p = document.createElement('div');
+  p.id = 'tutorialPannello';
+  document.body.appendChild(p);
+  return p;
+}
+
+// RETE DI SICUREZZA: se il selettore non trova niente (una carta ancora
+// in animazione, un bersaglio scelto diverso da quello previsto) non ci
+// si ferma al primo colpo — si riprova per qualche secondo. `onEsito`
+// dice come e' andata, cosi' si puo' offrire comunque un modo per andare
+// avanti invece di lasciare chi impara bloccato a fissare il pannello.
+function tutorialIllumina(selettore, onEsito) {
+  if (tutorialElementoIlluminato) { tutorialElementoIlluminato.classList.remove('tutorial-tavolo-alone'); tutorialElementoIlluminato = null; }
+  if (tutorialRiprovaAlone) { clearTimeout(tutorialRiprovaAlone); tutorialRiprovaAlone = null; }
+  if (!selettore) { if (onEsito) onEsito(true); return; }
+  let tentativi = 0;
+  const prova = () => {
+    const el = document.querySelector(selettore);
+    if (el) {
+      tutorialElementoIlluminato = el;
+      el.classList.add('tutorial-tavolo-alone');
+      if (onEsito) onEsito(true);
+      return;
+    }
+    tentativi++;
+    if (tentativi >= 15) { if (onEsito) onEsito(false); return; }   // ~6 secondi, poi si arrende
+    tutorialRiprovaAlone = setTimeout(prova, 400);
+  };
+  prova();
+}
+
+function tutorialMostraPasso() {
+  const def = TUTORIAL_PASSI[tutorialIndicePasso];
+  if (!def) { tutorialFinisci(); return; }
+
+  if (tutorialIndicePasso !== tutorialUltimoIndiceMostrato) {
+    tutorialUltimoIndiceMostrato = tutorialIndicePasso;
+    if (def.onEntra) { try { def.onEntra(); } catch (e) { console.warn('tutorial onEntra:', e); } }
+  }
+
+  clearInterval(tutorialGuardia); tutorialGuardia = null;
+  clearTimeout(tutorialTimerAiuto);
+
+  if (!tutorialPannelloEl) tutorialPannelloEl = tutorialCostruisciPannello();
+  const totale = TUTORIAL_PASSI[TUTORIAL_PASSI.length - 1].passo || TUTORIAL_PASSI.length;
+
+  tutorialIllumina(def.illumina, (trovato) => {
+    if (trovato || !tutorialPannelloEl) return;
+    const righe = tutorialPannelloEl.querySelector('.fondo');
+    if (!righe || document.getElementById('tutEmergenza')) return;
+    const emergenza = document.createElement('button');
+    emergenza.className = 'principale';
+    emergenza.id = 'tutEmergenza';
+    emergenza.textContent = 'Vai avanti comunque';
+    emergenza.title = 'Non trovo l\'elemento da evidenziare: puoi comunque proseguire da qui.';
+    emergenza.addEventListener('click', () => tutorialAvanti());
+    righe.insertBefore(emergenza, righe.lastChild);
+  });
+
+  tutorialPannelloEl.innerHTML =
+    '<h4>' + def.titolo + '</h4>' +
+    '<div class="txt">' + def.testo + '</div>' +
+    '<div class="aiuto" id="tutAiuto">' + (def.aiuto || '') + '</div>' +
+    '<div class="fondo">' +
+      '<button class="salta" id="tutSalta">Salta tutto (prova)</button>' +
+      '<span class="passo">' + (def.passo || (tutorialIndicePasso + 1)) + ' di ' + totale + '</span>' +
+      (def.azione
+        ? '<span class="principale" style="opacity:.55;cursor:default;background:transparent;color:#ffe58a;border:1px solid rgba(255,204,0,.4);">Tocca l\'elemento illuminato</span>'
+        : '<button class="principale" id="tutAvanti">' + (def.finale ? 'Ho capito' : 'Avanti') + '</button>') +
+    '</div>';
+
+  document.getElementById('tutSalta').addEventListener('click', tutorialSaltaTutto);
+  const bottoneAvanti = document.getElementById('tutAvanti');
+  if (bottoneAvanti) bottoneAvanti.addEventListener('click', () => tutorialAvanti());
+
+  if (def.azione) {
+    tutorialTimerAiuto = setTimeout(() => {
+      const aiuto = document.getElementById('tutAiuto');
+      if (aiuto) aiuto.classList.add('visibile');
+    }, 8000);
+    tutorialGuardia = setInterval(() => {
+      let fatto = false;
+      try { fatto = !!def.azione(); } catch (e) { fatto = false; }
+      if (fatto) { clearInterval(tutorialGuardia); tutorialGuardia = null; setTimeout(tutorialAvanti, 700); }
+    }, 300);
+  }
+}
+
+function tutorialAvanti() {
+  if (tutorialGuardia) { clearInterval(tutorialGuardia); tutorialGuardia = null; }
+  const def = TUTORIAL_PASSI[tutorialIndicePasso];
+  if (def && def.finale) { tutorialFinisci(); return; }
+  tutorialIndicePasso++;
+  tutorialMostraPasso();
+}
+
+function tutorialFinisci() {
+  if (tutorialElementoIlluminato) { tutorialElementoIlluminato.classList.remove('tutorial-tavolo-alone'); tutorialElementoIlluminato = null; }
+  if (tutorialPannelloEl) { tutorialPannelloEl.remove(); tutorialPannelloEl = null; }
+  try { localStorage.setItem('bb_tutorial_tavolo_completato', 'si'); } catch (e) {}
+  // si ricomincia sulla stessa pagina, pulita: una partita vera contro il computer
+  location.href = location.pathname;
+}
+
+// SALTA TUTTO — DA TOGLIERE PRIMA DEL LANCIO VERO.
+// Stesso motivo del tutorial gestionale (client/tutorial-gestionale.js):
+// il magazzino di sviluppo si resetta spesso, e senza questa via di fuga
+// bisognerebbe rigiocare la mano guidata da capo a ogni prova. Un
+// giocatore vero non deve poter saltare la sua unica occasione di
+// imparare come funziona il tavolo — quando il gioco sara' pubblico, si
+// toglie questo bottone (e la riga che lo aggiunge, qui sopra).
+function tutorialSaltaTutto() {
+  try { localStorage.setItem('bb_tutorial_tavolo_completato', 'si'); } catch (e) {}
+  location.href = location.pathname;
+}
+
+function avviaTutorialTavolo() {
+  document.body.classList.add('modalita-tutorial');
+  preparaTavoloDidattico();
+  disegna();
+  aggiornaOrologiTurno();   // un disegno solo: da qui in poi l'orologio resta fermo
+  agganciaPannello();
+  accendiLucciole();
+  window.addEventListener('resize', () => disegna());
+  tutorialIndicePasso = 0;
+  tutorialUltimoIndiceMostrato = -1;
+  tutorialMostraPasso();
+}
+
 (async function avvia() {
   dati = DATI_CARTE;   // incorporati alla generazione: nessun caricamento da rete
 
@@ -4379,6 +4963,10 @@ document.addEventListener('keydown', (e) => {
     ascolta();                                  // resta in ascolto delle sue mosse
     return;
   }
+
+  // LA PRIMA MANO GUIDATA (vedi MODALITA_TUTORIAL piu' sopra): prende il
+  // posto della partita normale, non si aggiunge a lei.
+  if (MODALITA_TUTORIAL) { avviaTutorialTavolo(); return; }
 
   // IL MAZZO SCELTO NELLA PAGINA "IL TUO MAZZO"
   // Se c'e', si gioca con quello. Se non c'e', o se e' scritto male, o se
@@ -4494,7 +5082,10 @@ PRELIEVI = [
                     'TURN_SECONDS', 'SECONDI_DI_STUDIO',
                     'abbandona', 'abilitaChiedeBersaglio', 'costoAbilitaDi']),
     ('magic-cards.js', ['makeMagicState', 'activateSorpresa', 'armTrappola', 'resetTurnoMagie']),
-    ('core-rules.js', ['valueLabel']),
+    # makeCard serve alla PRIMA MANO GUIDATA sul tavolo (vedi avviaTutorialTavolo
+    # piu' sotto): la mano di chi impara e quella dell'avversario sono scritte a
+    # tavolino, non pescate a caso, ed e' l'unico modo per costruirle a mano.
+    ('core-rules.js', ['valueLabel', 'makeCard']),
     ('bot.js', ['botGiocaTurno'])
 ]
 NOMI_PRELEVATI = set(n for _, nomi in PRELIEVI for n in nomi)
