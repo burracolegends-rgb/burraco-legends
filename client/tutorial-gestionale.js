@@ -217,9 +217,17 @@
   // ------------------------------------------------------------
   var stile = document.createElement('style');
   stile.textContent =
+    // NIENTE PIU' SCHERMO SCURO INTORNO. C'era un'ombra da 6000px che
+    // scuriva tutto tranne l'elemento illuminato — pensata per guidare
+    // l'occhio, ma tre segnalazioni vere hanno mostrato il difetto: nel
+    // negozio scuriva anche il saldo sharkini (che serve leggere per
+    // decidere se comprare), e nella scelta del mazzo scuriva l'intera
+    // griglia delle Carte Magiche facendole sembrare spente/non
+    // selezionabili proprio mentre lo erano. Resta solo il bagliore
+    // intorno all'elemento giusto, il resto della pagina si legge normale.
     '.bb-tut-alone { position: relative; z-index: 9998; outline: 3px solid #e8c46a; ' +
       'outline-offset: 3px; border-radius: 10px; ' +
-      'box-shadow: 0 0 0 6000px rgba(6,4,10,0.72), 0 0 26px rgba(232,196,106,0.85); ' +
+      'box-shadow: 0 0 22px rgba(232,196,106,0.85); ' +
       'animation: bbTutPulsa 1.6s ease-in-out infinite; }' +
     '@keyframes bbTutPulsa { 0%,100% { outline-color: #e8c46a; } 50% { outline-color: #fff3cf; } }' +
     // POINTER-EVENTS: NONE sul riquadro — segnalato da chi ci ha sbattuto
@@ -229,12 +237,21 @@
     // INTERCETTAVA il tocco al posto del bottone — invisibile, intoccabile,
     // bloccato li' per sempre. Riacceso solo sui bottoni del pannello
     // stesso (Avanti/Salta), che devono restare premibili.
-    '.bb-tut-pannello { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; ' +
+    '.bb-tut-pannello { position: fixed; left: 0; right: 0; z-index: 9999; ' +
       'background: linear-gradient(180deg, rgba(30,20,12,0.97), rgba(14,9,5,0.99)); ' +
-      'border-top: 1px solid #8a6a2a; padding: 16px 18px max(16px, env(safe-area-inset-bottom)); ' +
-      'font-family: "Segoe UI", system-ui, sans-serif; color: #ece3d2; ' +
-      'box-shadow: 0 -10px 30px rgba(0,0,0,0.6); pointer-events: none; }' +
+      'padding: 16px 18px; ' +
+      'font-family: "Segoe UI", system-ui, sans-serif; color: #ece3d2; pointer-events: none; }' +
     '.bb-tut-pannello button { pointer-events: auto; }' +
+    // IN BASSO O IN ALTO A SECONDA DI DOVE SERVE GUARDARE. Un pannello
+    // sempre fisso in basso finiva sopra proprio l'elemento da toccare
+    // quando questo stava nella meta' bassa dello schermo (le offerte di
+    // Carte Magiche nel negozio, per esempio) — coperto, non solo
+    // difficile da vedere. Si sceglie da che parte stare guardando dov'e'
+    // l'elemento illuminato, vedi mostraPassoCorrente() piu' sotto.
+    '.bb-tut-pannello.in-basso { bottom: 0; border-top: 1px solid #8a6a2a; ' +
+      'box-shadow: 0 -10px 30px rgba(0,0,0,0.6); padding-bottom: max(16px, env(safe-area-inset-bottom)); }' +
+    '.bb-tut-pannello.in-alto { top: 0; border-bottom: 1px solid #8a6a2a; ' +
+      'box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding-top: max(16px, env(safe-area-inset-top)); }' +
     '.bb-tut-pannello h3 { margin: 0 0 6px; font-size: 1.05rem; color: #e8c46a; }' +
     '.bb-tut-pannello p { margin: 0 0 12px; font-size: 0.92rem; line-height: 1.5; color: #d8cdb8; }' +
     '.bb-tut-righe { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }' +
@@ -337,8 +354,17 @@
     // lo spettacolo lo fa gia' la pagina stessa (l'apertura del pacchetto)
     if (!def.titolo) return;
 
+    // Se l'elemento illuminato sta nella meta' bassa dello schermo, il
+    // pannello va in alto — altrimenti lo coprirebbe. Di default resta in
+    // basso (comodo da leggere col pollice, e la maggior parte degli
+    // elementi illuminati sta in alto o al centro della pagina).
+    var inAlto = false;
+    if (elementoIlluminato) {
+      var rettangolo = elementoIlluminato.getBoundingClientRect();
+      inAlto = (rettangolo.top + rettangolo.height / 2) > window.innerHeight / 2;
+    }
     pannelloAttuale = document.createElement('div');
-    pannelloAttuale.className = 'bb-tut-pannello';
+    pannelloAttuale.className = 'bb-tut-pannello ' + (inAlto ? 'in-alto' : 'in-basso');
     var html = '<h3>' + def.titolo + '</h3><p>' + def.testo + '</p><div class="bb-tut-righe">';
     html += SKIP_TOTALE_ATTIVO ? '<button class="bb-tut-salta" id="bbTutSalta">Salta tutto (prova)</button>' : '<span></span>';
     if (def.bottone) {
@@ -351,6 +377,20 @@
     html += '</div>';
     pannelloAttuale.innerHTML = html;
     document.body.appendChild(pannelloAttuale);
+
+    // IN ALTO NON DEVE COPRIRE IL SALDO. Spostare il pannello in cima
+    // allo schermo risolveva il negozio che finiva coperto, ma nel
+    // negozio proprio in cima c'è il saldo sharkini — serve leggerlo per
+    // decidere se comprare, e un pannello alto ~200px ci finiva sopra lo
+    // stesso. Se in questa pagina c'è un saldo vicino alla cima, il
+    // pannello scende sotto di lui invece di partire da y:0.
+    if (inAlto) {
+      var saldoEl = document.getElementById('saldo');
+      if (saldoEl) {
+        var saldoRect = saldoEl.getBoundingClientRect();
+        if (saldoRect.bottom > 0) pannelloAttuale.style.top = (saldoRect.bottom + 10) + 'px';
+      }
+    }
 
     var bottoneAvanti = document.getElementById('bbTutAvanti');
     if (bottoneAvanti) {
