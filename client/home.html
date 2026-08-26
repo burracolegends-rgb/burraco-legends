@@ -171,9 +171,16 @@
   /* ---------- IL POPUP DI BENVENUTO ----------
      Appena entri, il premio te lo devi vedere arrivare: se resta un
      bottone in mezzo alla pagina, dopo tre giorni non lo guardi più.
-     Qui invece il gioco si ferma un attimo e ti festeggia. */
+     Qui invece il gioco si ferma un attimo e ti festeggia.
+     Z-INDEX SOPRA AL TUTORIAL (tutorial-gestionale.js arriva fino a
+     9999): era 60, e il tutorial illumina #premio con position:relative
+     più z-index 9998 — abbastanza per farlo salire SOPRA questo velo e
+     sovrapporsi al popup ancora aperto, invece di restarci sotto finché
+     non lo si chiude. Visto per davvero con uno screenshot: due
+     pannelli del premio sovrapposti, uno dei due mostrava anche cifre
+     sbagliate (bug diverso, corretto a parte in disegna()/apriLaFesta). */
   .festa {
-    position: fixed; inset: 0; z-index: 60; display: none;
+    position: fixed; inset: 0; z-index: 10000; display: none;
     align-items: center; justify-content: center; padding: 20px;
     background: rgba(6,4,10,0.82); backdrop-filter: blur(5px);
     animation: velaEntra 0.32s ease-out;
@@ -1425,6 +1432,15 @@ function scalaHtml(stato) {
          '<div class="scala-nota">sharkini al giorno</div>';
 }
 
+// IL CAMPO SI CHIAMA 'quanto', NON 'premio' — bug vecchio, mai notato:
+// mio.premio (qui sotto) è l'INTERO oggetto stato del premio, e la sua
+// cifra in sharkini viaggia dentro come .quanto (vedi server/giocatori.js,
+// vetrina(), e il ponte di ripiego più sopra in questa stessa pagina —
+// entrambi la chiamano così). Questa funzione e apriLaFesta() leggevano
+// invece stato.premio, che a quel livello non esiste: il bottone "Ritira"
+// e il pop-up di benvenuto mostravano "NaN sharkini" / "+undefined" al
+// posto della cifra vera — visto con uno screenshot da chi se lo
+// ritrovava davvero sullo schermo, sovrapposto al pannello sottostante.
 function disegna() {
   const stato = mio.premio;
   const giornoMostrato = stato.giorno;
@@ -1442,7 +1458,7 @@ function disegna() {
     stt.className = 'stato rotta';
     stt.innerHTML = 'Hai saltato un giorno: la serie riparte da <b>' + conNome(100) + '</b>.';
     bottone.disabled = false;
-    bottone.textContent = 'Ricomincia · +' + conNome(stato.premio);
+    bottone.textContent = 'Ricomincia · +' + conNome(stato.quanto);
   } else {
     // Attenzione a non gridare al lupo: per chi gioca tutti i giorni,
     // "oggi devi ritirare" è la condizione NORMALE, non un allarme. Se
@@ -1458,7 +1474,7 @@ function disegna() {
         '</b> al settimo giorno.';
     }
     bottone.disabled = false;
-    bottone.textContent = 'Ritira ' + conNome(stato.premio);
+    bottone.textContent = 'Ritira ' + conNome(stato.quanto);
   }
 }
 
@@ -1510,7 +1526,7 @@ function apriLaFesta() {
   if (!stato.puoRitirare) return;             // niente da festeggiare
 
   $('festa-scala').innerHTML = scalaHtml(stato);
-  $('festa-cifra').innerHTML = '+' + stato.premio + '<em class="moneta-nome">sharkini</em>';
+  $('festa-cifra').innerHTML = '+' + stato.quanto + '<em class="moneta-nome">sharkini</em>';
   $('scrigno').classList.toggle('rimprovero', stato.serieRotta);
 
   if (stato.serieRotta) {
@@ -1540,7 +1556,7 @@ function apriLaFesta() {
   }
 
   $('festa').classList.add('viva');
-  pioggiaDiMonete(stato.premio >= PREMIO_MASSIMO ? 34 : 20);
+  pioggiaDiMonete(stato.quanto >= PREMIO_MASSIMO ? 34 : 20);
 }
 
 function chiudiLaFesta() {

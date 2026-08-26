@@ -477,18 +477,33 @@
     pannelloAttuale.innerHTML = html;
     document.body.appendChild(pannelloAttuale);
 
-    // IN ALTO NON DEVE COPRIRE IL SALDO. Spostare il pannello in cima
-    // allo schermo risolveva il negozio che finiva coperto, ma nel
-    // negozio proprio in cima c'è il saldo sharkini — serve leggerlo per
-    // decidere se comprare, e un pannello alto ~200px ci finiva sopra lo
-    // stesso. Se in questa pagina c'è un saldo vicino alla cima, il
-    // pannello scende sotto di lui invece di partire da y:0.
+    // IN ALTO NON DEVE COPRIRE NE' IL SALDO NE' L'ELEMENTO DA TOCCARE.
+    // Spostare il pannello in cima allo schermo risolveva il negozio che
+    // finiva coperto, ma nel negozio proprio in cima c'è il saldo
+    // sharkini — serve leggerlo per decidere se comprare — e il
+    // pannello, alto quanto basta a scendere sotto di lui, tagliava a
+    // sua volta l'offerta illuminata appena sotto: segnalato con uno
+    // screenshot da chi vedeva la scritta "10 carte" tagliata a metà.
+    // Si scende sotto il saldo MA non oltre l'inizio dell'elemento da
+    // toccare: se le due esigenze non ci stanno entrambe, vince la
+    // seconda — un saldo un po' coperto si legge comunque scorrendo,
+    // un bottone tagliato a meta' no.
     if (inAlto) {
+      var minTop = 0;
       var saldoEl = document.getElementById('saldo');
       if (saldoEl) {
         var saldoRect = saldoEl.getBoundingClientRect();
-        if (saldoRect.bottom > 0) pannelloAttuale.style.top = (saldoRect.bottom + 10) + 'px';
+        if (saldoRect.bottom > 0) minTop = saldoRect.bottom + 10;
       }
+      var maxTop = null;
+      if (elementoIlluminato) {
+        var rettIll = elementoIlluminato.getBoundingClientRect();
+        var altezzaPannello = pannelloAttuale.getBoundingClientRect().height;
+        maxTop = rettIll.top - altezzaPannello - 12;
+      }
+      var topFinale = minTop;
+      if (maxTop !== null && maxTop < topFinale) topFinale = Math.max(0, maxTop);
+      pannelloAttuale.style.top = topFinale + 'px';
     }
 
     var bottoneAvanti = document.getElementById('bbTutAvanti');
