@@ -118,10 +118,14 @@ CSS_CARTA_ILLUSTRATA = r'''
   .ci-seme { color: #c41e28; font-size: 8px; font-size: 4.6cqw; line-height: 1; }
   .ci-seme.nero { color: #2a2830; }
 
+  /* PIU' GRASSA — segnalato da chi la leggeva sul telefono, anche dopo
+     che la carta era gia' stata ingrandita al massimo: un serif sottile
+     a corpo piccolo si perde contro l'illustrazione sotto. Il peso 700
+     la stacca senza dover rimpicciolire la finestra per farcela stare. */
   .ci-desc {
     left: var(--desc-x); top: var(--desc-y); width: var(--desc-w); height: var(--desc-h);
     padding: 0 3%;
-    font-family: Georgia, 'Times New Roman', serif; color: #2a2118;
+    font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: #241a10;
     font-size: 7px; font-size: 3.5cqw; line-height: 1.25;
   }
   /* SULLA CORNICE MAGICA il riquadro non e' pergamena ma metallo scuro,
