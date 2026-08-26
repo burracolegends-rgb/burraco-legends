@@ -272,7 +272,27 @@
     '.bb-tut-btn { background: linear-gradient(180deg, #ffe9ae, #e8c46a); color: #2a1c08; border: none; ' +
       'padding: 10px 20px; border-radius: 10px; font-weight: 800; font-size: 0.9rem; cursor: pointer; }' +
     '.bb-tut-salta { background: transparent; border: 1px solid rgba(232,196,106,0.4); color: #b8ab8c; ' +
-      'padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; }';
+      'padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; }' +
+    // LO SCUDO — segnalato da chi ci si e' scontrato per davvero: durante
+    // il passo "il tuo bonus di benvenuto" (che illumina solo il saldo,
+    // nessun clic previsto) tutta la vetrina sotto restava comunque
+    // cliccabile, e bastava un tocco qualsiasi per comprare un pacchetto
+    // diverso da quello che il passo dopo avrebbe chiesto — con gli
+    // sharkini gia' spesi, il passo successivo restava bloccato per
+    // sempre (vedi mostraEmergenzaAspetta). Lo scudo copre TUTTA la
+    // pagina e intercetta ogni tocco, tranne: i bottoni del pannello
+    // (sopra di lui, z-index 9999) e l'elemento illuminato quando c'e'
+    // (sopra di lui pure, .bb-tut-alone e' a z-index 9998) — quello resta
+    // sempre raggiungibile, il resto no. Attivo solo sui passi che NON
+    // hanno `aspetta`: quelli aspettano un cambiamento che il giocatore
+    // stesso deve provocare toccando qualcosa (aprire il pacchetto,
+    // girare la carta) che nessun selettore fisso potrebbe prevedere.
+    '#bbTutScudo { position: fixed; inset: 0; z-index: 9997; background: transparent; }' +
+    // Toccare lo scudo non deve sembrare che il gioco si sia bloccato:
+    // il pannello scuote la testa per dire "sono io quello da guardare".
+    '.bb-tut-scuoti { animation: bbTutScuoti 0.32s ease-in-out; }' +
+    '@keyframes bbTutScuoti { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } ' +
+      '75% { transform: translateX(8px); } }';
   document.head.appendChild(stile);
 
   var pannelloAttuale = null;
@@ -281,6 +301,7 @@
   var listenerClicAttuale = null;
   var riprovaAlone = null;    // il setTimeout dei ritentativi di illumina()
   var pannelloEmergenzaAspetta = null;
+  var scudoAttuale = null;
 
   function pulisciPassoPrecedente() {
     if (pannelloAttuale) { pannelloAttuale.remove(); pannelloAttuale = null; }
@@ -289,6 +310,7 @@
     if (listenerClicAttuale) { document.removeEventListener('click', listenerClicAttuale, true); listenerClicAttuale = null; }
     if (riprovaAlone) { clearTimeout(riprovaAlone); riprovaAlone = null; }
     if (pannelloEmergenzaAspetta) { pannelloEmergenzaAspetta.remove(); pannelloEmergenzaAspetta = null; }
+    if (scudoAttuale) { scudoAttuale.remove(); scudoAttuale = null; }
   }
 
   // RETE DI SICUREZZA PER "aspetta" — segnalato da chi ci e' rimasto
@@ -404,6 +426,22 @@
         tentativiAspetta++;
         if (tentativiAspetta === 30) mostraEmergenzaAspetta(); // ~9 secondi
       }, 300);
+    }
+
+    // LO SCUDO — non sui passi con `aspetta`: quelli aspettano che il
+    // giocatore stesso provochi un cambiamento toccando qualcosa (aprire
+    // il pacchetto, girare la carta) che nessun selettore fisso qui
+    // potrebbe prevedere, e bloccare tutto lo fermerebbe pure lui.
+    if (!def.aspetta) {
+      scudoAttuale = document.createElement('div');
+      scudoAttuale.id = 'bbTutScudo';
+      document.body.appendChild(scudoAttuale);
+      scudoAttuale.addEventListener('click', function () {
+        if (!pannelloAttuale) return;
+        pannelloAttuale.classList.remove('bb-tut-scuoti');
+        void pannelloAttuale.offsetWidth; // fa ripartire l'animazione da capo
+        pannelloAttuale.classList.add('bb-tut-scuoti');
+      });
     }
 
     // passo muto: solo l'alone (se previsto) e/o l'attesa, nessun pannello —
