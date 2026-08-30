@@ -156,7 +156,7 @@
 
     { pagina: 'negozio.html', titolo: 'Il tuo bonus di benvenuto',
       testo: 'Questi sono i tuoi sharkini di partenza — bastano per cominciare a costruire il tuo mazzo, senza spendere nulla di vero.',
-      illumina: '#saldo', scudo: true },
+      illumina: '#saldo' },
     // IL TAGLIO E' FISSO A 10, NON A SCELTA — segnalato da chi ci e'
     // rimasto bloccato per davvero: col bonus di benvenuto (36.000)
     // prendendo pacchetti piu' piccoli (due da 5, per esempio) restava
@@ -169,7 +169,7 @@
       testo: 'Qui sotto trovi i pacchetti di <b>eroi</b>, uno per ogni taglio. Gli eroi restano tuoi per ' +
              'sempre: si riusano partita dopo partita. Prendi quello da <b>10 carte</b>: con questo bonus ti ' +
              'lascia gli sharkini anche per le Carte Magiche, fra un attimo.',
-      illumina: '#vetrinaEroi a[href*="carte=10"]', clic: '#vetrinaEroi a[href*="carte=10"]', scudo: true },
+      illumina: '#vetrinaEroi a[href*="carte=10"]', clic: '#vetrinaEroi a[href*="carte=10"]' },
 
     { pagina: 'spacchetta.html',
       aspetta: function () {
@@ -188,7 +188,7 @@
     { pagina: 'negozio.html', titolo: 'Le Carte Magiche costano meno',
       testo: 'Stesso principio, prezzo più basso: un terzo di quello degli eroi. Prendi il pacchetto da ' +
              '<b>5 carte</b>: è quello che i tuoi sharkini rimasti coprono esattamente.',
-      illumina: '#vetrinaMagiche a[href*="carte=5"]', clic: '#vetrinaMagiche a[href*="carte=5"]', scudo: true },
+      illumina: '#vetrinaMagiche a[href*="carte=5"]', clic: '#vetrinaMagiche a[href*="carte=5"]' },
 
     { pagina: 'spacchetta.html',
       aspetta: function () {
@@ -283,12 +283,15 @@
     // pagina e intercetta ogni tocco, tranne: i bottoni del pannello
     // (sopra di lui, z-index 9999) e l'elemento illuminato quando c'e'
     // (sopra di lui pure, .bb-tut-alone e' a z-index 9998) — quello resta
-    // sempre raggiungibile, il resto no. Attivo SOLO sui passi segnati
-    // `scudo:true` (i tre del negozio dove si spendono sharkini): la
-    // prima versione lo accendeva su ogni passo senza `aspetta`, e
-    // bloccava anche "ritira il premio" nella home durante il passo del
-    // premio giornaliero — un problema diverso da quello che doveva
-    // risolvere, segnalato subito da chi ci si e' scontrato.
+    // sempre raggiungibile, il resto no. Attivo su ogni passo che non sia
+    // `aspetta` (quelli aspettano un gesto libero del giocatore altrove
+    // sulla pagina — aprire il pacchetto, girare la carta — che nessun
+    // selettore fisso qui potrebbe prevedere). C'e' stata una versione
+    // di mezzo con lo scudo solo sui passi del negozio, per non bloccare
+    // "ritira il premio" nella home: tolta di nuovo perche' il problema
+    // era piu' largo — si usciva dal seminato su qualunque passo, non
+    // solo li'. Il premio si ritira comunque, solo non necessariamente
+    // proprio durante il passo che ne parla.
     '#bbTutScudo { position: fixed; inset: 0; z-index: 9997; background: transparent; }' +
     // Toccare lo scudo non deve sembrare che il gioco si sia bloccato:
     // il pannello scuote la testa per dire "sono io quello da guardare".
@@ -430,14 +433,17 @@
       }, 300);
     }
 
-    // LO SCUDO — SOLO sui passi segnati `scudo:true` esplicitamente, non
-    // su tutti quelli senza `aspetta` come alla prima versione: bloccava
-    // anche "ritira il premio" nella home durante il passo del premio
-    // giornaliero, che non c'entra nulla col problema che doveva
-    // risolvere (comprare il pacchetto sbagliato nel negozio). Si mette
-    // il segno solo sui passi del negozio dove si spendono davvero
-    // sharkini — il resto della guida resta libero.
-    if (def.scudo) {
+    // LO SCUDO — su OGNI passo che non sia `aspetta`. C'era una versione
+    // di mezzo che lo accendeva solo sui tre passi del negozio dove si
+    // spendono sharkini, per non bloccare "ritira il premio" nella home
+    // durante il passo del premio giornaliero — ma il problema vero era
+    // più largo: si usciva dal seminato (si toccava altro, ci si
+    // perdeva) su qualunque passo, non solo nel negozio. Segnalato di
+    // nuovo, esplicitamente, da chi ci si e' perso ancora.
+    // Il premio giornaliero non e' perso: si puo' sempre ritirare DOPO
+    // aver finito (o saltato) il tour, non deve per forza succedere
+    // proprio durante il passo che ne parla.
+    if (!def.aspetta) {
       scudoAttuale = document.createElement('div');
       scudoAttuale.id = 'bbTutScudo';
       document.body.appendChild(scudoAttuale);
