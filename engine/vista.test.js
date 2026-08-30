@@ -131,6 +131,19 @@ console.log('\n--- LE ABILITÀ ---');
   check('di quella avversaria so nome e basta', sua.nome === 'Colpo' && sua.percentuale === undefined);
   check('così capisco cosa mi ha colpito senza poterlo calcolare prima',
     sua.id === 'colpo_' + PICCHE);
+
+  // IL MORSO DEL BOITATÁ: un personaggio colpito da costo_abilita_extra
+  // porta il sovrapprezzo scritto addosso per il resto della partita.
+  // Se la vista lo perde per strada, la carta in rete torna a mostrare
+  // il costo base mentre il server continua a farlo pagare per davvero
+  // — è esattamente il bug segnalato ("carte da 6 pm scritte 4 o 5").
+  s.players[0].characters[PICCHE].costoExtra = 2;
+  s.players[1].characters[PICCHE].costoExtra = 3;
+  const miaConSovrapprezzo = vistaPer(s, 0).giocatori[0].personaggi[PICCHE];
+  const suaConSovrapprezzo = vistaPer(s, 0).giocatori[1].personaggi[PICCHE];
+  check('il morso sul mio eroe arriva al tavolo', miaConSovrapprezzo.costoExtra === 2);
+  check('e anche quello sull\'eroe avversario, così so perché costa di più',
+    suaConSovrapprezzo.costoExtra === 3);
 }
 
 // ============================================================

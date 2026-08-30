@@ -40,6 +40,17 @@ function personaggiVisibili(characters, proprio) {
       turniCarica: c.turniCarica || null
     };
     if (c.difesa !== undefined) fuori[seme].difesa = c.difesa;
+    // IL MORSO DEL BOITATÁ NON ARRIVAVA MAI AL TAVOLO. costoExtra è il
+    // sovrapprezzo permanente che certe Carte Magiche appiccicano
+    // all'abilità di un personaggio colpito (vedi costo_abilita_extra in
+    // magic-cards.js) — mancava da questo elenco, quindi ogni tavolo in
+    // rete lo ricostruiva sempre a zero, per ENTRAMBI i lati. Il server
+    // continuava a farlo pagare per davvero (calcola il costo dal suo
+    // stato vero, mai da questa vista), ma la carta mostrava il costo
+    // base: un eroe morso sembrava costare 4 o 5 quando in realtà, al
+    // momento di usarlo, ne servivano 6 — segnalato da chi si vedeva
+    // rifiutare l'abilità nonostante il numero scritto sulla carta.
+    if (c.costoExtra) fuori[seme].costoExtra = c.costoExtra;
     // dell'abilità avversaria si mostra il nome, non i numeri: serve a
     // capire cosa è appena successo, non a calcolarlo in anticipo
     if (c._ability) {
