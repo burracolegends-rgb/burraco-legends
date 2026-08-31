@@ -1589,6 +1589,23 @@ document.getElementById('entraBtn').addEventListener('click', () => {
   // di colpo a giocare da solo. Confermare un mazzo non e' cominciare
   // una partita: si torna da dove si e' arrivati, e la partita la si
   // sceglie dopo.
+  //
+  // ECCEZIONE: il tutorial. Ci si arriva sempre da album.html (il passo
+  // "Vai al tuo deck"), quindi il referrer manderebbe l'allievo dritto
+  // li' invece che alla home — dove il passo finale ("Sei pronto!") lo
+  // aspetta. Segnalato da chi lo stava seguendo per davvero: si torna,
+  // non si va avanti. Il tour non e' ancora finito finche' non arriva
+  // qui con l'ultimo passo salvato: quello e' il segnale che vale, non
+  // "siamo su questa o quella pagina".
+  var tourInCorso = false;
+  try {
+    tourInCorso = !!localStorage.getItem('bb_tutorial_passo') &&
+      localStorage.getItem('bb_tutorial_completato') !== 'si';
+  } catch (e) {}
+  if (tourInCorso) {
+    window.location.href = 'home.html';
+    return;
+  }
   const daDoveVengo = document.referrer || '';
   const dentroCasa = ['sala.html', 'home.html', 'negozio.html', 'album.html']
     .find((pagina) => daDoveVengo.includes(pagina));

@@ -311,7 +311,9 @@
   .bottone:hover { transform: translateY(-2px); border-color: var(--oro); box-shadow: 0 1vh 2.4vh rgba(0,0,0,0.6), 0 0 2vh rgba(232,196,106,0.35); }
   .bottone.principale { background: linear-gradient(180deg, var(--oro-chiaro), var(--oro)); color: #1b1208; border-color: var(--oro-chiaro); }
 
-  .torna { position: fixed; top: 2vh; left: 2vh; z-index: 8; font-size: 2.55rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+  /* Stessa misura di selezione.html: prima qui era 2.55rem, quasi il
+     doppio, senza un motivo — solo disallineamento accumulato. */
+  .torna { position: fixed; top: 2vh; left: 2vh; z-index: 8; font-size: 1.275rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
   .torna .icona-torna { width: 60px; height: 60px; object-fit: contain; }
   .torna:hover { color: var(--oro); }
 

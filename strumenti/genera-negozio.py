@@ -69,7 +69,9 @@ PAGINA = r'''<!DOCTYPE html>
     width: 100%; max-width: 980px; display: flex; align-items: center;
     justify-content: space-between; gap: 12px;
   }
-  .torna { font-size: 2.55rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+  /* Stessa misura di selezione.html: prima qui era 2.55rem, quasi il
+     doppio, senza un motivo — solo disallineamento accumulato. */
+  .torna { font-size: 1.275rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
   .torna .icona-torna { width: 60px; height: 60px; object-fit: contain; }
   .torna:hover { color: var(--oro); }
 
