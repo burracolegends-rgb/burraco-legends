@@ -273,27 +273,26 @@
       'padding: 10px 20px; border-radius: 10px; font-weight: 800; font-size: 0.9rem; cursor: pointer; }' +
     '.bb-tut-salta { background: transparent; border: 1px solid rgba(232,196,106,0.4); color: #b8ab8c; ' +
       'padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; }' +
-    // LO SCUDO — segnalato da chi ci si e' scontrato per davvero: durante
-    // il passo "il tuo bonus di benvenuto" (che illumina solo il saldo,
-    // nessun clic previsto) tutta la vetrina sotto restava comunque
-    // cliccabile, e bastava un tocco qualsiasi per comprare un pacchetto
-    // diverso da quello che il passo dopo avrebbe chiesto — con gli
-    // sharkini gia' spesi, il passo successivo restava bloccato per
-    // sempre (vedi mostraEmergenzaAspetta). Lo scudo copre TUTTA la
-    // pagina e intercetta ogni tocco, tranne: i bottoni del pannello
-    // (sopra di lui, z-index 9999) e l'elemento illuminato quando c'e'
-    // (sopra di lui pure, .bb-tut-alone e' a z-index 9998) — quello resta
-    // sempre raggiungibile, il resto no. Attivo su ogni passo che non sia
-    // `aspetta` (quelli aspettano un gesto libero del giocatore altrove
-    // sulla pagina — aprire il pacchetto, girare la carta — che nessun
-    // selettore fisso qui potrebbe prevedere). C'e' stata una versione
-    // di mezzo con lo scudo solo sui passi del negozio, per non bloccare
-    // "ritira il premio" nella home: tolta di nuovo perche' il problema
-    // era piu' largo — si usciva dal seminato su qualunque passo, non
-    // solo li'. Il premio si ritira comunque, solo non necessariamente
-    // proprio durante il passo che ne parla.
-    '#bbTutScudo { position: fixed; inset: 0; z-index: 9997; background: transparent; }' +
-    // Toccare lo scudo non deve sembrare che il gioco si sia bloccato:
+    // LO SCUDO NON E' PIU' UN RIQUADRO SOPRA LA PAGINA — segnalato da chi
+    // nel riepilogo dell'apertura pacchetti vedeva il bottone illuminato
+    // ("Compra un altro pacchetto") bagliore acceso e tocco morto: quel
+    // bottone sta dentro .riepilogo, che ha una sua animazione d'entrata
+    // (entraRiep, sopra), e un'animazione su opacity/transform crea in
+    // CSS un livello di impilamento tutto suo — lo z-index alto messo
+    // sull'elemento illuminato (.bb-tut-alone) vale SOLO dentro quel
+    // livello, non lo fa uscire per competere con un riquadro-scudo
+    // esterno. Il bagliore si vede (e' un effetto locale), il tocco
+    // veniva comunque intercettato dallo scudo sopra di lui: bug reale,
+    // non un'ipotesi, riprodotto proprio su quel passo.
+    // Niente piu' riquadro, quindi: si blocca ogni clic con un solo
+    // ascoltatore in fase di cattura su document, e si decide se
+    // lasciarlo passare guardando DOVE e' avvenuto nell'albero del DOM
+    // (elementoIlluminato.contains / pannelloAttuale.contains) invece di
+    // affidarsi a come il browser lo ha dipinto. Attivo su ogni passo che
+    // non sia `aspetta` (quelli aspettano un gesto libero del giocatore
+    // altrove sulla pagina — aprire il pacchetto, girare la carta — che
+    // nessun selettore fisso qui potrebbe prevedere).
+    // Toccare fuori non deve sembrare che il gioco si sia bloccato:
     // il pannello scuote la testa per dire "sono io quello da guardare".
     '.bb-tut-scuoti { animation: bbTutScuoti 0.32s ease-in-out; }' +
     '@keyframes bbTutScuoti { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } ' +
@@ -306,7 +305,6 @@
   var listenerClicAttuale = null;
   var riprovaAlone = null;    // il setTimeout dei ritentativi di illumina()
   var pannelloEmergenzaAspetta = null;
-  var scudoAttuale = null;
 
   function pulisciPassoPrecedente() {
     if (pannelloAttuale) { pannelloAttuale.remove(); pannelloAttuale = null; }
@@ -315,7 +313,6 @@
     if (listenerClicAttuale) { document.removeEventListener('click', listenerClicAttuale, true); listenerClicAttuale = null; }
     if (riprovaAlone) { clearTimeout(riprovaAlone); riprovaAlone = null; }
     if (pannelloEmergenzaAspetta) { pannelloEmergenzaAspetta.remove(); pannelloEmergenzaAspetta = null; }
-    if (scudoAttuale) { scudoAttuale.remove(); scudoAttuale = null; }
   }
 
   // RETE DI SICUREZZA PER "aspetta" — segnalato da chi ci e' rimasto
@@ -415,10 +412,35 @@
       righe.insertBefore(emergenza, righe.lastChild);
     });
 
-    if (def.clic) {
+    // UN SOLO ASCOLTATORE PER "COSA SI PUO' TOCCARE QUI". Prima erano due
+    // cose separate: un ascoltatore per il clic che fa avanzare (solo se
+    // def.clic) e un riquadro-scudo trasparente per bloccare il resto,
+    // tenuto sopra a tutto con lo z-index. Il riquadro si e' rivelato
+    // fragile (vedi il commento sullo scudo, piu' sopra, nel CSS): un
+    // antenato con un'animazione puo' intrappolare sotto di se' anche un
+    // elemento con z-index altissimo. Con un solo ascoltatore in cattura
+    // su document si decide dal DOM, non dal disegno a schermo: se il
+    // tocco e' dentro il pannello lo si lascia sempre passare (i suoi
+    // bottoni si gestiscono da soli), se e' dentro l'elemento illuminato
+    // e questo passo chiede proprio quel tocco si avanza, altrimenti si
+    // blocca e il pannello scuote la testa.
+    if (!def.aspetta) {
       listenerClicAttuale = function (e) {
-        var bersaglio = e.target.closest ? e.target.closest(def.clic) : null;
-        if (bersaglio) avanza(def);
+        if (pannelloAttuale && pannelloAttuale.contains(e.target)) return;
+        if (pannelloEmergenzaAspetta && pannelloEmergenzaAspetta.contains(e.target)) return;
+        if (def.clic) {
+          var bersaglio = e.target.closest ? e.target.closest(def.clic) : null;
+          if (bersaglio) { avanza(def); return; }
+        } else if (elementoIlluminato && elementoIlluminato.contains(e.target)) {
+          return; // passo solo da guardare (illumina senza clic): il tocco resta libero
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (pannelloAttuale) {
+          pannelloAttuale.classList.remove('bb-tut-scuoti');
+          void pannelloAttuale.offsetWidth; // fa ripartire l'animazione da capo
+          pannelloAttuale.classList.add('bb-tut-scuoti');
+        }
       };
       document.addEventListener('click', listenerClicAttuale, true);
     }
@@ -431,28 +453,6 @@
         tentativiAspetta++;
         if (tentativiAspetta === 30) mostraEmergenzaAspetta(); // ~9 secondi
       }, 300);
-    }
-
-    // LO SCUDO — su OGNI passo che non sia `aspetta`. C'era una versione
-    // di mezzo che lo accendeva solo sui tre passi del negozio dove si
-    // spendono sharkini, per non bloccare "ritira il premio" nella home
-    // durante il passo del premio giornaliero — ma il problema vero era
-    // più largo: si usciva dal seminato (si toccava altro, ci si
-    // perdeva) su qualunque passo, non solo nel negozio. Segnalato di
-    // nuovo, esplicitamente, da chi ci si e' perso ancora.
-    // Il premio giornaliero non e' perso: si puo' sempre ritirare DOPO
-    // aver finito (o saltato) il tour, non deve per forza succedere
-    // proprio durante il passo che ne parla.
-    if (!def.aspetta) {
-      scudoAttuale = document.createElement('div');
-      scudoAttuale.id = 'bbTutScudo';
-      document.body.appendChild(scudoAttuale);
-      scudoAttuale.addEventListener('click', function () {
-        if (!pannelloAttuale) return;
-        pannelloAttuale.classList.remove('bb-tut-scuoti');
-        void pannelloAttuale.offsetWidth; // fa ripartire l'animazione da capo
-        pannelloAttuale.classList.add('bb-tut-scuoti');
-      });
     }
 
     // passo muto: solo l'alone (se previsto) e/o l'attesa, nessun pannello —
