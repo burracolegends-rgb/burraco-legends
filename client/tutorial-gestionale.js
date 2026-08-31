@@ -229,7 +229,18 @@
 
     { pagina: 'home.html', titolo: 'Sei pronto!',
       testo: 'Hai un mazzo, hai capito come funziona il negozio: da qui puoi andare in battaglia quando vuoi.',
-      illumina: '.modo[href="tavolo.html"]', fine: true }
+      // Senza `clic`, questo era l'UNICO passo di tutto il tour dove
+      // toccare l'elemento illuminato non chiudeva il passo — serviva
+      // per forza il bottone "Avanti", separato. Chi aveva preso
+      // l'abitudine di toccare cio' che luccica (fatta da ogni altro
+      // passo prima di questo) finiva dritto al tavolo SENZA che
+      // bb_tutorial_completato venisse mai scritto — e il tutorial del
+      // tavolo, che aspetta proprio quel flag prima di accendersi da
+      // solo, restava spento per sempre. Segnalato da chi ci e' finito:
+      // "il tutorial della home va bene... ma quando vado al tavolo non
+      // parte". Ora il tocco sull'illuminato chiude il passo come tutti
+      // gli altri.
+      illumina: '.modo[href="tavolo.html"]', clic: '.modo[href="tavolo.html"]', fine: true }
   ];
 
   // ------------------------------------------------------------
