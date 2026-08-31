@@ -1858,9 +1858,17 @@
       100% { opacity: 0; transform: translate(-14px, -96px) scale(0.6); }
     }
 
-    /* le fasce restano leggibili sopra lo sfondo fatato */
+    /* Erano una fascia verde quasi piena (0.92 di opacita') sopra le
+       carte, per restare leggibili sullo sfondo fatato — ma il tavolo
+       sottostante (pietra, bracieri, il cerchio al centro) spariva
+       proprio dove il giocatore guarda di piu': le proprie carte, la
+       propria mano. Segnalato da chi lo guardava davvero: "le righe
+       dove si trovano le carte sono verdi, vorrei che fossero
+       trasparenti". Tolto il colore, tenuto lo sfocato (backdrop-filter)
+       che continua a separare otticamente la fascia dallo sfondo dietro
+       senza coprirlo con una tinta piatta. */
     .top-shelf, .bottom-shelf, .table-resources-row {
-      background: linear-gradient(180deg, rgba(8,36,26,0.92), rgba(6,26,19,0.92)) !important;
+      background: transparent !important;
       backdrop-filter: blur(2px);
       border-color: rgba(232,196,106,0.35) !important;
     }
