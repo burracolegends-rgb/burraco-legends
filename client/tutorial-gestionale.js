@@ -219,7 +219,13 @@
       } },
     { pagina: 'selezione.html', titolo: 'Le Carte Magiche sono facoltative',
       testo: 'Puoi portarne da zero a tre. Scegli quelle che hai, poi conferma il mazzo qui sotto.',
-      illumina: '#entraBtn', clic: '#entraBtn' },
+      // Il testo chiede di toccare le carte del pescherecio PRIMA di
+      // confermare — ma clic (sotto) e' solo il bottone che chiude il
+      // passo: senza `libero`, ogni tocco sulla griglia finiva bloccato
+      // come "non e' li' che devi toccare", e si poteva solo premere
+      // Conferma senza aver scelto nessuna Carta Magica. Segnalato da
+      // chi ci ha provato per davvero ("non me le fa selezionare").
+      illumina: '#entraBtn', clic: '#entraBtn', libero: '#magicGrid' },
 
     { pagina: 'home.html', titolo: 'Sei pronto!',
       testo: 'Hai un mazzo, hai capito come funziona il negozio: da qui puoi andare in battaglia quando vuoi.',
@@ -428,11 +434,29 @@
       listenerClicAttuale = function (e) {
         if (pannelloAttuale && pannelloAttuale.contains(e.target)) return;
         if (pannelloEmergenzaAspetta && pannelloEmergenzaAspetta.contains(e.target)) return;
+        // IL PREMIO DEL GIORNO NON SI CHIUDEVA PIU'. La festa (#festa, in
+        // home.html) e' un popup a parte, indipendente dal passo in corso —
+        // segnalato da chi tornava alla home a fine tour e restava incollato
+        // li'. Prima dello scudo unico non contava (vinceva per z-index,
+        // 10000 contro il 9997 dello scudo), ma un ascoltatore che decide
+        // dal DOM non lo sa: senza questa riga bloccava anche lui, come
+        // tutto il resto della pagina non illuminato apposta.
+        var festa = document.getElementById('festa');
+        if (festa && festa.contains(e.target)) return;
         if (def.clic) {
           var bersaglio = e.target.closest ? e.target.closest(def.clic) : null;
           if (bersaglio) { avanza(def); return; }
         } else if (elementoIlluminato && elementoIlluminato.contains(e.target)) {
           return; // passo solo da guardare (illumina senza clic): il tocco resta libero
+        }
+        // ZONE LIBERE CHE NON FANNO AVANZARE DA SOLE — la griglia delle
+        // Carte Magiche in selezione.html, per esempio: il passo si chiude
+        // toccando #entraBtn, ma il testo chiede di scegliere le carte
+        // PRIMA, e quel tocco non deve essere bloccato solo perche' non e'
+        // lui a chiudere il passo. Vedi def.libero nel passo interessato.
+        if (def.libero) {
+          var zonaLibera = e.target.closest ? e.target.closest(def.libero) : null;
+          if (zonaLibera) return;
         }
         e.preventDefault();
         e.stopPropagation();
