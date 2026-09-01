@@ -47,14 +47,12 @@
 // solo, una volta, invece di lasciare chi torna senza carte e senza
 // guida.
 //
-// SKIP TOTALE — DA TOGLIERE PRIMA DEL LANCIO VERO.
-// Il magazzino del server, in sviluppo, non è garantito che sopravviva
-// a lungo (si resetta, si riavvia): senza una via di fuga si sarebbe
-// costretti a rifare tutto il tour a ogni prova. Il bottone "Salta
-// tutto" esiste SOLO per questo. Quando il gioco sarà pubblico, va
-// tolto: un giocatore vero non deve poter saltare la sua unica
-// occasione di imparare come funziona il negozio. Si toglierà anche
-// SKIP_TOTALE_ATTIVO qui sotto, il resto del file non cambia.
+// IL BOTTONE "SALTA TUTTO" C'ERA, ED È STATO TOLTO.
+// Serviva solo in sviluppo (il magazzino del server si resetta spesso,
+// senza una via di fuga si sarebbe rifatto tutto il tour a ogni prova):
+// un giocatore vero non deve poter saltare la sua unica occasione di
+// imparare come funziona il negozio. Richiesto esplicitamente: "togli
+// il tasto salta tutto prova... ovunque cancellalo".
 // Una versione futura, rimandata apposta: un modo per RIFARE il tour a
 // volontà dalle impostazioni della home ("come se lo rifaccio essendo a
 // capo") — oggi non c'è, se ne riparla quando serve davvero.
@@ -62,7 +60,6 @@
 (function () {
   'use strict';
 
-  var SKIP_TOTALE_ATTIVO = true; // <-- TOGLIERE QUESTA RIGA (e il bottone) prima del lancio vero
 
   var CHIAVE_PASSO = 'bb_tutorial_passo';
   var CHIAVE_FATTO = 'bb_tutorial_completato';
@@ -267,7 +264,7 @@
     // basso, a tutta larghezza), e senza questa riga il pannello
     // INTERCETTAVA il tocco al posto del bottone — invisibile, intoccabile,
     // bloccato li' per sempre. Riacceso solo sui bottoni del pannello
-    // stesso (Avanti/Salta), che devono restare premibili.
+    // stesso (Avanti), che devono restare premibili.
     '.bb-tut-pannello { position: fixed; left: 0; right: 0; z-index: 9999; ' +
       'background: linear-gradient(180deg, rgba(30,20,12,0.97), rgba(14,9,5,0.99)); ' +
       'padding: 16px 18px; ' +
@@ -283,13 +280,19 @@
       'box-shadow: 0 -10px 30px rgba(0,0,0,0.6); padding-bottom: max(16px, env(safe-area-inset-bottom)); }' +
     '.bb-tut-pannello.in-alto { top: 0; border-bottom: 1px solid #8a6a2a; ' +
       'box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding-top: max(16px, env(safe-area-inset-top)); }' +
-    '.bb-tut-pannello h3 { margin: 0 0 6px; font-size: 1.05rem; color: #e8c46a; }' +
-    '.bb-tut-pannello p { margin: 0 0 12px; font-size: 0.92rem; line-height: 1.5; color: #d8cdb8; }' +
+    // TOLTO "SALTA TUTTO (PROVA)" — bottone di sviluppo, mai pensato per
+    // restare nel gioco vero, richiesto esplicitamente "ovunque
+    // cancellalo". Con lui e' sparita anche la riga apposta in fondo al
+    // pannello: il bottone "Avanti" si sposta ACCANTO AL TITOLO, in una
+    // sola riga in alto (.bb-tut-testa) — una riga di meno da disegnare,
+    // il pannello si accorcia ("mettilo più sopra così ridimensioni
+    // ulteriormente la finestra").
+    '.bb-tut-testa { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }' +
+    '.bb-tut-pannello h3 { margin: 0; font-size: 1.05rem; color: #e8c46a; }' +
+    '.bb-tut-pannello p { margin: 8px 0 0; font-size: 0.92rem; line-height: 1.5; color: #d8cdb8; }' +
     '.bb-tut-righe { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }' +
     '.bb-tut-btn { background: linear-gradient(180deg, #ffe9ae, #e8c46a); color: #2a1c08; border: none; ' +
-      'padding: 10px 20px; border-radius: 10px; font-weight: 800; font-size: 0.9rem; cursor: pointer; }' +
-    '.bb-tut-salta { background: transparent; border: 1px solid rgba(232,196,106,0.4); color: #b8ab8c; ' +
-      'padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; }' +
+      'padding: 10px 20px; border-radius: 10px; font-weight: 800; font-size: 0.9rem; cursor: pointer; flex: 0 0 auto; }' +
     // LO SCUDO NON E' PIU' UN RIQUADRO SOPRA LA PAGINA — segnalato da chi
     // nel riepilogo dell'apertura pacchetti vedeva il bottone illuminato
     // ("Compra un altro pacchetto") bagliore acceso e tocco morto: quel
@@ -341,8 +344,7 @@
   // pannello proprio) e il riepilogo, senza acquisto riuscito, non
   // compare mai: si resta li' per sempre, senza nemmeno un pannello da
   // guardare. Dopo un po' di tentativi si mostra comunque un piccolo
-  // aiuto, anche sui passi muti, con un modo per tornare indietro o
-  // saltare tutto.
+  // aiuto, anche sui passi muti, con un modo per tornare indietro.
   function mostraEmergenzaAspetta() {
     if (pannelloEmergenzaAspetta) return;
     pannelloEmergenzaAspetta = document.createElement('div');
@@ -350,18 +352,9 @@
     pannelloEmergenzaAspetta.innerHTML =
       '<h3>Qualcosa si e\' fermato</h3>' +
       '<p>Forse non hai abbastanza sharkini per questo acquisto, o la pagina ha impiegato piu\' ' +
-      'tempo del previsto. Puoi tornare al negozio e riprovare, o saltare la guida.</p>' +
-      '<div class="bb-tut-righe">' +
-        '<button class="bb-tut-salta" id="bbTutSaltaEmergenzaAspetta">Salta tutto (prova)</button>' +
-        '<button class="bb-tut-btn" id="bbTutIndietroEmergenzaAspetta">Torna al negozio</button>' +
-      '</div>';
+      'tempo del previsto. Puoi tornare al negozio e riprovare.</p>' +
+      '<button class="bb-tut-btn" id="bbTutIndietroEmergenzaAspetta">Torna al negozio</button>';
     document.body.appendChild(pannelloEmergenzaAspetta);
-    document.getElementById('bbTutSaltaEmergenzaAspetta').addEventListener('click', function () {
-      scrivi(CHIAVE_FATTO, 'si');
-      scrivi(CHIAVE_GETTONE_AL_COMPLETAMENTO, leggi('bb_gettone') || '');
-      cancella(CHIAVE_PASSO);
-      location.href = 'home.html';
-    });
     document.getElementById('bbTutIndietroEmergenzaAspetta').addEventListener('click', function () {
       location.href = 'negozio.html';
     });
@@ -418,15 +411,15 @@
       // Il pannello (se previsto) è già a schermo: qui si aggiunge SOLO il
       // bottone di emergenza, se serve — non si ridisegna nulla.
       if (trovato || !pannelloAttuale) return;
-      var righe = pannelloAttuale.querySelector('.bb-tut-righe');
-      if (!righe || document.getElementById('bbTutEmergenza')) return;
+      var testa = pannelloAttuale.querySelector('.bb-tut-testa');
+      if (!testa || document.getElementById('bbTutEmergenza')) return;
       var emergenza = document.createElement('button');
       emergenza.className = 'bb-tut-btn';
       emergenza.id = 'bbTutEmergenza';
       emergenza.textContent = 'Vai avanti comunque';
       emergenza.title = 'Non trovo l\'elemento da evidenziare: puoi comunque proseguire da qui.';
       emergenza.addEventListener('click', function () { avanza(def); });
-      righe.insertBefore(emergenza, righe.lastChild);
+      testa.appendChild(emergenza);
     });
 
     // UN SOLO ASCOLTATORE PER "COSA SI PUO' TOCCARE QUI". Prima erano due
@@ -505,8 +498,7 @@
     }
     pannelloAttuale = document.createElement('div');
     pannelloAttuale.className = 'bb-tut-pannello ' + (inAlto ? 'in-alto' : 'in-basso');
-    var html = '<h3>' + def.titolo + '</h3><p>' + def.testo + '</p><div class="bb-tut-righe">';
-    html += SKIP_TOTALE_ATTIVO ? '<button class="bb-tut-salta" id="bbTutSalta">Salta tutto (prova)</button>' : '<span></span>';
+    var html = '<div class="bb-tut-testa"><h3>' + def.titolo + '</h3>';
     if (def.bottone) {
       html += '<button class="bb-tut-btn" id="bbTutAvanti">' + def.bottone.testo + '</button>';
     } else if (!def.clic && !def.aspetta) {
@@ -514,7 +506,7 @@
     } else {
       html += '<span class="bb-tut-btn" style="opacity:0.55;cursor:default;">Tocca l\'elemento illuminato</span>';
     }
-    html += '</div>';
+    html += '</div><p>' + def.testo + '</p>';
     pannelloAttuale.innerHTML = html;
     document.body.appendChild(pannelloAttuale);
 
@@ -552,23 +544,6 @@
       bottoneAvanti.addEventListener('click', function () {
         if (def.bottone) { pulisciPassoPrecedente(); scrivi(CHIAVE_PASSO, String(passo + 1)); location.href = def.bottone.vai; }
         else avanza(def);
-      });
-    }
-    var bottoneSalta = document.getElementById('bbTutSalta');
-    if (bottoneSalta) {
-      bottoneSalta.addEventListener('click', function () {
-        pulisciPassoPrecedente();
-        scrivi(CHIAVE_FATTO, 'si');
-        // ANCHE SALTANDO SERVE IL GETTONE DI RIFERIMENTO — dimenticato la
-        // prima volta: solo avanza() (il tour finito per davvero) lo
-        // salvava. Chi saltava restava con CHIAVE_FATTO='si' ma senza
-        // baseline, e decidiSePartire() non aveva più modo di dire "il
-        // gettone e' cambiato": il tour non ripartiva mai più, nemmeno
-        // dopo che l'account spariva davvero. Bug vero, segnalato da chi
-        // aveva usato Salta più volte durante le prove.
-        scrivi(CHIAVE_GETTONE_AL_COMPLETAMENTO, leggi('bb_gettone') || '');
-        cancella(CHIAVE_PASSO);
-        location.href = 'home.html';
       });
     }
   }

@@ -4899,22 +4899,25 @@ function tutorialCostruisciPannello() {
     // quello che si voleva evitare. Corretto nel verso giusto: PIÙ
     // largo (240 → 288px, +20% richiesto), cosi' il testo sta su meno
     // righe e il pannello resta più basso invece che più alto.
+    // Poi tolto "Salta tutto (prova)" — bottone di prova, mai pensato
+    // per restare nel gioco vero (vedi la nota "prima del lancio" nella
+    // memoria del progetto) — e spostato "Avanti" ACCANTO AL TITOLO,
+    // in alto, invece che in una riga tutta sua in fondo: una riga di
+    // meno da disegnare e il pannello si accorcia ulteriormente, come
+    // richiesto ("mettilo più sopra così ridimensioni la finestra").
     '#tutorialPannello{position:fixed;right:max(10px,env(safe-area-inset-right));',
     '  top:calc(max(10px,env(safe-area-inset-top)) + 62px);',
     '  width:min(288px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
     '  border:1px solid rgba(255,204,0,.45);border-radius:10px;padding:10px 12px;z-index:9000;',
     '  font-family:sans-serif;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:none;}',
     '#tutorialPannello button{pointer-events:auto;}',
-    '#tutorialPannello h4{margin:0 0 5px;font-size:12.5px;color:#ffcc00;}',
-    '#tutorialPannello .txt{font-size:11px;line-height:1.42;}',
+    '#tutorialPannello .testa{display:flex;align-items:center;justify-content:space-between;gap:8px;}',
+    '#tutorialPannello h4{margin:0;font-size:12.5px;color:#ffcc00;}',
+    '#tutorialPannello .txt{margin-top:5px;font-size:11px;line-height:1.42;}',
     '#tutorialPannello .txt b{color:#ffe58a;}',
-    '#tutorialPannello .fondo{display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap;}',
-    '#tutorialPannello .passo{font-size:9.5px;opacity:.55;}',
-    '#tutorialPannello .principale{margin-left:auto;border:none;border-radius:7px;padding:6px 12px;',
+    '#tutorialPannello .passo{font-size:9.5px;opacity:.55;white-space:nowrap;}',
+    '#tutorialPannello .principale{flex:0 0 auto;border:none;border-radius:7px;padding:6px 12px;',
     '  font-weight:bold;font-size:11.5px;cursor:pointer;background:#ffcc00;color:#1a1a1a;font-family:inherit;}',
-    '#tutorialPannello .salta{background:transparent;color:rgba(255,255,255,.5);',
-    '  border:1px solid rgba(255,255,255,.25);padding:5px 8px;font-size:10px;border-radius:7px;',
-    '  cursor:pointer;font-family:inherit;}',
     '#tutorialPannello .aiuto{margin-top:7px;font-size:10.5px;color:#ffcc00;opacity:0;transition:opacity .5s;}',
     '#tutorialPannello .aiuto.visibile{opacity:.9;}',
     '@keyframes tutorialTavoloAlone{0%,100%{box-shadow:0 0 0 2px rgba(255,204,0,.30),0 0 12px 3px rgba(255,204,0,.18);}',
@@ -4975,30 +4978,29 @@ function tutorialMostraPasso() {
 
   tutorialIllumina(def.illumina, (trovato) => {
     if (trovato || !tutorialPannelloEl) return;
-    const righe = tutorialPannelloEl.querySelector('.fondo');
-    if (!righe || document.getElementById('tutEmergenza')) return;
+    const testa = tutorialPannelloEl.querySelector('.testa');
+    if (!testa || document.getElementById('tutEmergenza')) return;
     const emergenza = document.createElement('button');
     emergenza.className = 'principale';
     emergenza.id = 'tutEmergenza';
     emergenza.textContent = 'Vai avanti comunque';
     emergenza.title = 'Non trovo l\'elemento da evidenziare: puoi comunque proseguire da qui.';
     emergenza.addEventListener('click', () => tutorialAvanti());
-    righe.insertBefore(emergenza, righe.lastChild);
+    testa.appendChild(emergenza);
   });
 
   tutorialPannelloEl.innerHTML =
-    '<h4>' + def.titolo + '</h4>' +
-    '<div class="txt">' + def.testo + '</div>' +
-    '<div class="aiuto" id="tutAiuto">' + (def.aiuto || '') + '</div>' +
-    '<div class="fondo">' +
-      '<button class="salta" id="tutSalta">Salta tutto (prova)</button>' +
-      '<span class="passo">' + (def.passo || (tutorialIndicePasso + 1)) + ' di ' + totale + '</span>' +
+    '<div class="testa"><h4>' + def.titolo + '</h4>' +
       (def.azione
         ? '<span class="principale" style="opacity:.55;cursor:default;background:transparent;color:#ffe58a;border:1px solid rgba(255,204,0,.4);">Tocca l\'elemento illuminato</span>'
         : '<button class="principale" id="tutAvanti">' + (def.finale ? 'Ho capito' : 'Avanti') + '</button>') +
-    '</div>';
+    '</div>' +
+    // Il numero di passo va SUBITO dopo il punto dell'ultima frase, non
+    // su una riga sua: attaccato al testo invece che sotto, non aggiunge
+    // altezza al pannello — richiesto esplicitamente.
+    '<div class="txt">' + def.testo + ' <span class="passo">' + (def.passo || (tutorialIndicePasso + 1)) + ' di ' + totale + '</span></div>' +
+    '<div class="aiuto" id="tutAiuto">' + (def.aiuto || '') + '</div>';
 
-  document.getElementById('tutSalta').addEventListener('click', tutorialSaltaTutto);
   const bottoneAvanti = document.getElementById('tutAvanti');
   if (bottoneAvanti) bottoneAvanti.addEventListener('click', () => tutorialAvanti());
 
@@ -5035,27 +5037,6 @@ function tutorialFinisci() {
   location.href = location.pathname;
 }
 
-// SALTA TUTTO — DA TOGLIERE PRIMA DEL LANCIO VERO.
-// Stesso motivo del tutorial gestionale (client/tutorial-gestionale.js):
-// il magazzino di sviluppo si resetta spesso, e senza questa via di fuga
-// bisognerebbe rigiocare la mano guidata da capo a ogni prova. Un
-// giocatore vero non deve poter saltare la sua unica occasione di
-// imparare come funziona il tavolo — quando il gioco sara' pubblico, si
-// toglie questo bottone (e la riga che lo aggiunge, qui sopra).
-function tutorialSaltaTutto() {
-  try {
-    localStorage.setItem('bb_tutorial_tavolo_completato', 'si');
-    // ANCHE SALTANDO SERVE IL GETTONE DI RIFERIMENTO — dimenticato la
-    // prima volta: solo tutorialFinisci() (il tour finito per davvero)
-    // lo salvava. Chi saltava restava "completato" ma senza baseline, e
-    // decidiModalitaTutorial() non aveva più modo di dire "il gettone e'
-    // cambiato": il tour non ripartiva mai più, nemmeno dopo che
-    // l'account spariva davvero. Bug vero, segnalato da chi aveva usato
-    // Salta piu' volte durante le prove.
-    localStorage.setItem('bb_tutorial_tavolo_gettone', localStorage.getItem('bb_gettone') || '');
-  } catch (e) {}
-  location.href = location.pathname;
-}
 
 function avviaTutorialTavolo() {
   document.body.classList.add('modalita-tutorial');
