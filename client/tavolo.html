@@ -10116,23 +10116,30 @@ let tutorialPannelloEl = null;
 function tutorialCostruisciPannello() {
   const stile = document.createElement('style');
   stile.textContent = [
+    // Era largo 320px, fisso in alto a destra: sul tavolo (bloccato in
+    // orizzontale, schermo di telefono) copriva la riga delle Carte
+    // Magiche e la striscia dell'avversario, che stanno proprio li'.
+    // Segnalato con uno screenshot da chi ci ha sbattuto contro davvero.
+    // Ridotto — testo e bottoni piu' piccoli insieme alla larghezza,
+    // non solo la larghezza, altrimenti le righe si sarebbero solo
+    // spezzate in piu' righe invece che occupare meno posto.
     '#tutorialPannello{position:fixed;right:max(10px,env(safe-area-inset-right));',
     '  top:calc(max(10px,env(safe-area-inset-top)) + 62px);',
-    '  width:min(320px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
-    '  border:1px solid rgba(255,204,0,.45);border-radius:12px;padding:13px 15px;z-index:9000;',
+    '  width:min(240px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
+    '  border:1px solid rgba(255,204,0,.45);border-radius:10px;padding:10px 12px;z-index:9000;',
     '  font-family:sans-serif;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:none;}',
     '#tutorialPannello button{pointer-events:auto;}',
-    '#tutorialPannello h4{margin:0 0 6px;font-size:14px;color:#ffcc00;}',
-    '#tutorialPannello .txt{font-size:12.5px;line-height:1.5;}',
+    '#tutorialPannello h4{margin:0 0 5px;font-size:12.5px;color:#ffcc00;}',
+    '#tutorialPannello .txt{font-size:11px;line-height:1.42;}',
     '#tutorialPannello .txt b{color:#ffe58a;}',
-    '#tutorialPannello .fondo{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap;}',
-    '#tutorialPannello .passo{font-size:10.5px;opacity:.55;}',
-    '#tutorialPannello .principale{margin-left:auto;border:none;border-radius:8px;padding:7px 15px;',
-    '  font-weight:bold;font-size:12.5px;cursor:pointer;background:#ffcc00;color:#1a1a1a;font-family:inherit;}',
+    '#tutorialPannello .fondo{display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap;}',
+    '#tutorialPannello .passo{font-size:9.5px;opacity:.55;}',
+    '#tutorialPannello .principale{margin-left:auto;border:none;border-radius:7px;padding:6px 12px;',
+    '  font-weight:bold;font-size:11.5px;cursor:pointer;background:#ffcc00;color:#1a1a1a;font-family:inherit;}',
     '#tutorialPannello .salta{background:transparent;color:rgba(255,255,255,.5);',
-    '  border:1px solid rgba(255,255,255,.25);padding:6px 10px;font-size:11px;border-radius:8px;',
+    '  border:1px solid rgba(255,255,255,.25);padding:5px 8px;font-size:10px;border-radius:7px;',
     '  cursor:pointer;font-family:inherit;}',
-    '#tutorialPannello .aiuto{margin-top:8px;font-size:11.5px;color:#ffcc00;opacity:0;transition:opacity .5s;}',
+    '#tutorialPannello .aiuto{margin-top:7px;font-size:10.5px;color:#ffcc00;opacity:0;transition:opacity .5s;}',
     '#tutorialPannello .aiuto.visibile{opacity:.9;}',
     '@keyframes tutorialTavoloAlone{0%,100%{box-shadow:0 0 0 2px rgba(255,204,0,.30),0 0 12px 3px rgba(255,204,0,.18);}',
     '  50%{box-shadow:0 0 0 3px rgba(255,204,0,.95),0 0 26px 8px rgba(255,204,0,.50);}}',
