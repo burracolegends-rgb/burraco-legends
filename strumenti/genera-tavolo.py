@@ -4893,12 +4893,15 @@ function tutorialCostruisciPannello() {
     // orizzontale, schermo di telefono) copriva la riga delle Carte
     // Magiche e la striscia dell'avversario, che stanno proprio li'.
     // Segnalato con uno screenshot da chi ci ha sbattuto contro davvero.
-    // Ridotto — testo e bottoni piu' piccoli insieme alla larghezza,
-    // non solo la larghezza, altrimenti le righe si sarebbero solo
-    // spezzate in piu' righe invece che occupare meno posto.
+    // Prima riduzione: 240px, testo e bottoni rimpiccioliti insieme —
+    // ma un pannello piu' STRETTO va in basso più lungo (lo stesso
+    // testo va a capo su più righe), e "non copre sotto" era proprio
+    // quello che si voleva evitare. Corretto nel verso giusto: PIÙ
+    // largo (240 → 288px, +20% richiesto), cosi' il testo sta su meno
+    // righe e il pannello resta più basso invece che più alto.
     '#tutorialPannello{position:fixed;right:max(10px,env(safe-area-inset-right));',
     '  top:calc(max(10px,env(safe-area-inset-top)) + 62px);',
-    '  width:min(240px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
+    '  width:min(288px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
     '  border:1px solid rgba(255,204,0,.45);border-radius:10px;padding:10px 12px;z-index:9000;',
     '  font-family:sans-serif;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:none;}',
     '#tutorialPannello button{pointer-events:auto;}',
