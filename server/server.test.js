@@ -23,7 +23,7 @@ import { join } from 'node:path';
 
 process.env.MAGAZZINO = process.env.MAGAZZINO || join(tmpdir(), 'burraco-legends-prova.json');
 process.env.NON_AVVIARE = '1';            // il server non si mette in ascolto da solo
-process.env.STUDIO_SECONDI = '0';         // niente attesa di trenta secondi: qui si prova, non si gioca
+process.env.STUDIO_SECONDI = '0';         // niente attesa di dieci secondi: qui si prova, non si gioca
 
 const { server, stanze } = await import('./server.js');
 import { dotazioneIniziale } from '../engine/dotazione.js';

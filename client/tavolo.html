@@ -2132,6 +2132,53 @@
     /* chi non è di turno ha il cronometro fermo e spento */
     .riga-turno:not(.attiva) .orologio { opacity: 0.45; }
 
+    /* IL MONTE DEI SEI MINUTI NON AVVISAVA MAI. Il minuto del turno
+       (sopra) diventa rosso e pulsa sotto i 15 secondi, ma il monte
+       intero — quello che conta davvero, perché azzerarlo fa perdere la
+       partita per attrito e ora costa pure le carte rimaste in mano —
+       restava un numero muto fino a zero. Stessa idea, soglia più larga
+       (30s su 360 totali: la stessa proporzione, spalmata su un
+       cronometro quindici volte più lungo). */
+    .match-timer.agli-sgoccioli { color: #ff9db0; animation: battito 1s ease-in-out infinite; }
+
+    /* IL CAMBIO TURNO CAMBIAVA SCRITTA DI SCATTO, SENZA DIRLO.
+       "Tocca a te" e "Avversario" si scambiavano di colpo — l'unico modo
+       per accorgersi che era cambiato davvero il turno (e non solo che
+       si era ridisegnato lo schermo per un altro motivo) era leggere la
+       parola. Un lampo d'oro quando il testo cambia per davvero rende
+       visibile un cambio che prima si notava solo leggendo. */
+    .turn-indicator.cambiato { animation: turnoCambia 0.5s ease-out; }
+    @keyframes turnoCambia {
+      0% { transform: scale(1.32); color: var(--oro); text-shadow: 0 0 14px rgba(232,196,106,0.75); }
+      100% { transform: scale(1); }
+    }
+
+    /* VITTORIA E SCONFITTA AVEVANO IL SUONO GIUSTO E NESSUN SEGNO A
+       SCHERMO — mostraFine() cambiava solo un titolo di testo, uguale
+       che si fosse vinto, perso o pareggiato. I coriandoli sono gli
+       stessi di spacchetta.html (stessa tecnica: un div per coriandolo,
+       una caduta lineare, si toglie da solo). La sconfitta non ha un suo
+       equivalente altrove nel gioco: un lampo rosso ai bordi, breve,
+       che si spegne da solo — non deve sembrare un errore del gioco,
+       solo il peso della sconfitta. */
+    .coriandolo {
+      position: fixed; z-index: 950; pointer-events: none; width: 0.9vh; height: 1.6vh; border-radius: 1px;
+      animation: cade linear forwards;
+    }
+    @keyframes cade {
+      0%   { opacity: 1; transform: translate(-50%,-50%) rotate(0); }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), 92vh) rotate(var(--giro)); }
+    }
+    .lampoSconfitta {
+      position: fixed; inset: 0; z-index: 950; pointer-events: none;
+      animation: sconfittaFlash 1.1s ease-out forwards;
+    }
+    @keyframes sconfittaFlash {
+      0%   { box-shadow: inset 0 0 0 0 rgba(200,20,40,0); }
+      15%  { box-shadow: inset 0 0 18vh 4vh rgba(200,20,40,0.38); }
+      100% { box-shadow: inset 0 0 18vh 4vh rgba(200,20,40,0); }
+    }
+
     /* pozzetto ancora da prendere: presente ma spento. Preso: acceso.
        Due stati, uno sguardo. */
     .riga-turno .spia-pozzetto {
@@ -4783,12 +4830,13 @@ const POZZETTO_SIZE = 11;      // invariato da Burraco Pulito
 const CARTE_PER_PESCATA = 1;
 
 // ------------------------------------------------------------
-// I TRENTA SECONDI PRIMA DI COMINCIARE
+// I DIECI SECONDI PRIMA DI COMINCIARE
 // Appena distribuite le carte si e' gia' dentro il proprio minuto, e
 // bisogna decidere in fretta senza aver nemmeno guardato chi si ha
 // davanti: quali eroi ha schierato l'avversario, con che vita e che
-// attacco, e quali sono i propri. Trenta secondi in cui il tavolo si
-// puo' solo guardare.
+// attacco, e quali sono i propri. Dieci secondi in cui il tavolo si
+// puo' solo guardare — erano trenta, ridotti su richiesta esplicita:
+// bastano per un'occhiata, non per aspettare.
 //
 // Non e' un timer che gira nel browser: e' un istante scritto nello
 // stato della partita. Il minuto del turno e il monte dei sei minuti
@@ -4797,7 +4845,7 @@ const CARTE_PER_PESCATA = 1;
 // Sta a zero per difetto: le prove del motore misurano le regole, non
 // l'attesa, e chiedere l'attesa e' un gesto del gioco, non del motore.
 // ------------------------------------------------------------
-const SECONDI_DI_STUDIO = 30;
+const SECONDI_DI_STUDIO = 10;
 
 function defaultCharacters() {
   const chars = {};
@@ -5086,10 +5134,39 @@ function secondsSinceTurnStart(state, nowMs) {
   return isNaN(started) ? 0 : Math.max(0, Math.floor((nowMs - started) / 1000));
 }
 
+// CHI RESTA SENZA TEMPO PAGA LE CARTE CHE HA ANCORA IN MANO.
+// Richiesto esplicitamente: non basta che il tempo scaduto tolga il turno
+// (chargeElapsedTime lo fa già finire la partita per attrito) — chi lo fa
+// scadere deve anche PERDERE qualcosa, con lo stesso metro di Burraco
+// Pulito per le carte rimaste in mano a fine mazzo: ogni carta vale
+// cardPointValue (3-7=5, figure=10, Asso=15, pinella=20, jolly=30), e
+// quel totale se lo toglie dai PV dei propri quattro personaggi — non
+// dell'avversario, sono le SUE carte non giocate a pesare su di lui.
+// Il malus si scarica seme per seme nell'ordine canonico (SUITS): il
+// primo personaggio ancora in vita lo assorbe finché può, quello che
+// avanza passa al successivo — la stessa logica con cui un colpo che
+// eccede il bersaglio si racconterebbe, non un taglio uguale per tutti.
+function applicaMalusTempoScaduto(state, playerIndex) {
+  const player = state.players[playerIndex];
+  let restante = meldPointValue(player.hand);
+  for (const s of SUITS) {
+    if (restante <= 0) break;
+    const personaggio = player.characters[s];
+    if (!personaggio || personaggio.pv <= 0) continue;
+    const tolto = Math.min(personaggio.pv, restante);
+    personaggio.pv -= tolto;
+    restante -= tolto;
+  }
+}
+
 // Fine partita senza chiusura né KO (mazzo esaurito o orologio a zero):
 // vince chi ha più PV totali rimasti sui propri 4 personaggi (assunzione #6).
+// Sul timeout, PRIMA di contare, chi ha fatto scadere il tempo paga le
+// carte rimaste in mano (vedi applicaMalusTempoScaduto): il conto che
+// decide la partita è già quello penalizzato, non quello nudo.
 function resolveByAttrition(state, reason) {
   if (state.status !== 'in_progress') return;
+  if (reason === 'timeout') applicaMalusTempoScaduto(state, state.currentPlayerIndex);
   const pv0 = totalPV(state.players[0].characters);
   const pv1 = totalPV(state.players[1].characters);
   state.status = 'finished';
@@ -7588,8 +7665,19 @@ function disegnaTutto() {
   disegnaMagia($('magiaGiocatore'), io);
   disegnaMagia($('magiaAvversario'), avv);
 
-  // intestazioni
-  $('turnIndicator').textContent = S.status !== 'in_progress' ? 'Fine' : (S.currentPlayerIndex === 0 ? 'Tocca a te' : 'Avversario');
+  // intestazioni — un lampo d'oro SOLO quando il turno cambia per
+  // davvero, non a ogni ridisegno (disegna() gira spesso, per motivi che
+  // non c'entrano col turno: un lampo a ogni chiamata sarebbe rumore)
+  {
+    const testoTurno = S.status !== 'in_progress' ? 'Fine' : (S.currentPlayerIndex === 0 ? 'Tocca a te' : 'Avversario');
+    const indicatore = $('turnIndicator');
+    if (indicatore.textContent !== testoTurno) {
+      indicatore.textContent = testoTurno;
+      indicatore.classList.remove('cambiato');
+      void indicatore.offsetWidth; // fa ripartire l'animazione da capo
+      indicatore.classList.add('cambiato');
+    }
+  }
   $('oppName').textContent = 'Avversario';
   $('oppLiveScore').textContent = Math.round(SEMI.reduce((t, s) => t + avv.characters[s].pv, 0)) + ' PV';
   aggiornaMonteTempo();
@@ -7732,8 +7820,14 @@ function aggiornaMonteTempo() {
   if (!S) return;
   const mio = $('myMatchTimer'), suo = $('oppMatchTimer');
   if (!mio || !suo) return;
-  mio.textContent = mmss(monteTempo(0));
-  suo.textContent = mmss(monteTempo(1));
+  const secMio = monteTempo(0), secSuo = monteTempo(1);
+  mio.textContent = mmss(secMio);
+  suo.textContent = mmss(secSuo);
+  // sotto i 30 secondi si accende, chiunque sia di turno: e' un pericolo
+  // che sta li' anche mentre l'orologio dell'altro corre, non solo nel
+  // preciso istante in cui scatta
+  mio.classList.toggle('agli-sgoccioli', S.status === 'in_progress' && secMio > 0 && secMio <= 30);
+  suo.classList.toggle('agli-sgoccioli', S.status === 'in_progress' && secSuo > 0 && secSuo <= 30);
 }
 
 function aggiornaSpiePozzetto() {
@@ -7970,6 +8064,26 @@ function contoAllaRovescia() {
   }, 1000);
 }
 
+// Coriandoli della vittoria: stessa tecnica di spacchetta.html (una
+// carta rara che si apre) — un div per coriandolo, cade da solo, si
+// toglie da solo. Qui non serve un CSS diverso, quello ce l'ha già.
+function coriandoli(quanti) {
+  const colori = ['#ffd97a', '#ff8fa3', '#8fd8ff', '#c0ff9b', '#e0a9ff'];
+  for (let i = 0; i < quanti; i++) {
+    const d = document.createElement('div');
+    d.className = 'coriandolo';
+    d.style.cssText =
+      'left:' + (Math.random() * 100) + 'vw;top:-4vh;' +
+      'background:' + colori[i % colori.length] + ';' +
+      '--dx:' + (Math.random() * 200 - 100).toFixed(0) + 'px;' +
+      '--giro:' + (Math.random() * 1200 - 600).toFixed(0) + 'deg;' +
+      'animation-duration:' + (2.2 + Math.random() * 2).toFixed(2) + 's;' +
+      'animation-delay:' + (Math.random() * 0.5).toFixed(2) + 's';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 5200);
+  }
+}
+
 function apriSchermataFine() {
   if (ONLINE) dimenticaIlTavolo();
   $('fineTit').textContent = S.winner === null ? 'Pareggio' : (S.winner === 0 ? 'Hai vinto!' : 'Hai perso');
@@ -7978,6 +8092,14 @@ function apriSchermataFine() {
                    abbandono: S.winner === 0 ? 'L\'avversario ha abbandonato il tavolo' : 'Hai abbandonato il tavolo' };
   $('fineTxt').textContent = motivi[S.winReason] || S.winReason || '';
   SUONI.fine(S.winner === 0);
+  if (S.winner === 0) {
+    coriandoli(60);
+  } else if (S.winner === 1) {
+    const lampo = document.createElement('div');
+    lampo.className = 'lampoSconfitta';
+    document.body.appendChild(lampo);
+    setTimeout(() => lampo.remove(), 1200);
+  }
   $('finePartita').classList.add('mostra');
   contoAllaRovescia();
 }
@@ -10217,7 +10339,7 @@ function avviaTutorialTavolo() {
     characters: [a.characters, b.characters],
     abilities: [a.abilities, b.abilities],
     magiche: [mieMagiche, IDS_MAGICHE.avv.map((id) => dati.magiche[id])],
-    // gli stessi trenta secondi anche contro il bot: e' il momento in cui
+    // gli stessi dieci secondi anche contro il bot: e' il momento in cui
     // si guarda chi si ha davanti, e vale in tutte e due le modalita'
     studioSecondi: SECONDI_DI_STUDIO
   });

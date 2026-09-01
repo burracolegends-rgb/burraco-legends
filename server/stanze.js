@@ -148,7 +148,7 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
   }
 
   function avviaPartita(stanza) {
-    // trenta secondi per guardare il tavolo prima che partano gli orologi
+    // dieci secondi per guardare il tavolo prima che partano gli orologi
     const opzioni = { now: orologio(), rng: generatoreDaSeme(stanza.seme), studioSecondi };
     // ognuno scende in campo col proprio mazzo, se ne ha uno valido
     const mazzi = [stanza.posti[0] && stanza.posti[0].mazzo, stanza.posti[1] && stanza.posti[1].mazzo];

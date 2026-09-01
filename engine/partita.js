@@ -61,12 +61,13 @@ export const POZZETTO_SIZE = 11;      // invariato da Burraco Pulito
 export const CARTE_PER_PESCATA = 1;
 
 // ------------------------------------------------------------
-// I TRENTA SECONDI PRIMA DI COMINCIARE
+// I DIECI SECONDI PRIMA DI COMINCIARE
 // Appena distribuite le carte si e' gia' dentro il proprio minuto, e
 // bisogna decidere in fretta senza aver nemmeno guardato chi si ha
 // davanti: quali eroi ha schierato l'avversario, con che vita e che
-// attacco, e quali sono i propri. Trenta secondi in cui il tavolo si
-// puo' solo guardare.
+// attacco, e quali sono i propri. Dieci secondi in cui il tavolo si
+// puo' solo guardare — erano trenta, ridotti su richiesta esplicita:
+// bastano per un'occhiata, non per aspettare.
 //
 // Non e' un timer che gira nel browser: e' un istante scritto nello
 // stato della partita. Il minuto del turno e il monte dei sei minuti
@@ -75,7 +76,7 @@ export const CARTE_PER_PESCATA = 1;
 // Sta a zero per difetto: le prove del motore misurano le regole, non
 // l'attesa, e chiedere l'attesa e' un gesto del gioco, non del motore.
 // ------------------------------------------------------------
-export const SECONDI_DI_STUDIO = 30;
+export const SECONDI_DI_STUDIO = 10;
 
 function defaultCharacters() {
   const chars = {};
@@ -364,10 +365,39 @@ function secondsSinceTurnStart(state, nowMs) {
   return isNaN(started) ? 0 : Math.max(0, Math.floor((nowMs - started) / 1000));
 }
 
+// CHI RESTA SENZA TEMPO PAGA LE CARTE CHE HA ANCORA IN MANO.
+// Richiesto esplicitamente: non basta che il tempo scaduto tolga il turno
+// (chargeElapsedTime lo fa già finire la partita per attrito) — chi lo fa
+// scadere deve anche PERDERE qualcosa, con lo stesso metro di Burraco
+// Pulito per le carte rimaste in mano a fine mazzo: ogni carta vale
+// cardPointValue (3-7=5, figure=10, Asso=15, pinella=20, jolly=30), e
+// quel totale se lo toglie dai PV dei propri quattro personaggi — non
+// dell'avversario, sono le SUE carte non giocate a pesare su di lui.
+// Il malus si scarica seme per seme nell'ordine canonico (SUITS): il
+// primo personaggio ancora in vita lo assorbe finché può, quello che
+// avanza passa al successivo — la stessa logica con cui un colpo che
+// eccede il bersaglio si racconterebbe, non un taglio uguale per tutti.
+function applicaMalusTempoScaduto(state, playerIndex) {
+  const player = state.players[playerIndex];
+  let restante = meldPointValue(player.hand);
+  for (const s of SUITS) {
+    if (restante <= 0) break;
+    const personaggio = player.characters[s];
+    if (!personaggio || personaggio.pv <= 0) continue;
+    const tolto = Math.min(personaggio.pv, restante);
+    personaggio.pv -= tolto;
+    restante -= tolto;
+  }
+}
+
 // Fine partita senza chiusura né KO (mazzo esaurito o orologio a zero):
 // vince chi ha più PV totali rimasti sui propri 4 personaggi (assunzione #6).
+// Sul timeout, PRIMA di contare, chi ha fatto scadere il tempo paga le
+// carte rimaste in mano (vedi applicaMalusTempoScaduto): il conto che
+// decide la partita è già quello penalizzato, non quello nudo.
 function resolveByAttrition(state, reason) {
   if (state.status !== 'in_progress') return;
+  if (reason === 'timeout') applicaMalusTempoScaduto(state, state.currentPlayerIndex);
   const pv0 = totalPV(state.players[0].characters);
   const pv1 = totalPV(state.players[1].characters);
   state.status = 'finished';

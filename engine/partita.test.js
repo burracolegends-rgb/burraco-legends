@@ -2,7 +2,7 @@
 // (normale e al volo), timeout di turno, orologio di partita esaurito,
 // mazzo esaurito. Uso: node engine/partita.test.js
 
-import { makeCard } from './core-rules.js';
+import { makeCard, SUITS, meldPointValue } from './core-rules.js';
 import {
   createMatch, actionDraw, actionLayMeld, actionAttachToMeld, actionDiscard, usaAbilitaSpeciale, giocaCartaMagica,
   checkTurnTimeout, chargeElapsedTime, TURN_SECONDS, MATCH_SECONDS
@@ -234,9 +234,15 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   state.tallone = [];
   state.players[1].characters['♥'].pv = 10; // rende i PV totali asimmetrici, altrimenti è pareggio
+  const pv0Prima = SUITS.map((s) => state.players[0].characters[s].pv);
   const res = actionDraw(state, 0, T0 + 1000);
   check('pescata su mazzo vuoto chiude la partita', res.matchEnded === true);
   check('motivo: mazzo esaurito', state.winReason === 'mazzo_esaurito');
+  // il malus delle carte rimaste in mano è una punizione per il TEMPO
+  // scaduto, non per essersi ritrovati senza carte da pescare: qui non
+  // è colpa di nessuno, e i PV restano quelli di prima
+  check('il mazzo esaurito non tocca i PV per le carte rimaste in mano',
+    SUITS.every((s, i) => state.players[0].characters[s].pv === pv0Prima[i]));
 }
 
 // --- 8bis. Mazzo esaurito con PV pari: pareggio, non un vincitore forzato ---
@@ -754,11 +760,44 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
   check('ogni giocatore parte con 6 minuti', state.players[0].clockSecondsLeft === 360 && state.players[1].clockSecondsLeft === 360);
 
-  // consumo tutto il monte del giocatore di turno
-  state.players[1].characters['♥'].pv = 10;   // PV asimmetrici, così non è pareggio
+  // consumo tutto il monte del giocatore di turno. Il divario è più
+  // largo di prima (due personaggi abbassati, non uno) apposta: da qui
+  // in poi chi fa scadere il tempo paga anche le carte rimaste in mano
+  // (vedi test 27bis), quindi il giocatore 0 arriva a questo confronto
+  // già con qualche PV in meno — un margine stretto renderebbe questo
+  // controllo, che vuole verificare solo la durata del monte tempo, non
+  // il malus, dipendente da quante carte capitano in mano quella volta.
+  state.players[1].characters['♥'].pv = 1;
+  state.players[1].characters['♦'].pv = 1;
   chargeElapsedTime(state, T0 + 361 * 1000);
   check('esaurito il monte la partita finisce', state.status === 'finished' && state.winReason === 'timeout');
   check('vince chi ha più PV totali', state.winner === 0);
+}
+
+// --- 27bis. Tempo scaduto: le carte rimaste in mano si scontano dai
+// propri personaggi, non da quelli dell'avversario. Richiesto
+// esplicitamente: chi fa scadere il tempo "perde i punti vita delle
+// carte che gli rimangono", sottratti "sui punti vita dei propri
+// personaggi", e SOLO DOPO si contano i PV totali per decidere chi vince.
+{
+  const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
+  // mano nota, valore calcolabile a mano: 3(5) + 8(10) + Asso(15) +
+  // pinella(20) + jolly(30) = 80 punti
+  const mano = [makeCard('♥', 3), makeCard('♦', 8), makeCard('♣', 1), makeCard('♠', 2), makeCard(null, 0, true)];
+  check('il valore di questa mano è 80, come nel resto del controllo', meldPointValue(mano) === 80);
+  state.players[0].hand = mano;
+  state.players[0].characters['♥'].pv = 50;   // assorbe i primi 50 del malus...
+  state.players[0].characters['♦'].pv = 100;  // ...e i 30 che avanzano finiscono sul prossimo, in ordine di seme
+  chargeElapsedTime(state, T0 + (MATCH_SECONDS + 1) * 1000);
+  check('il primo personaggio in ordine di seme assorbe finché può (50 su 50: a zero)',
+    state.players[0].characters['♥'].pv === 0);
+  check('quello che avanza (30) passa al successivo',
+    state.players[0].characters['♦'].pv === 70);
+  check('gli altri due non sono toccati: il malus si ferma appena è saldato',
+    state.players[0].characters['♣'].pv === 100 && state.players[0].characters['♠'].pv === 100);
+  check('la mano di chi NON ha fatto scadere il tempo resta intatta',
+    state.players[1].characters['♥'].pv === 100 && state.players[1].characters['♦'].pv === 100 &&
+    state.players[1].characters['♣'].pv === 100 && state.players[1].characters['♠'].pv === 100);
 }
 
 // --- 28. La stat "difesa" del personaggio riduce il danno, su ogni fonte ---

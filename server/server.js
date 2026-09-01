@@ -246,7 +246,7 @@ async function mazzoDaGiocare(gettone, mazzoChiesto) {
 }
 
 // STUDIO_SECONDI serve alle prove automatiche, che non possono stare
-// trenta secondi ferme ad aspettare. In partita vera non si tocca.
+// dieci secondi ferme ad aspettare. In partita vera non si tocca.
 const stanze = creaRegistroStanze({
   squadre: squadreDiProva,
   // Una Carta Magica giocata se ne va anche dalla collezione: vale un

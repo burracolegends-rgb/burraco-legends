@@ -433,15 +433,15 @@ console.log('\n--- UN COLPO DATO RESTA DATO ---');
 }
 
 // ============================================================
-// I TRENTA SECONDI IN CUI SI GUARDA IL TAVOLO
+// I DIECI SECONDI IN CUI SI GUARDA IL TAVOLO
 //
 // Appena distribuite le carte si era gia' dentro il proprio minuto:
 // bisognava decidere senza aver nemmeno visto quali eroi aveva schierato
-// l'altro. Ora la partita comincia trenta secondi dopo. La cosa che
-// conta e' che quei trenta secondi non li paghi nessuno: gli orologi
-// partono da li'.
+// l'altro. Ora la partita comincia dieci secondi dopo (erano trenta,
+// ridotti su richiesta esplicita). La cosa che conta e' che quei dieci
+// secondi non li paghi nessuno: gli orologi partono da li'.
 // ============================================================
-console.log('\n--- I TRENTA SECONDI PRIMA DI COMINCIARE ---');
+console.log('\n--- I DIECI SECONDI PRIMA DI COMINCIARE ---');
 {
   const r = nuovoRegistro();
   const a = r.apri('A');
@@ -464,13 +464,13 @@ console.log('\n--- I TRENTA SECONDI PRIMA DI COMINCIARE ---');
   check('chi prova a giocare subito viene fermato', subito.ok === false);
   check('e gli si dice quanto manca', /si comincia fra \d+ second/i.test(subito.motivo || ''));
 
-  avanti(10000);
-  check('a dieci secondi ancora no', r.muovi(a.codice, suo, { tipo: 'pesca' }).ok === false);
+  avanti(5000);
+  check('a cinque secondi ancora no', r.muovi(a.codice, suo, { tipo: 'pesca' }).ok === false);
 
   // esattamente allo scoccare: si gioca
   ORA = apertura + SECONDI_DI_STUDIO * 1000;
   const via = r.muovi(a.codice, suo, { tipo: 'pesca' });
-  check('allo scoccare dei trenta secondi si gioca', via.ok === true, via.motivo);
+  check('allo scoccare dei dieci secondi si gioca', via.ok === true, via.motivo);
 
   const v = (await guarda(r, a.codice, a.segreto, -1)).vista;
   check('lo studio non e\' stato scalato a chi ha giocato',

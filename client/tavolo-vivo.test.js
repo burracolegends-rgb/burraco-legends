@@ -133,7 +133,7 @@ check('gli otto personaggi sono in tavola', d.querySelectorAll('.bcard[data-seme
   check('toccando, il sorteggio si chiude', !box.classList.contains('mostra'));
 }
 
-// ---------- 2. i trenta secondi in cui si guarda ----------
+// ---------- 2. i dieci secondi in cui si guarda ----------
 const toast = () => (d.getElementById('toast') || {}).textContent || '';
 const studioVisibile = () => {
   const s = d.getElementById('studio');
@@ -146,7 +146,9 @@ check('e provando a pescare il tavolo dice di aspettare', /si comincia fra/i.tes
 check('infatti in mano ce ne sono ancora undici',
   w.__tavolo().players[0].hand.length === 11);
 
-// ---------- 3. passati i trenta secondi, si gioca ----------
+// ---------- 3. passati i dieci secondi, si gioca ----------
+// (il salto resta ampio, 35s: qui non si misura il confine esatto —
+// quello lo fa stanze.test.js — solo che PASSATO lo studio si giochi)
 salto = 35000;
 await attendi(400);
 check('finito lo studio, il conto sparisce', !studioVisibile());

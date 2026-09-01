@@ -1,12 +1,12 @@
 // ============================================================
-// I TRENTA SECONDI SI DEVONO VEDERE, DA TUTTE E DUE LE PARTI
+// I DIECI SECONDI SI DEVONO VEDERE, DA TUTTE E DUE LE PARTI
 //
 // La regola funzionava — provando a giocare il server rispondeva "si
 // comincia fra N secondi" — ma il numerone al centro dello schermo non
 // compariva. Una regola che si fa sentire solo quando ti blocca, senza
 // mai mostrarti quanto manca, sembra un difetto anche quando e' giusta.
 //
-// Questo file gira col server VERO e i trenta secondi accesi: gli altri
+// Questo file gira col server VERO e i dieci secondi accesi: gli altri
 // controlli li spengono per non stare fermi ad aspettare, ed e' proprio
 // per questo che nessuno di loro poteva accorgersene.
 // ============================================================
@@ -17,14 +17,14 @@ import { join } from 'node:path';
 let JSDOM;
 try { ({ JSDOM } = await import('jsdom')); }
 catch (e) {
-  console.log('\n--- I TRENTA SECONDI SI VEDONO? ---\n');
+  console.log('\n--- I DIECI SECONDI SI VEDONO? ---\n');
   console.log('SALTATO: manca jsdom. Installalo con:  npm install\n');
   process.exit(0);
 }
 
 process.env.MAGAZZINO = join(tmpdir(), 'burraco-legends-studio.json');
 process.env.NON_AVVIARE = '1';
-delete process.env.STUDIO_SECONDI;          // QUI i trenta secondi ci sono davvero
+delete process.env.STUDIO_SECONDI;          // QUI i dieci secondi ci sono davvero
 const { server } = await import('../server/server.js');
 const { SECONDI_DI_STUDIO } = await import('../engine/partita.js');
 
@@ -35,7 +35,7 @@ const check = (nome, ok, dettaglio) => {
 };
 const attendi = (ms) => new Promise((r) => setTimeout(r, ms));
 
-console.log('\n--- I TRENTA SECONDI SI VEDONO? ---\n');
+console.log('\n--- I DIECI SECONDI SI VEDONO? ---\n');
 
 await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
 const BASE = 'http://127.0.0.1:' + server.address().port;
