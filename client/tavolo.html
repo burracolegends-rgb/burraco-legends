@@ -1783,52 +1783,41 @@
          ma non si mostra. */
       #ruotaAvviso { display: none !important; }
     }
+    /* IL LEGNO VERO, NON PIÙ SIMULATO. Fin qui il tavolo di legno era
+       tutto gradienti CSS — venatura, nodi, giunte fra le assi, disegnati
+       a mano. Buono, ma restava un'approssimazione. Sostituito con una
+       texture vera (illustrata apposta, stessa palette di prima: legno
+       di noce scuro, luce calda dall'alto, accenti oro/ottone appena
+       percepibili sui bordi — senza nessun intarsio o medaglione
+       circolare al centro, evitato di proposito). */
     body {
       background:
-        /* la lampada sopra il tavolo, l'unica luce nella stanza */
-        radial-gradient(ellipse 58% 44% at 50% 32%, rgba(255,196,120,0.16), transparent 70%),
-        /* due nodi nel legno, apposta non allineati e non uguali: un
-           pattern perfettamente ripetuto tradirebbe subito il trucco */
-        radial-gradient(ellipse 5% 3% at 18% 76%, rgba(18,9,4,0.55), transparent 78%),
-        radial-gradient(ellipse 4% 2.4% at 83% 18%, rgba(18,9,4,0.5), transparent 78%),
-        /* le giunte fra un'asse e l'altra */
-        repeating-linear-gradient(90deg, rgba(0,0,0,0.24) 0 2px, transparent 2px 128px),
-        /* la venatura dentro ogni asse: chiara e scura alternate, un filo storte */
-        repeating-linear-gradient(89deg, rgba(255,214,168,0.05) 0 1px, transparent 1px 3px,
-          rgba(0,0,0,0.05) 3px 4px, transparent 4px 7px),
-        /* il legno di fondo, piu' chiaro dove cade la luce della lampada */
-        radial-gradient(ellipse 80% 60% at 50% 38%, #5a3a1e 0%, #3c2513 42%, #24160b 76%, #150c06 100%) !important;
+        url('immagini/decorazioni/tavolo-legno.webp') center / cover no-repeat,
+        #1c1108 !important;
     }
     /* bordi scuriti: l'occhio va al centro e ci resta */
     body::after {
       content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
       box-shadow: inset 0 0 22vh rgba(0,0,0,0.62), inset 0 0 6vh rgba(0,0,0,0.35);
     }
+    /* Trasparente apposta: e' un figlio nel flusso normale del body, non
+       un elemento a parte — lasciandolo senza sfondo suo, il legno del
+       body continua sotto di lui senza cuciture, la stessa immagine
+       vista da un'altra finestra invece di due texture diverse
+       affiancate. Resta solo un'ombra interna, per un campo di gioco
+       leggermente incassato rispetto al resto del tavolo. */
     .table-battlefield {
       position: relative;
-      background:
-        /* l'intarsio chiaro al centro, dove le carte si posano */
-        radial-gradient(ellipse 44% 42% at 50% 50%, rgba(198,152,94,0.14), transparent 74%),
-        /* le stesse assi del tavolo intorno, ma piu' fitte: qui si guarda da vicino */
-        repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 92px),
-        repeating-linear-gradient(89deg, rgba(255,214,168,0.045) 0 1px, transparent 1px 3px,
-          rgba(0,0,0,0.045) 3px 4px, transparent 4px 7px),
-        radial-gradient(ellipse 90% 76% at 50% 50%, #4a2e17 0%, #32200f 55%, #201309 100%);
+      background: transparent;
       box-shadow: inset 0 0 120px rgba(0,0,0,0.5), inset 0 0 40px rgba(0,0,0,0.22);
     }
-    /* l'intarsio: due anelli di legno/ottone incassati al centro del
-       tavolo, dove si gioca — fermi, come un vero intaglio nel legno */
+    /* l'anello inciso al centro, dove si gioca — fermo, come un vero
+       intaglio nel legno. Uno solo (prima erano due): con la texture
+       vera sotto, un secondo anello era solo rumore in più. */
     .table-battlefield::before {
       content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-      width: min(46vh, 340px); height: min(46vh, 340px); border-radius: 50%;
-      border: 2px solid rgba(216,168,96,0.26);
-      box-shadow: 0 0 0 1px rgba(0,0,0,0.3), inset 0 0 30px rgba(0,0,0,0.25);
-      pointer-events: none;
-    }
-    .table-battlefield::after {
-      content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-      width: min(30vh, 220px); height: min(30vh, 220px); border-radius: 50%;
-      border: 1px solid rgba(216,168,96,0.18);
+      width: min(40vh, 300px); height: min(40vh, 300px); border-radius: 50%;
+      border: 1px solid rgba(216,168,96,0.22);
       pointer-events: none;
     }
 
@@ -10136,12 +10125,12 @@ function tutorialCostruisciPannello() {
     // era piu' spazio vuoto di quanto servisse — segnalato con uno
     // screenshot da chi lo guardava sul tavolo vero. Il padding
     // verticale scende da 10px a 6px (quello laterale resta: serve a
-    // non far toccare il testo al bordo dorato). Anche il pannello
-    // intero si sposta un po' piu' su (+62px → +50px dal bordo
-    // superiore), come richiesto ("sposti tutta la pagina di
-    // pochissimo più sopra").
+    // non far toccare il testo al bordo dorato). Il pannello intero si
+    // sposta un po' piu' su (+62px → +50px dal bordo superiore) — poi
+    // avanti e indietro di un paio di tentativi ("troppo sotto",
+    // "troppo sopra") fino a un punto di mezzo: +54px.
     '#tutorialPannello{position:fixed;right:max(10px,env(safe-area-inset-right));',
-    '  top:calc(max(10px,env(safe-area-inset-top)) + 50px);',
+    '  top:calc(max(10px,env(safe-area-inset-top)) + 54px);',
     '  width:min(288px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
     '  border:1px solid rgba(255,204,0,.45);border-radius:10px;padding:6px 12px;z-index:9000;',
     '  font-family:sans-serif;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:none;}',
