@@ -4905,10 +4905,18 @@ function tutorialCostruisciPannello() {
     // in alto, invece che in una riga tutta sua in fondo: una riga di
     // meno da disegnare e il pannello si accorcia ulteriormente, come
     // richiesto ("mettilo più sopra così ridimensioni la finestra").
+    // Poi ancora: il bordo verde sopra il titolo e sotto l'ultima riga
+    // era piu' spazio vuoto di quanto servisse — segnalato con uno
+    // screenshot da chi lo guardava sul tavolo vero. Il padding
+    // verticale scende da 10px a 6px (quello laterale resta: serve a
+    // non far toccare il testo al bordo dorato). Anche il pannello
+    // intero si sposta un po' piu' su (+62px → +50px dal bordo
+    // superiore), come richiesto ("sposti tutta la pagina di
+    // pochissimo più sopra").
     '#tutorialPannello{position:fixed;right:max(10px,env(safe-area-inset-right));',
-    '  top:calc(max(10px,env(safe-area-inset-top)) + 62px);',
+    '  top:calc(max(10px,env(safe-area-inset-top)) + 50px);',
     '  width:min(288px,calc(100vw - 20px));background:rgba(8,32,20,.96);color:#fff;',
-    '  border:1px solid rgba(255,204,0,.45);border-radius:10px;padding:10px 12px;z-index:9000;',
+    '  border:1px solid rgba(255,204,0,.45);border-radius:10px;padding:6px 12px;z-index:9000;',
     '  font-family:sans-serif;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:none;}',
     '#tutorialPannello button{pointer-events:auto;}',
     '#tutorialPannello .testa{display:flex;align-items:center;justify-content:space-between;gap:8px;}',
