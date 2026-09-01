@@ -53,7 +53,8 @@
     animation: ondeggia 3.4s ease-in-out infinite;
   }
   .pacchetto:hover { animation-play-state: paused; }
-  .pacchetto svg { width: 100%; display: block; }
+  .pacchetto .arte-pacchetto { width: 100%; display: block; border-radius: 4%; user-select: none; }
+  .pacchetto .linee-strappo { position: absolute; inset: 0; width: 100%; height: 100%; }
   @keyframes ondeggia {
     0%,100% { transform: translateY(0) rotate(-1.4deg); }
     50%     { transform: translateY(-1.6vh) rotate(1.4deg); }
@@ -82,22 +83,27 @@
   .pacchetto.strappato .meta-alta  { animation: linguettaVia 1.05s ease-in both; }
   .pacchetto.strappato .meta-bassa { animation: corpoGiu    1.05s ease-in both; }
 
-  /* la linguetta: prima si solleva piano da un lato (lo strappo che si
-     apre e si vede), poi parte di scatto verso l'alto a destra */
+  /* Erano due pezzi che "esplodevano" in direzioni quasi opposte, ognuno
+     ruotando E traslando E (il corpo) rimpicciolendo insieme: troppe
+     cose diverse in una volta, e con un'immagine fotorealistica sopra
+     (prima era un disegno piatto) si vedeva ancora di piu' quanto fosse
+     posticcio — segnalato esplicitamente: "anche l'animazione dello
+     strappo è pessima". Rifatta sul gesto vero: si strappa una
+     linguetta, non si fa scoppiare un pacchetto. transform-origin resta
+     al 18% (la linea dello strappo, vedi .meta) — e' proprio la
+     cerniera su cui la linguetta ruota all'indietro, come un coperchio.
+     Il corpo non ruota quasi per niente e non rimpicciolisce: scivola
+     dritto verso il basso, come ci si aspetta scompaia sotto al tavolo. */
   @keyframes linguettaVia {
     0%   { transform: translate(0,0) rotate(0deg); opacity: 1; }
-    14%  { transform: translate(-1%, -1%) rotate(-3deg); opacity: 1; }
-    30%  { transform: translate(1%, -4%) rotate(-9deg); opacity: 1; }
-    46%  { transform: translate(4%, -9%) rotate(-15deg); opacity: 1; }
-    100% { transform: translate(74%, -125%) rotate(-62deg); opacity: 0; }
+    20%  { transform: translate(-0.5%, -2%) rotate(-6deg); opacity: 1; }
+    50%  { transform: translate(1%, -10%) rotate(-32deg); opacity: 1; }
+    100% { transform: translate(10%, -46%) rotate(-96deg); opacity: 0; }
   }
-  /* il corpo resiste, si inclina dall'altra parte e poi sprofonda */
   @keyframes corpoGiu {
     0%   { transform: translate(0,0) rotate(0deg); opacity: 1; }
-    14%  { transform: translate(1%, 1%) rotate(2deg); opacity: 1; }
-    30%  { transform: translate(-1%, 2%) rotate(4deg); opacity: 1; }
-    46%  { transform: translate(-3%, 4%) rotate(7deg); opacity: 1; }
-    100% { transform: translate(-26%, 118%) rotate(24deg) scale(0.88); opacity: 0; }
+    35%  { transform: translate(0, 3%) rotate(0.5deg); opacity: 1; }
+    100% { transform: translate(0, 52%) rotate(2deg); opacity: 0; }
   }
   /* bagliore che esce dallo squarcio mentre le due metà si separano */
   .squarcio {
@@ -484,99 +490,12 @@
   <!-- 1. pacchetto chiuso -->
   <div id="fase-chiuso" style="display:flex;flex-direction:column;align-items:center;gap:2.4vh">
     <div class="pacchetto" id="pacchetto" title="Tocca per aprire">
-      <!-- i colori dell'involucro, dichiarati una volta sola -->
-      <svg width="0" height="0" style="position:absolute" xmlns="http://www.w3.org/2000/svg"><defs>
-        <linearGradient id="busta" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%"   stop-color="#5b3fa8"/>
-          <stop offset="45%"  stop-color="#38246e"/>
-          <stop offset="100%" stop-color="#1d1240"/>
-        </linearGradient>
-        <linearGradient id="oroGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stop-color="#fff2c8"/>
-          <stop offset="50%"  stop-color="#e8c46a"/>
-          <stop offset="100%" stop-color="#8a6118"/>
-        </linearGradient>
-        <linearGradient id="lucido" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%"  stop-color="#fff" stop-opacity="0"/>
-          <stop offset="45%" stop-color="#fff" stop-opacity="0.22"/>
-          <stop offset="60%" stop-color="#fff" stop-opacity="0"/>
-        </linearGradient>
-      </defs></svg>
       <!-- copia invisibile: serve solo a dare l'altezza al contenitore -->
-      <div class="meta-misura"><svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
-        <rect x="10" y="10" width="180" height="260" rx="14" fill="url(#busta)" stroke="url(#oroGrad)" stroke-width="4"/>
-        <rect x="10" y="10" width="180" height="260" rx="14" fill="url(#lucido)"/>
-        <rect x="22" y="22" width="156" height="236" rx="9" fill="none" stroke="rgba(255,240,200,0.28)" stroke-width="1.4"/>
-        <text x="100" y="40" font-size="13" text-anchor="middle" fill="url(#oroGrad)"
-              font-family="Georgia, serif" letter-spacing="4">STRAPPA QUI</text>
-        <g transform="translate(100 158)">
-          <circle r="54" fill="none" stroke="url(#oroGrad)" stroke-width="2.6" opacity="0.75"/>
-          <circle r="42" fill="rgba(0,0,0,0.3)"/>
-          <text y="-24" font-size="26" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">&#9829;</text>
-          <text y="34"  font-size="26" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">&#9830;</text>
-          <text x="-27" y="12" font-size="26" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">&#9827;</text>
-          <text x="27"  y="12" font-size="26" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">&#9824;</text>
-          <circle r="9" fill="url(#oroGrad)"/>
-        </g>
-        <text x="100" y="250" font-size="15" text-anchor="middle" fill="url(#oroGrad)"
-              font-family="Georgia, serif" letter-spacing="3">PACCHETTO</text>
-        <!-- il bordo dello strappo: a pacchetto chiuso le due copie si
-             sovrappongono e sembra una perforazione, appena si aprono
-             ognuna mostra la sua meta di frastagliatura -->
-        <path class="dentellatura" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none"
-              stroke="rgba(255,240,200,0.5)" stroke-width="2.2" stroke-dasharray="5 4"/>
-        <path class="orlo" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="#ffe9ae" stroke-width="2" opacity="0"/>
-      </svg></div>
+      <div class="meta-misura"><img class="arte-pacchetto" src="immagini/decorazioni/pacchetto-carte.webp" alt="" draggable="false"><svg class="linee-strappo" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg"><path class="dentellatura" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="rgba(255,240,200,0.5)" stroke-width="2.2" stroke-dasharray="5 4"/><path class="orlo" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="#ffe9ae" stroke-width="2" opacity="0"/></svg></div>
       <!-- corpo del pacchetto: ritagliato sotto la dentellatura -->
-      <div class="meta meta-bassa"><svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
-        <rect x="10" y="10" width="180" height="260" rx="14" fill="url(#busta)" stroke="url(#oroGrad)" stroke-width="4"/>
-        <rect x="10" y="10" width="180" height="260" rx="14" fill="url(#lucido)"/>
-        <rect x="22" y="22" width="156" height="236" rx="9" fill="none" stroke="rgba(255,240,200,0.28)" stroke-width="1.4"/>
-        <text x="100" y="40" font-size="13" text-anchor="middle" fill="url(#oroGrad)"
-              font-family="Georgia, serif" letter-spacing="4">STRAPPA QUI</text>
-        <g transform="translate(100 158)">
-          <circle r="54" fill="none" stroke="url(#oroGrad)" stroke-width="2.6" opacity="0.75"/>
-          <circle r="42" fill="rgba(0,0,0,0.3)"/>
-          <text y="-24" font-size="26" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">&#9829;</text>
-          <text y="34"  font-size="26" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">&#9830;</text>
-          <text x="-27" y="12" font-size="26" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">&#9827;</text>
-          <text x="27"  y="12" font-size="26" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">&#9824;</text>
-          <circle r="9" fill="url(#oroGrad)"/>
-        </g>
-        <text x="100" y="250" font-size="15" text-anchor="middle" fill="url(#oroGrad)"
-              font-family="Georgia, serif" letter-spacing="3">PACCHETTO</text>
-        <!-- il bordo dello strappo: a pacchetto chiuso le due copie si
-             sovrappongono e sembra una perforazione, appena si aprono
-             ognuna mostra la sua meta di frastagliatura -->
-        <path class="dentellatura" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none"
-              stroke="rgba(255,240,200,0.5)" stroke-width="2.2" stroke-dasharray="5 4"/>
-        <path class="orlo" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="#ffe9ae" stroke-width="2" opacity="0"/>
-      </svg></div>
+      <div class="meta meta-bassa"><img class="arte-pacchetto" src="immagini/decorazioni/pacchetto-carte.webp" alt="" draggable="false"><svg class="linee-strappo" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg"><path class="dentellatura" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="rgba(255,240,200,0.5)" stroke-width="2.2" stroke-dasharray="5 4"/><path class="orlo" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="#ffe9ae" stroke-width="2" opacity="0"/></svg></div>
       <!-- linguetta: ritagliata sopra la dentellatura -->
-      <div class="meta meta-alta"><svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
-        <rect x="10" y="10" width="180" height="260" rx="14" fill="url(#busta)" stroke="url(#oroGrad)" stroke-width="4"/>
-        <rect x="10" y="10" width="180" height="260" rx="14" fill="url(#lucido)"/>
-        <rect x="22" y="22" width="156" height="236" rx="9" fill="none" stroke="rgba(255,240,200,0.28)" stroke-width="1.4"/>
-        <text x="100" y="40" font-size="13" text-anchor="middle" fill="url(#oroGrad)"
-              font-family="Georgia, serif" letter-spacing="4">STRAPPA QUI</text>
-        <g transform="translate(100 158)">
-          <circle r="54" fill="none" stroke="url(#oroGrad)" stroke-width="2.6" opacity="0.75"/>
-          <circle r="42" fill="rgba(0,0,0,0.3)"/>
-          <text y="-24" font-size="26" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">&#9829;</text>
-          <text y="34"  font-size="26" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">&#9830;</text>
-          <text x="-27" y="12" font-size="26" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">&#9827;</text>
-          <text x="27"  y="12" font-size="26" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">&#9824;</text>
-          <circle r="9" fill="url(#oroGrad)"/>
-        </g>
-        <text x="100" y="250" font-size="15" text-anchor="middle" fill="url(#oroGrad)"
-              font-family="Georgia, serif" letter-spacing="3">PACCHETTO</text>
-        <!-- il bordo dello strappo: a pacchetto chiuso le due copie si
-             sovrappongono e sembra una perforazione, appena si aprono
-             ognuna mostra la sua meta di frastagliatura -->
-        <path class="dentellatura" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none"
-              stroke="rgba(255,240,200,0.5)" stroke-width="2.2" stroke-dasharray="5 4"/>
-        <path class="orlo" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="#ffe9ae" stroke-width="2" opacity="0"/>
-      </svg></div>
+      <div class="meta meta-alta"><img class="arte-pacchetto" src="immagini/decorazioni/pacchetto-carte.webp" alt="" draggable="false"><svg class="linee-strappo" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg"><path class="dentellatura" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="rgba(255,240,200,0.5)" stroke-width="2.2" stroke-dasharray="5 4"/><path class="orlo" d="M10 50 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l16 -7 l16 7 l14 -6" fill="none" stroke="#ffe9ae" stroke-width="2" opacity="0"/></svg></div>
       <div class="squarcio"></div>
     </div>
     <div class="quante-dentro" id="quante-dentro"></div>
