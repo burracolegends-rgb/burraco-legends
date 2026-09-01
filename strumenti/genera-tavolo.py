@@ -524,23 +524,18 @@ BATTLE_CSS = r'''
     .top-shelf .battle-strip { margin: 0 8px 0 4px; }
 
     /* =========================================================
-       SFONDO: TAVOLO FATATO
-       Il feltro verde piatto dell'originale diventa una radura incantata.
-       Tutto disegnato con CSS (nessuna immagine da scaricare): alone di
-       luce lunare al centro, bagliori colorati agli angoli, venature e
-       lucciole che fluttuano piano.
-       ========================================================= */
-    /* ============================================================
-       LO SFONDO
-       Era il verde da circolo del burraco: giusto per un'app di burraco,
-       fuori posto per una partita fra eroi. Adesso e' pietra scura con
-       due bracieri agli angoli — uno caldo, uno freddo — e una luce che
-       cade dall'alto sul centro, dove si gioca. Il verde resta, ma solo
-       come riflesso lontano: si riconosce che e' un tavolo da carte
-       senza che sembri un tappeto verde.
+       SFONDO: IL TAVOLO DI LEGNO
+       Prima era una radura incantata — pietra scura, bracieri, lucciole
+       che fluttuano: bello ma fuori tema per un tavolo dove si gioca a
+       carte. Segnalato da chi lo guardava per davvero: "magari facciamo
+       un nuovo panno, questo e' poco bello" — e "togli anche
+       l'animazione fatata". Adesso e' legno scuro intarsiato, come un
+       vero tavolo da gioco di una locanda: assi, venatura, un intarsio
+       chiaro dove le carte si posano. Nessuna animazione: un tavolo di
+       legno non luccica e non si muove da solo.
        Tutto disegnato dal foglio di stile: nessuna immagine da scaricare,
        la pagina continua ad aprirsi col doppio clic anche senza rete.
-       ============================================================ */
+       ========================================================= */
     /* IL MARGINE DI SICUREZZA MANCAVA PROPRIO DOVE SERVE ORA.
        game.html (sopra) mette il margine di sicurezza solo sopra e
        sotto: "ai lati no", dice il commento, perche' Burraco Pulito si
@@ -616,23 +611,19 @@ BATTLE_CSS = r'''
     }
     body {
       background:
-        /* la luce che cade sul tavolo */
-        radial-gradient(ellipse 62% 48% at 50% 38%, rgba(190,220,255,0.10), transparent 68%),
-        /* braciere caldo a sinistra, luce fredda a destra */
-        radial-gradient(ellipse 46% 42% at 6% 88%, rgba(255,140,60,0.16), transparent 70%),
-        radial-gradient(ellipse 46% 42% at 96% 10%, rgba(110,140,255,0.16), transparent 70%),
-        /* un ricordo di feltro verde, molto in fondo */
-        radial-gradient(ellipse 70% 46% at 50% 56%, rgba(40,120,90,0.22), transparent 72%),
-        /* la camera di pietra vera, illustrata — prima era solo un gradiente */
-        url('immagini/decorazioni/sfondo-tavolo.webp') center / cover no-repeat,
-        linear-gradient(168deg, #171426 0%, #1d1a2f 34%, #15121f 68%, #0b0912 100%) !important;
-    }
-    /* venature della pietra: due griglie storte e quasi invisibili */
-    body::before {
-      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background:
-        repeating-linear-gradient(64deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 42px),
-        repeating-linear-gradient(-26deg, rgba(0,0,0,0.10) 0 1px, transparent 1px 58px);
+        /* la lampada sopra il tavolo, l'unica luce nella stanza */
+        radial-gradient(ellipse 58% 44% at 50% 32%, rgba(255,196,120,0.16), transparent 70%),
+        /* due nodi nel legno, apposta non allineati e non uguali: un
+           pattern perfettamente ripetuto tradirebbe subito il trucco */
+        radial-gradient(ellipse 5% 3% at 18% 76%, rgba(18,9,4,0.55), transparent 78%),
+        radial-gradient(ellipse 4% 2.4% at 83% 18%, rgba(18,9,4,0.5), transparent 78%),
+        /* le giunte fra un'asse e l'altra */
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.24) 0 2px, transparent 2px 128px),
+        /* la venatura dentro ogni asse: chiara e scura alternate, un filo storte */
+        repeating-linear-gradient(89deg, rgba(255,214,168,0.05) 0 1px, transparent 1px 3px,
+          rgba(0,0,0,0.05) 3px 4px, transparent 4px 7px),
+        /* il legno di fondo, piu' chiaro dove cade la luce della lampada */
+        radial-gradient(ellipse 80% 60% at 50% 38%, #5a3a1e 0%, #3c2513 42%, #24160b 76%, #150c06 100%) !important;
     }
     /* bordi scuriti: l'occhio va al centro e ci resta */
     body::after {
@@ -642,46 +633,29 @@ BATTLE_CSS = r'''
     .table-battlefield {
       position: relative;
       background:
-        /* il cerchio inciso al centro del campo: due anelli sottilissimi,
-           si notano solo quando si guarda, ed e' giusto cosi' */
-        radial-gradient(circle at 50% 50%, transparent 0 27%, rgba(232,196,106,0.09) 27% 27.4%, transparent 27.4%),
-        radial-gradient(circle at 50% 50%, transparent 0 33%, rgba(232,196,106,0.06) 33% 33.3%, transparent 33.3%),
-        radial-gradient(ellipse 62% 58% at 50% 50%, rgba(190,255,225,0.10), transparent 72%),
-        repeating-linear-gradient(102deg, rgba(255,255,255,0.022) 0 2px, transparent 2px 26px),
-        repeating-linear-gradient(-14deg, rgba(0,0,0,0.05) 0 3px, transparent 3px 34px),
-        /* il feltro vero: pietra illustrata al posto del solo effetto di luce */
-        url('immagini/decorazioni/feltro-tavolo.webp') center / cover no-repeat;
-      box-shadow: inset 0 0 120px rgba(0,0,0,0.42), inset 0 0 40px rgba(126,255,204,0.06);
+        /* l'intarsio chiaro al centro, dove le carte si posano */
+        radial-gradient(ellipse 44% 42% at 50% 50%, rgba(198,152,94,0.14), transparent 74%),
+        /* le stesse assi del tavolo intorno, ma piu' fitte: qui si guarda da vicino */
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 92px),
+        repeating-linear-gradient(89deg, rgba(255,214,168,0.045) 0 1px, transparent 1px 3px,
+          rgba(0,0,0,0.045) 3px 4px, transparent 4px 7px),
+        radial-gradient(ellipse 90% 76% at 50% 50%, #4a2e17 0%, #32200f 55%, #201309 100%);
+      box-shadow: inset 0 0 120px rgba(0,0,0,0.5), inset 0 0 40px rgba(0,0,0,0.22);
     }
-    /* cerchio rituale al centro del tavolo */
+    /* l'intarsio: due anelli di legno/ottone incassati al centro del
+       tavolo, dove si gioca — fermi, come un vero intaglio nel legno */
     .table-battlefield::before {
       content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
       width: min(46vh, 340px); height: min(46vh, 340px); border-radius: 50%;
-      border: 1px solid rgba(190,255,225,0.16);
-      box-shadow: 0 0 40px rgba(126,255,204,0.10), inset 0 0 60px rgba(126,255,204,0.06);
+      border: 2px solid rgba(216,168,96,0.26);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.3), inset 0 0 30px rgba(0,0,0,0.25);
       pointer-events: none;
     }
     .table-battlefield::after {
       content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
       width: min(30vh, 220px); height: min(30vh, 220px); border-radius: 50%;
-      border: 1px dashed rgba(232,196,106,0.16);
-      animation: ruotaCerchio 90s linear infinite; pointer-events: none;
-    }
-    @keyframes ruotaCerchio { to { transform: translate(-50%,-50%) rotate(360deg); } }
-
-    /* lucciole */
-    .lucciole { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
-    .lucciola {
-      position: absolute; width: 3px; height: 3px; border-radius: 50%;
-      background: #dfffe9; box-shadow: 0 0 8px 2px rgba(190,255,225,0.75);
-      opacity: 0; animation: fluttua linear infinite;
-    }
-    @keyframes fluttua {
-      0%   { opacity: 0; transform: translate(0, 0) scale(0.7); }
-      12%  { opacity: 0.85; }
-      50%  { transform: translate(22px, -46px) scale(1.15); }
-      88%  { opacity: 0.7; }
-      100% { opacity: 0; transform: translate(-14px, -96px) scale(0.6); }
+      border: 1px solid rgba(216,168,96,0.18);
+      pointer-events: none;
     }
 
     /* Erano una fascia verde quasi piena (0.92 di opacita') sopra le
@@ -1472,7 +1446,6 @@ BATTLE_CSS = r'''
 '''
 
 BODY = r'''
-<div class="lucciole" id="lucciole"></div>
 <div class="toast" id="toast"></div>
 <div id="resoconto"></div>
 
@@ -4988,7 +4961,6 @@ function avviaTutorialTavolo() {
   disegna();
   aggiornaOrologiTurno();   // un disegno solo: da qui in poi l'orologio resta fermo
   agganciaPannello();
-  accendiLucciole();
   window.addEventListener('resize', () => disegna());
   tutorialIndicePasso = 0;
   tutorialUltimoIndiceMostrato = -1;
@@ -5019,7 +4991,6 @@ function avviaTutorialTavolo() {
     }
     accettaVista(r);
     agganciaPannello();
-    accendiLucciole();
     setInterval(aggiornaOrologiTurno, 250);
     window.addEventListener('resize', () => disegna());
     const nome = RETE.nomi[RETE.io === 0 ? 1 : 0];
@@ -5057,28 +5028,10 @@ function avviaTutorialTavolo() {
   disegna();
   mostraSorteggio();          // il mazzo dice chi comincia, e lo si guarda
   agganciaPannello();
-  accendiLucciole();
   if (mio) setTimeout(() => avviso('Giochi con il tuo mazzo.'), 400);
   setInterval(aggiornaOrologiTurno, 250);   // i due cronometri del minuto
   window.addEventListener('resize', () => disegna());  // il ventaglio si ricalcola sulla larghezza vera
 })();
-
-// Lucciole dello sfondo fatato: puntini luminosi che salgono piano, con
-// tempi e posizioni diversi così non si vede la ripetizione.
-function accendiLucciole() {
-  const box = $('lucciole');
-  if (!box) return;
-  let html = '';
-  for (let i = 0; i < 26; i++) {
-    const x = Math.random() * 100, y = 25 + Math.random() * 70;
-    const durata = 7 + Math.random() * 9, ritardo = Math.random() * 10;
-    const dim = 2 + Math.random() * 2.5;
-    html += '<div class="lucciola" style="left:' + x.toFixed(2) + '%; top:' + y.toFixed(2) + '%;' +
-            'width:' + dim.toFixed(1) + 'px; height:' + dim.toFixed(1) + 'px;' +
-            'animation-duration:' + durata.toFixed(1) + 's; animation-delay:-' + ritardo.toFixed(1) + 's"></div>';
-  }
-  box.innerHTML = html;
-}
 '''
 
 # ------------------------------------------------------------
