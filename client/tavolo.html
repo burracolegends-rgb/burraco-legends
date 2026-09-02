@@ -10072,7 +10072,11 @@ const TUTORIAL_PASSI = [
            'ogni copia si usa <b>una sola volta</b>. Tocca la tua carta <b>Sorpresa</b>, poi <b>USA</b>.',
     illumina: '#battleGiocatore .bcard.magica[data-tipo="sorpresa"]',
     azione: () => magie && magie[0] && (magie[0].consumate || []).length > 0,
-    aiuto: 'La carta col sigillo ✦ e la scritta SORPRESA, nella tua fila.',
+    // Niente `aiuto` qui apposta: la carta e' gia' illuminata (il
+    // bagliore dorato la indica), un'altra riga di testo che si accende
+    // dopo 8 secondi allungava il pannello proprio mentre bisognava
+    // leggere il bottone USA sotto di lui — richiesto esplicitamente:
+    // "puoi eliminare l'ultima riga... così puoi ridurre la finestra".
     // Il tocco apre #veloCarta, la scheda a tutto schermo con la carta
     // grande e il bottone USA di fianco: quel bottone sta verticalmente
     // in mezzo allo schermo, proprio dove il pannello (fisso in alto a
