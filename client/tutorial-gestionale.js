@@ -474,12 +474,22 @@
     }
     if (def.aspetta) {
       var tentativiAspetta = 0;
+      // 9 secondi (30 tentativi) erano pensati per un blocco vero — un
+      // acquisto rifiutato, una pagina lenta a caricare — ma OGNI passo
+      // `aspetta` di questo tutorial aspetta in realta' un gesto lungo
+      // di chi impara: girare fino a 10 carte una per una leggendole, o
+      // scegliere con calma quattro eroi. Nove secondi bastano a malapena
+      // a leggere la PRIMA carta: "Qualcosa si e' fermato" compariva
+      // sempre, anche quando non si era fermato niente — segnalato
+      // esplicitamente: "spesso esce fuori la scritta qualcosa si e'
+      // fermato". Portato a 90 secondi: un vero blocco lo trova ancora,
+      // solo non scambia piu' "sto leggendo" per "sono bloccato".
       attesaInCorso = setInterval(function () {
         var fatto = false;
         try { fatto = !!def.aspetta(); } catch (e) { fatto = false; }
         if (fatto) { avanza(def); return; }
         tentativiAspetta++;
-        if (tentativiAspetta === 30) mostraEmergenzaAspetta(); // ~9 secondi
+        if (tentativiAspetta === 300) mostraEmergenzaAspetta(); // ~90 secondi
       }, 300);
     }
 
