@@ -10072,12 +10072,22 @@ const TUTORIAL_PASSI = [
            'ogni copia si usa <b>una sola volta</b>. Tocca la tua carta <b>Sorpresa</b>, poi <b>USA</b>.',
     illumina: '#battleGiocatore .bcard.magica[data-tipo="sorpresa"]',
     azione: () => magie && magie[0] && (magie[0].consumate || []).length > 0,
-    aiuto: 'La carta col sigillo ✦ e la scritta SORPRESA, nella tua fila.' },
+    aiuto: 'La carta col sigillo ✦ e la scritta SORPRESA, nella tua fila.',
+    // Il tocco apre #veloCarta, la scheda a tutto schermo con la carta
+    // grande e il bottone USA di fianco: quel bottone sta verticalmente
+    // in mezzo allo schermo, proprio dove il pannello (fisso in alto a
+    // destra) di solito finisce — lo copriva. Segnalato: "quando parli
+    // delle carte magiche la finestra copre la scritta usala". Su
+    // questo passo e sul prossimo (stessa scheda, la Trappola) il
+    // pannello sale piu' vicino al bordo superiore, vedi pannelloAlto
+    // in tutorialMostraPasso().
+    pannelloAlto: true },
 
   { passo: 23, titolo: 'Le Trappole',
     testo: 'Le carte <b>Trappola</b> invece restano coperte sul tavolo: l\'avversario sa che ne hai ' +
            'piazzata una, ma non quale, finche\' non scatta da sola al momento giusto.',
-    illumina: '#battleGiocatore .bcard.magica[data-tipo="trappola"]' },
+    illumina: '#battleGiocatore .bcard.magica[data-tipo="trappola"]',
+    pannelloAlto: true },
 
   { passo: 24, titolo: 'Sei pronto',
     testo: 'Ora sai leggere il tavolo, costruire le combinazioni, usare le abilita\' e le Carte ' +
@@ -10224,6 +10234,12 @@ function tutorialMostraPasso() {
     // altezza al pannello — richiesto esplicitamente.
     '<div class="txt">' + def.testo + ' <span class="passo">' + (def.passo || (tutorialIndicePasso + 1)) + ' di ' + totale + '</span></div>' +
     '<div class="aiuto" id="tutAiuto">' + (def.aiuto || '') + '</div>';
+
+  // Di norma il pannello sta dov'e' sempre stato (vedi il CSS): solo i
+  // passi che aprono la scheda #veloCarta (quella con la carta grande e
+  // il bottone USA di fianco, verticalmente in mezzo allo schermo) lo
+  // fanno salire, per non finirci sopra.
+  tutorialPannelloEl.style.top = def.pannelloAlto ? 'max(10px, env(safe-area-inset-top))' : '';
 
   const bottoneAvanti = document.getElementById('tutAvanti');
   if (bottoneAvanti) bottoneAvanti.addEventListener('click', () => tutorialAvanti());
