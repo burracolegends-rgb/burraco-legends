@@ -77,7 +77,7 @@
     box-shadow: inset 0 1px 0 rgba(255,224,160,0.22), 0 4px 14px rgba(0,0,0,0.55);
   }
 
-  .profilo { display: flex; align-items: center; gap: 11px; padding: 6px 16px 6px 6px; }
+  .profilo { display: flex; align-items: center; gap: 11px; padding: 6px 16px 6px 6px; text-decoration: none; color: inherit; }
   .cornice-avatar {
     position: relative; width: 46px; height: 46px; border-radius: 10px;
     background: linear-gradient(150deg, #6b4c2c, #2a1c10);
@@ -265,6 +265,46 @@
     100% { transform: translateY(112vh) rotate(720deg); opacity: 0; }
   }
 
+  /* ---------- IMPOSTAZIONI ----------
+     L'ingranaggio in alto a destra era solo decorativo: nessun clic,
+     nessun contenuto. Stesso linguaggio visivo del pannello impostazioni
+     del tavolo (genera-tavolo.py, PANNELLO_IMPOSTAZIONI) — un velo
+     scuro e un riquadro dorato — cosi' chi lo ha gia' visto la' lo
+     riconosce anche qui, invece di un terzo stile diverso. */
+  .velo-impostazioni {
+    position: fixed; inset: 0; z-index: 500; display: none;
+    align-items: center; justify-content: center; padding: 18px;
+    background: rgba(6,4,10,0.82); backdrop-filter: blur(4px);
+  }
+  .velo-impostazioni.aperto { display: flex; }
+  .pannello-impostazioni {
+    width: min(400px, 100%); max-height: 88vh; overflow-y: auto;
+    border-radius: 16px; padding: 20px; border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(52,38,22,0.97), rgba(20,14,8,0.98));
+    box-shadow: 0 18px 50px rgba(0,0,0,0.8);
+    display: flex; flex-direction: column; gap: 16px;
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+  }
+  .pannello-impostazioni h2 {
+    margin: 0; font-family: Georgia, serif; font-size: 1.05rem;
+    letter-spacing: 2.4px; text-transform: uppercase; color: var(--oro);
+  }
+  .riga-imp { display: flex; flex-direction: column; gap: 9px; }
+  .riga-imp .etichetta {
+    font-size: 0.74rem; letter-spacing: 1.3px; text-transform: uppercase; color: var(--testo-tenue);
+  }
+  .spiega-imp { margin: 0; font-size: 0.73rem; color: #8a7e68; line-height: 1.55; }
+  .scelte-stile { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .bottone-imp {
+    padding: 12px; border-radius: 11px; cursor: pointer; font-family: inherit;
+    font-size: 0.88rem; font-weight: 800; letter-spacing: 0.4px;
+    border: 1px solid rgba(255,255,255,0.16); background: rgba(0,0,0,0.32); color: var(--pergamena);
+    transition: border-color 0.14s, background 0.14s;
+  }
+  .bottone-imp:hover { border-color: var(--oro); }
+  .bottone-imp.scelto { border-color: var(--oro); background: rgba(232,196,106,0.14); color: #f3e6c4; }
+  .bottone-imp.chiudi { background: transparent; font-weight: 600; }
+
   .etichetta-moneta {
     font-size: 0.6rem; letter-spacing: 1px; text-transform: uppercase;
     color: var(--tenue); font-weight: 600;
@@ -314,7 +354,10 @@
     box-shadow: 0 0 10px rgba(232,196,106,0.9);
   }
 
-  .ingranaggio { width: 42px; height: 42px; display: grid; place-items: center; cursor: pointer; }
+  .ingranaggio {
+    width: 42px; height: 42px; display: grid; place-items: center; cursor: pointer;
+    padding: 0; font-family: inherit;
+  }
   .ingranaggio svg { width: 21px; height: 21px; color: var(--oro); }
 
   /* ---------- TITOLO ---------- */
@@ -512,7 +555,7 @@
 
 <!-- ============ BARRA IN ALTO ============ -->
 <div class="barra-alta">
-  <div class="profilo riquadro">
+  <a class="profilo riquadro" href="account.html" title="Il tuo account">
     <div class="cornice-avatar">
       <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
         <defs><linearGradient id="elmo" x1="0" y1="0" x2="0" y2="1">
@@ -530,7 +573,7 @@
       <div class="liv">Livello 15</div>
       <div class="xp"><i></i></div>
     </div>
-  </div>
+  </a>
 
   <div class="valute">
     <a class="valuta sharkini riquadro" id="borsellino" href="negozio.html" title="I tuoi sharkini">
@@ -547,12 +590,12 @@
       <span class="etichetta-moneta">sharkini</span>
       <span class="piu" title="Ricarica sharkini">+</span>
     </a>
-    <div class="ingranaggio riquadro" title="Impostazioni">
+    <button type="button" class="ingranaggio riquadro" id="apriImpostazioni" title="Impostazioni">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <circle cx="12" cy="12" r="3.2"/>
         <path d="M12 2.6v2.6M12 18.8v2.6M21.4 12h-2.6M5.2 12H2.6M18.6 5.4l-1.9 1.9M7.3 16.7l-1.9 1.9M18.6 18.6l-1.9-1.9M7.3 7.3 5.4 5.4"/>
       </svg>
-    </div>
+    </button>
   </div>
 </div>
 
@@ -599,6 +642,38 @@
     <div class="didascalia" id="festa-didascalia"></div>
     <div class="scala" id="festa-scala"></div>
     <button class="raccogli" id="festa-raccogli">Raccogli</button>
+  </div>
+</div>
+
+<!-- ============ IMPOSTAZIONI ============ -->
+<div class="velo-impostazioni" id="veloImpostazioni">
+  <div class="pannello-impostazioni">
+    <h2>Impostazioni</h2>
+
+    <div class="riga-imp">
+      <span class="etichetta">Suoni</span>
+      <div class="scelte-stile">
+        <button class="bottone-imp" id="suoniSi">Accesi</button>
+        <button class="bottone-imp" id="suoniNo">Spenti</button>
+      </div>
+      <p class="spiega-imp">
+        Riguarda il tavolo: fruscio delle carte, colpi e magie. Non sono file
+        scaricati, si costruiscono mentre giochi.
+      </p>
+    </div>
+
+    <div class="riga-imp">
+      <span class="etichetta">Il tour guidato</span>
+      <button class="bottone-imp" id="rivediTutorial">Rivedi il tutorial</button>
+      <p class="spiega-imp">
+        Rifai da capo la visita guidata a negozio, album e scelta del mazzo —
+        senza toccare le tue carte o i tuoi sharkini.
+      </p>
+    </div>
+
+    <div class="riga-imp">
+      <button class="bottone-imp chiudi" id="chiudiImpostazioni">Chiudi</button>
+    </div>
   </div>
 </div>
 
@@ -1626,6 +1701,41 @@ async function guardaSeCEUnaPartitaAperta() {
     (r.vista.eIlMioTurno ? 'Tocca a te!' : 'Sta giocando l\'avversario.');
   $('ripresa').classList.add('viva');
 }
+
+// ------------------------------------------------------------
+// IMPOSTAZIONI — l'ingranaggio era solo decorativo, nessun clic.
+// Stesso interruttore Suoni del tavolo (localStorage 'bb_suoni'): qui
+// non c'è nessun suono da spegnere, ma il tavolo lo legge quando parte,
+// quindi impostarlo da qui vale comunque. "Rivedi il tutorial" e' la
+// funzione gia' annunciata a suo tempo nei commenti di
+// tutorial-gestionale.js ("una versione futura... dalle impostazioni
+// della home") — eccola.
+// ------------------------------------------------------------
+function suoniAccesi() {
+  try { return localStorage.getItem('bb_suoni') !== 'no'; } catch (e) { return true; }
+}
+function aggiornaBottoniSuoni() {
+  $('suoniSi').classList.toggle('scelto', suoniAccesi());
+  $('suoniNo').classList.toggle('scelto', !suoniAccesi());
+}
+$('apriImpostazioni').addEventListener('click', () => {
+  aggiornaBottoniSuoni();
+  $('veloImpostazioni').classList.add('aperto');
+});
+$('chiudiImpostazioni').addEventListener('click', () => {
+  $('veloImpostazioni').classList.remove('aperto');
+});
+$('suoniSi').addEventListener('click', () => {
+  try { localStorage.setItem('bb_suoni', 'si'); } catch (e) {}
+  aggiornaBottoniSuoni();
+});
+$('suoniNo').addEventListener('click', () => {
+  try { localStorage.setItem('bb_suoni', 'no'); } catch (e) {}
+  aggiornaBottoniSuoni();
+});
+$('rivediTutorial').addEventListener('click', () => {
+  location.href = 'home.html?tutorial=1';
+});
 
 (async function avvia() {
   const r = await SCORTA.io();

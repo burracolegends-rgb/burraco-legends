@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends — Il tuo account</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a1e12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root {
+    --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;
+    --pergamena: #f2e6cc; --tenue: #b7a686; --notte: #0d0a13;
+    --verde: #58c48a; --blu: #5cc0ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(42,29,61,0.65) 0%, transparent 62%),
+      radial-gradient(ellipse at 50% 100%, rgba(58,36,16,0.6) 0%, transparent 58%),
+      url('immagini/decorazioni/sfondo-tavolo.webp') center / cover no-repeat,
+      var(--notte);
+    padding: max(14px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+  }
+
+  .barra { width: 100%; max-width: 640px; }
+  /* Stessa misura ovunque nell'app: vedi genera-negozio.py e le altre
+     pagine, dove 2.55rem era rimasto piu' grande senza un motivo. */
+  .torna { font-size: 1.275rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+  .torna .icona-torna { width: 60px; height: 60px; object-fit: contain; }
+  .torna:hover { color: var(--oro); }
+
+  .pagina { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 14px; }
+
+  .intestazione {
+    display: flex; align-items: center; gap: 16px;
+    border-radius: 16px; padding: 18px;
+    border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(74,53,32,0.92), rgba(28,19,12,0.94));
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.22), 0 4px 14px rgba(0,0,0,0.55);
+  }
+  .cornice-avatar {
+    position: relative; width: 60px; height: 60px; border-radius: 12px; flex: 0 0 auto;
+    background: linear-gradient(150deg, #6b4c2c, #2a1c10);
+    border: 2px solid var(--oro); overflow: hidden;
+  }
+  .cornice-avatar svg { width: 100%; height: 100%; display: block; }
+  .nick { font-size: 1.15rem; font-weight: 700; }
+  .da-quando { font-size: 0.8rem; color: var(--tenue); margin-top: 3px; }
+
+  .riquadro {
+    border-radius: 16px; padding: 16px 18px;
+    border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(74,53,32,0.92), rgba(28,19,12,0.94));
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.22), 0 4px 14px rgba(0,0,0,0.55);
+  }
+  .riquadro h2 {
+    margin: 0 0 12px; font-family: Georgia, serif; font-size: 0.92rem;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--oro);
+  }
+  .griglia-stat { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat .n { font-size: 1.5rem; font-weight: 800; color: var(--oro-chiaro); font-variant-numeric: tabular-nums; }
+  .stat .e { font-size: 0.76rem; color: var(--tenue); letter-spacing: 0.3px; }
+
+  .riga-saldo { display: flex; align-items: center; gap: 10px; }
+  .riga-saldo svg { width: 30px; height: 30px; flex: 0 0 auto; }
+  .riga-saldo .n { font-size: 1.4rem; font-weight: 800; color: var(--oro-chiaro); font-variant-numeric: tabular-nums; }
+  .riga-saldo .e { font-size: 0.82rem; color: var(--tenue); }
+
+  .serie-righe { display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
+  .serie-righe .r { display: flex; justify-content: space-between; gap: 10px; color: var(--tenue); }
+  .serie-righe .r b { color: var(--pergamena); font-weight: 700; }
+
+  .avviso-prova {
+    display: none; text-align: center; font-size: 0.78rem; color: #ffb3bf;
+    border: 1px solid rgba(240,115,107,0.5); border-radius: 12px; padding: 10px 14px;
+    background: rgba(120,30,30,0.25);
+  }
+  .avviso-prova.mostra { display: block; }
+</style>
+</head>
+<body>
+
+<div class="barra">
+  <a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Torna alla home</a>
+</div>
+
+<div class="pagina">
+  <div class="intestazione">
+    <div class="cornice-avatar">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="elmo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#d9c48f"/><stop offset="100%" stop-color="#8a7143"/>
+        </linearGradient></defs>
+        <circle cx="24" cy="26" r="19" fill="#3a2a1c"/>
+        <path d="M24 8c-8 0-13 5.5-13 13v7h5v-7c0-4.6 3.4-8 8-8s8 3.4 8 8v7h5v-7c0-7.5-5-13-13-13z" fill="url(#elmo)"/>
+        <path d="M15 28h18v9a9 9 0 0 1-18 0z" fill="url(#elmo)" opacity="0.9"/>
+        <rect x="22.5" y="8" width="3" height="30" fill="#5d4a2a" opacity="0.75"/>
+        <path d="M17 31h5v5h-5z M26 31h5v5h-5z" fill="#231a10"/>
+      </svg>
+    </div>
+    <div>
+      <div class="nick" id="nick">Giocatore anonimo</div>
+      <div class="da-quando" id="daQuando"></div>
+    </div>
+  </div>
+
+  <div class="riquadro">
+    <h2>Sharkini</h2>
+    <div class="riga-saldo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="pinna" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#fff0c2"/><stop offset="55%" stop-color="#e8c46a"/><stop offset="100%" stop-color="#9a6f21"/>
+        </linearGradient></defs>
+        <circle cx="12" cy="12" r="10.5" fill="url(#pinna)" stroke="#7a5616" stroke-width="1"/>
+        <circle cx="12" cy="12" r="8" fill="none" stroke="#8d6520" stroke-width="0.7" opacity="0.7"/>
+        <path d="M12 5.6c2.6 2.2 4.4 5 5 8.8-1.6-1-3.2-1.5-5-1.5s-3.4 .5-5 1.5c.6-3.8 2.4-6.6 5-8.8z" fill="#5f4210"/>
+        <path d="M6.4 16.4c1.8 1.2 3.6 1.8 5.6 1.8s3.8-.6 5.6-1.8c-.5 1.3-1.2 2-2.2 2-1 0-1.6-.5-3.4-.5s-2.4.5-3.4.5c-1 0-1.7-.7-2.2-2z" fill="#5f4210" opacity="0.85"/>
+      </svg>
+      <span class="n" id="saldo">0</span>
+      <span class="e">sharkini</span>
+    </div>
+  </div>
+
+  <div class="riquadro">
+    <h2>La tua collezione</h2>
+    <div class="griglia-stat">
+      <div class="stat"><span class="n" id="carteDiverse">0</span><span class="e">carte diverse possedute</span></div>
+      <div class="stat"><span class="n" id="carteInTutto">0</span><span class="e">copie in tutto</span></div>
+      <div class="stat"><span class="n" id="pacchettiAperti">0</span><span class="e">pacchetti aperti</span></div>
+      <div class="stat"><span class="n" id="carteAperte">0</span><span class="e">carte scoperte in tutto</span></div>
+    </div>
+  </div>
+
+  <div class="riquadro">
+    <h2>Premio del giorno</h2>
+    <div class="serie-righe">
+      <div class="r"><span>Serie attuale</span><b id="serieGiorno">—</b></div>
+      <div class="r"><span>Oggi</span><b id="serieOggi">—</b></div>
+    </div>
+  </div>
+
+  <div class="avviso-prova" id="avvisoProva">
+    Questi sono dati di prova (la pagina non è collegata al server):
+    apri il gioco da un indirizzo vero per vedere il tuo account reale.
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ------------------------------------------------------------
+// STESSA REGOLA DI HOME.HTML: se la pagina arriva da un server, si
+// parla col server; se e' stata aperta col doppio clic, non c'e'
+// nessun server con cui parlare e si mostra un avviso onesto invece
+// di inventare numeri. Qui serve solo LEGGERE lo stato — nessun
+// acquisto, nessuna scrittura — quindi il ponte e' molto piu' corto
+// di quello di home.html.
+// ------------------------------------------------------------
+const DAL_SERVER = location.protocol === 'http:' || location.protocol === 'https:';
+
+async function leggiStato() {
+  if (!DAL_SERVER) return { ok: false, diProva: true };
+  let gettone = null;
+  try { gettone = localStorage.getItem('bb_gettone'); } catch (e) {}
+  if (!gettone) return { ok: false, diProva: true };
+  try {
+    const r = await fetch('/api/io', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gettone })
+    });
+    return await r.json();
+  } catch (e) {
+    return { ok: false, diProva: true };
+  }
+}
+
+function giorniDa(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - Date.parse(iso);
+  if (!(ms >= 0)) return 0;
+  return Math.floor(ms / 86400000);
+}
+
+(async function avvia() {
+  const r = await leggiStato();
+
+  if (!r || !r.ok) {
+    $('avvisoProva').classList.add('mostra');
+    return;
+  }
+
+  if (r.nome) $('nick').textContent = r.nome;
+
+  const giorni = giorniDa(r.creatoIl);
+  $('daQuando').textContent = giorni === null ? ''
+    : giorni === 0 ? 'Giochi da oggi'
+    : giorni === 1 ? 'Giochi da ieri'
+    : 'Giochi da ' + giorni + ' giorni';
+
+  $('saldo').textContent = (r.saldo || 0).toLocaleString('it-IT');
+  $('carteDiverse').textContent = r.carteDiverse || 0;
+  $('carteInTutto').textContent = r.carteInTutto || 0;
+  $('pacchettiAperti').textContent = r.pacchettiAperti || 0;
+  $('carteAperte').textContent = r.carteAperte || 0;
+
+  const premio = r.premio || {};
+  $('serieGiorno').textContent = premio.giorno ? (premio.giorno + ' di fila') : '—';
+  $('serieOggi').textContent = premio.giaRitiratoOggi ? 'Già ritirato' :
+    premio.puoRitirare ? 'Da ritirare' : '—';
+})();
+</script>
+</body>
+</html>

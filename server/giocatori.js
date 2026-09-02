@@ -164,6 +164,7 @@ export function creaAnagrafe({
     const stato = statoSerie(g.serie, adesso);
     return {
       nome: g.nome,
+      creatoIl: g.creatoIl,
       saldo: g.serie.saldo,
       collezione: g.collezione,
       carteDiverse: Object.keys(g.collezione).length,
