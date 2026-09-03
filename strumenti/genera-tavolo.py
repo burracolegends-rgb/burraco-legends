@@ -2852,7 +2852,19 @@ function apriSchermataFine() {
   const motivi = { chiusura: 'Chiusura', chiusura_al_volo: 'Chiusura al volo', ko: 'KO: tutti i personaggi azzerati',
                    timeout: 'Tempo scaduto: vince chi ha più PV totali', mazzo_esaurito: 'Mazzo esaurito: vince chi ha più PV totali', pareggio: 'PV totali pari',
                    abbandono: S.winner === 0 ? 'L\'avversario ha abbandonato il tavolo' : 'Hai abbandonato il tavolo' };
-  $('fineTxt').textContent = motivi[S.winReason] || S.winReason || '';
+  let spiegazione = motivi[S.winReason] || S.winReason || '';
+  // IL CROLLO DEI PV VA SPIEGATO. Quando scade il tempo, chi lo ha fatto
+  // scadere paga le carte che aveva ancora in mano: i suoi punti vita
+  // calano di colpo, e senza questa riga la schermata diceva soltanto
+  // "vince chi ha più PV totali" — il giocatore vedeva il proprio conto
+  // sprofondare senza sapere perche'.
+  const malus = S.malusTempoScaduto;
+  if (malus && malus.punti > 0) {
+    spiegazione += malus.giocatore === 0
+      ? ' · Le carte rimaste nella tua mano valevano ' + malus.punti + ' PV, e li hai pagati'
+      : ' · Le carte rimaste in mano all\'avversario valevano ' + malus.punti + ' PV, e li ha pagati';
+  }
+  $('fineTxt').textContent = spiegazione;
   SUONI.fine(S.winner === 0);
   if (S.winner === 0) {
     coriandoli(60);
@@ -3005,6 +3017,13 @@ function statoDaVista(v) {
     // anche il vincitore si ribalta: qui 0 vuol dire sempre "io"
     winner: v.vincitore === null || v.vincitore === undefined ? null : (v.vincitore === io ? 0 : 1),
     winReason: v.motivo,
+    // Come il vincitore, anche questo si gira nel "io / avversario" del
+    // tavolo: la vista parla per numero di posto, qui players[0] sono
+    // sempre io. Serve alla schermata di fine per dire quanti PV ha
+    // pagato chi ha fatto scadere il tempo.
+    malusTempoScaduto: v.malusTempoScaduto
+      ? { giocatore: v.malusTempoScaduto.giocatore === io ? 0 : 1, punti: v.malusTempoScaduto.punti }
+      : null,
     tallone: Array.from({ length: v.talloneQuante }, (_, i) => cartaCoperta('t', i)),
     scarti: v.scarti,
     players: [giocatoreDaVista(v.giocatori[io], true, 'mia'),
@@ -4885,6 +4904,7 @@ let tutorialElementoIlluminato = null;
 let tutorialRiprovaAlone = null;
 let tutorialGuardia = null;
 let tutorialTimerAiuto = null;
+let tutorialTimerSblocco = null;
 let tutorialIndicePasso = 0;
 let tutorialUltimoIndiceMostrato = -1;
 let tutorialPannelloEl = null;
@@ -4929,6 +4949,7 @@ function tutorialCostruisciPannello() {
     '#tutorialPannello .passo{font-size:9.5px;opacity:.55;white-space:nowrap;}',
     '#tutorialPannello .principale{flex:0 0 auto;border:none;border-radius:7px;padding:6px 12px;',
     '  font-weight:bold;font-size:11.5px;cursor:pointer;background:#ffcc00;color:#1a1a1a;font-family:inherit;}',
+    '#tutorialPannello .principale.sblocco{display:block;width:100%;margin-top:9px;}',
     '#tutorialPannello .aiuto{margin-top:7px;font-size:10.5px;color:#ffcc00;opacity:0;transition:opacity .5s;}',
     '#tutorialPannello .aiuto.visibile{opacity:.9;}',
     '@keyframes tutorialTavoloAlone{0%,100%{box-shadow:0 0 0 2px rgba(255,204,0,.30),0 0 12px 3px rgba(255,204,0,.18);}',
@@ -4972,6 +4993,31 @@ function tutorialIllumina(selettore, onEsito) {
   prova();
 }
 
+// LA VIA D'USCITA, QUANDO SERVE DAVVERO.
+// C'era un bottone "Salta tutto" sempre a schermo: era di sviluppo ed e'
+// stato tolto, giustamente — un giocatore vero non deve poter saltare la
+// sua unica occasione di imparare. Ma toglierlo ha lasciato scoperto il
+// caso opposto: diciassette passi chiedono un'azione precisa, e chi per
+// qualunque motivo non riesce a compierla non ha piu' modo di andare
+// avanti — ricaricare fa ripartire il tutorial da capo, quindi non si
+// arriva mai a una partita normale. Questo bottone non e' un "salta":
+// compare solo DOPO che qualcuno e' rimasto fermo abbastanza a lungo da
+// essere davvero bloccato, e fa avanzare di un passo, non salta il resto.
+function mostraVieneAvantiComunque(perche) {
+  if (!tutorialPannelloEl || document.getElementById('tutEmergenza')) return;
+  const emergenza = document.createElement('button');
+  // In fondo al pannello, su una riga sua: nella testata sarebbe il TERZO
+  // elemento accanto al titolo e al segnaposto "Tocca l'elemento
+  // illuminato", e li' non ci sta — misurato, usciva di 85px oltre il
+  // bordo destro dello schermo, illeggibile e non premibile.
+  emergenza.className = 'principale sblocco';
+  emergenza.id = 'tutEmergenza';
+  emergenza.textContent = 'Vai avanti comunque';
+  emergenza.title = perche;
+  emergenza.addEventListener('click', () => tutorialAvanti());
+  tutorialPannelloEl.appendChild(emergenza);
+}
+
 function tutorialMostraPasso() {
   const def = TUTORIAL_PASSI[tutorialIndicePasso];
   if (!def) { tutorialFinisci(); return; }
@@ -4983,21 +5029,14 @@ function tutorialMostraPasso() {
 
   clearInterval(tutorialGuardia); tutorialGuardia = null;
   clearTimeout(tutorialTimerAiuto);
+  clearTimeout(tutorialTimerSblocco);
 
   if (!tutorialPannelloEl) tutorialPannelloEl = tutorialCostruisciPannello();
   const totale = TUTORIAL_PASSI[TUTORIAL_PASSI.length - 1].passo || TUTORIAL_PASSI.length;
 
   tutorialIllumina(def.illumina, (trovato) => {
-    if (trovato || !tutorialPannelloEl) return;
-    const testa = tutorialPannelloEl.querySelector('.testa');
-    if (!testa || document.getElementById('tutEmergenza')) return;
-    const emergenza = document.createElement('button');
-    emergenza.className = 'principale';
-    emergenza.id = 'tutEmergenza';
-    emergenza.textContent = 'Vai avanti comunque';
-    emergenza.title = 'Non trovo l\'elemento da evidenziare: puoi comunque proseguire da qui.';
-    emergenza.addEventListener('click', () => tutorialAvanti());
-    testa.appendChild(emergenza);
+    if (trovato) return;
+    mostraVieneAvantiComunque('Non trovo l\'elemento da evidenziare: puoi comunque proseguire da qui.');
   });
 
   tutorialPannelloEl.innerHTML =
@@ -5010,7 +5049,10 @@ function tutorialMostraPasso() {
     // su una riga sua: attaccato al testo invece che sotto, non aggiunge
     // altezza al pannello — richiesto esplicitamente.
     '<div class="txt">' + def.testo + ' <span class="passo">' + (def.passo || (tutorialIndicePasso + 1)) + ' di ' + totale + '</span></div>' +
-    '<div class="aiuto" id="tutAiuto">' + (def.aiuto || '') + '</div>';
+    // Il riquadro dell'aiuto si disegna solo se un aiuto c'e' davvero:
+    // vuoto restava comunque nel documento col suo margine, e il timer
+    // degli 8 secondi girava per accendere un div senza niente dentro.
+    (def.aiuto ? '<div class="aiuto" id="tutAiuto">' + def.aiuto + '</div>' : '');
 
   // Di norma il pannello sta dov'e' sempre stato (vedi il CSS): solo i
   // passi che aprono la scheda #veloCarta (quella con la carta grande e
@@ -5022,10 +5064,18 @@ function tutorialMostraPasso() {
   if (bottoneAvanti) bottoneAvanti.addEventListener('click', () => tutorialAvanti());
 
   if (def.azione) {
-    tutorialTimerAiuto = setTimeout(() => {
-      const aiuto = document.getElementById('tutAiuto');
-      if (aiuto) aiuto.classList.add('visibile');
-    }, 8000);
+    if (def.aiuto) {
+      tutorialTimerAiuto = setTimeout(() => {
+        const aiuto = document.getElementById('tutAiuto');
+        if (aiuto) aiuto.classList.add('visibile');
+      }, 8000);
+    }
+    // Dopo l'aiuto scritto, se ancora non si e' mosso niente, la via
+    // d'uscita: quaranta secondi fermi su un passo solo non sono "sto
+    // leggendo", sono "non ci riesco".
+    tutorialTimerSblocco = setTimeout(() => {
+      mostraVieneAvantiComunque('Sei fermo su questo passo da un po\': puoi proseguire da qui.');
+    }, 40000);
     tutorialGuardia = setInterval(() => {
       let fatto = false;
       try { fatto = !!def.azione(); } catch (e) { fatto = false; }

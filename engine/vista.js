@@ -154,6 +154,11 @@ export function vistaPer(stato, io, adesso = Date.now()) {
     stato: stato.status,
     vincitore: stato.winner,
     motivo: stato.winReason,
+    // Chi ha fatto scadere il tempo paga le carte rimaste in mano: senza
+    // questo campo, in rete i PV crollerebbero e la schermata di fine non
+    // avrebbe modo di dire perche'. `giocatore` e' l'indice assoluto — il
+    // tavolo lo gira nel suo "io / avversario", come fa col vincitore.
+    malusTempoScaduto: stato.malusTempoScaduto || null,
     diChiEIlTurno: stato.currentPlayerIndex,
     eIlMioTurno: stato.currentPlayerIndex === io,
     iniziaAlle: stato.iniziaAlle || null,   // prima di allora si guarda e basta

@@ -795,6 +795,15 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
     state.players[0].characters['♦'].pv === 70);
   check('gli altri due non sono toccati: il malus si ferma appena è saldato',
     state.players[0].characters['♣'].pv === 100 && state.players[0].characters['♠'].pv === 100);
+  // E il conto va SCRITTO nello stato, non solo applicato: i PV crollano
+  // di colpo, e senza questo la schermata di fine non avrebbe modo di
+  // dire perche'. Il tavolo lo legge da qui (e dalla vista, in rete).
+  check('lo stato dice quanto si e pagato, e chi',
+    !!state.malusTempoScaduto &&
+    state.malusTempoScaduto.punti === 80 &&
+    state.malusTempoScaduto.giocatore === 0,
+    JSON.stringify(state.malusTempoScaduto));
+
   check('la mano di chi NON ha fatto scadere il tempo resta intatta',
     state.players[1].characters['♥'].pv === 100 && state.players[1].characters['♦'].pv === 100 &&
     state.players[1].characters['♣'].pv === 100 && state.players[1].characters['♠'].pv === 100);

@@ -324,7 +324,10 @@ export function createMatch({ now = Date.now(), characters = null, abilities = n
     moveCounter: 0,
     iniziaAlle: iso,          // prima di questo momento si guarda e basta
     winner: null,
-    winReason: null // 'chiusura' | 'chiusura_al_volo' | 'ko' | 'timeout' | 'mazzo_esaurito' | 'pareggio'
+    winReason: null, // 'chiusura' | 'chiusura_al_volo' | 'ko' | 'timeout' | 'mazzo_esaurito' | 'pareggio'
+    // { giocatore, punti } quando il tempo scade: quanti PV ha pagato,
+    // e chi. Resta null in tutti gli altri finali.
+    malusTempoScaduto: null
   };
 }
 
@@ -379,7 +382,8 @@ function secondsSinceTurnStart(state, nowMs) {
 // eccede il bersaglio si racconterebbe, non un taglio uguale per tutti.
 function applicaMalusTempoScaduto(state, playerIndex) {
   const player = state.players[playerIndex];
-  let restante = meldPointValue(player.hand);
+  const dovuto = meldPointValue(player.hand);
+  let restante = dovuto;
   for (const s of SUITS) {
     if (restante <= 0) break;
     const personaggio = player.characters[s];
@@ -388,6 +392,7 @@ function applicaMalusTempoScaduto(state, playerIndex) {
     personaggio.pv -= tolto;
     restante -= tolto;
   }
+  return dovuto;
 }
 
 // Fine partita senza chiusura né KO (mazzo esaurito o orologio a zero):
@@ -397,7 +402,14 @@ function applicaMalusTempoScaduto(state, playerIndex) {
 // decide la partita è già quello penalizzato, non quello nudo.
 function resolveByAttrition(state, reason) {
   if (state.status !== 'in_progress') return;
-  if (reason === 'timeout') applicaMalusTempoScaduto(state, state.currentPlayerIndex);
+  // Il malus si SCRIVE nello stato, non solo si applica: i PV crollano di
+  // colpo e senza questo nessuno saprebbe dire perche'. Il tavolo lo legge
+  // per spiegarlo nella schermata di fine.
+  if (reason === 'timeout') {
+    const chi = state.currentPlayerIndex;
+    const punti = applicaMalusTempoScaduto(state, chi);
+    if (punti > 0) state.malusTempoScaduto = { giocatore: chi, punti };
+  }
   const pv0 = totalPV(state.players[0].characters);
   const pv1 = totalPV(state.players[1].characters);
   state.status = 'finished';

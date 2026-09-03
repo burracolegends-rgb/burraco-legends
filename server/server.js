@@ -422,6 +422,23 @@ const server = http.createServer(async (req, res) => {
       return rispondi(res, 200, { ok: true, gettone: r.gettone, nuovo: r.nuovo, ...suo });
     }
 
+    // SOLO LEGGERE, MAI CREARE.
+    // /api/io serve a ENTRARE: con un gettone che il server non
+    // riconosce piu' (succede a ogni riavvio finche' il magazzino non e'
+    // su un disco vero) fa la cosa giusta per la home — ne consegna uno
+    // nuovo e la home se lo salva. Ma una pagina che vuole solo GUARDARE
+    // il proprio conto non deve creare niente: chiamando /api/io si
+    // ritroverebbe davanti un account appena nato, con il suo bonus di
+    // benvenuto e le sue carte di dotazione, e lo mostrerebbe come se
+    // fosse quello di chi guarda. Numeri veri, di nessuno.
+    // Qui invece un gettone sconosciuto riceve un no, e chi ha chiesto
+    // puo' dirlo onestamente.
+    if (via === '/api/conto' && req.method === 'POST') {
+      const corpo = await leggiCorpo(req);
+      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      return rispondi(res, 200, await anagrafe.stato(corpo.gettone));
+    }
+
     if (via === '/api/premio' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });

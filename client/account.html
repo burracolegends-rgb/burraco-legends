@@ -75,6 +75,18 @@
   .serie-righe .r { display: flex; justify-content: space-between; gap: 10px; color: var(--tenue); }
   .serie-righe .r b { color: var(--pergamena); font-weight: 700; }
 
+  .accesso-riga { display: flex; flex-direction: column; gap: 10px; }
+  .accesso-stato { font-size: 0.9rem; }
+  .accesso-stato .b { color: var(--oro-chiaro); font-weight: 700; }
+  .accesso-nota { margin: 0; font-size: 0.76rem; color: #8a7e68; line-height: 1.55; }
+  .accesso-bottone {
+    align-self: flex-start; padding: 11px 20px; border-radius: 11px; cursor: pointer;
+    font-family: inherit; font-size: 0.88rem; font-weight: 800; letter-spacing: 0.4px;
+    text-decoration: none; display: inline-block;
+    border: 1px solid var(--oro); color: #2a1c08;
+    background: linear-gradient(180deg, #ffe9ae, var(--oro) 55%, #b98d2c);
+  }
+
   .avviso-prova {
     display: none; text-align: center; font-size: 0.78rem; color: #ffb3bf;
     border: 1px solid rgba(240,115,107,0.5); border-radius: 12px; padding: 10px 14px;
@@ -89,7 +101,7 @@
   <a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Torna alla home</a>
 </div>
 
-<div class="pagina">
+<div class="pagina" id="pagina">
   <div class="intestazione">
     <div class="cornice-avatar">
       <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -144,10 +156,16 @@
     </div>
   </div>
 
-  <div class="avviso-prova" id="avvisoProva">
-    Questi sono dati di prova (la pagina non è collegata al server):
-    apri il gioco da un indirizzo vero per vedere il tuo account reale.
+  <div class="riquadro" id="riquadroAccesso" style="display:none">
+    <h2>Come sei entrato</h2>
+    <div class="accesso-riga">
+      <div class="accesso-stato" id="accessoStato"></div>
+      <p class="accesso-nota" id="accessoNota"></p>
+      <a class="accesso-bottone" id="accessoBottone" href="accedi.html">Accedi o registrati</a>
+    </div>
   </div>
+
+  <div class="avviso-prova" id="avvisoProva"></div>
 </div>
 
 <script>
@@ -169,7 +187,14 @@ async function leggiStato() {
   try { gettone = localStorage.getItem('bb_gettone'); } catch (e) {}
   if (!gettone) return { ok: false, diProva: true };
   try {
-    const r = await fetch('/api/io', {
+    // /api/conto, non /api/io: la seconda serve a ENTRARE e con un
+    // gettone che il server non riconosce piu' (a ogni riavvio, finche'
+    // il magazzino non e' su un disco vero) ne apre uno NUOVO. Questa
+    // pagina guarda e basta: chiedendo a /api/io si sarebbe ritrovata
+    // davanti un account appena nato — bonus di benvenuto, carte della
+    // dotazione, "giochi da oggi" — e lo avrebbe mostrato come se fosse
+    // il tuo. Numeri veri, di nessuno, diversi a ogni visita.
+    const r = await fetch('/api/conto', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gettone })
     });
@@ -186,11 +211,50 @@ function giorniDa(iso) {
   return Math.floor(ms / 86400000);
 }
 
+async function chiSono() {
+  if (!DAL_SERVER) return;
+  let gettone = null;
+  try { gettone = localStorage.getItem('bb_gettone'); } catch (e) {}
+  if (!gettone) return;
+  let r = null;
+  try {
+    const risposta = await fetch('/api/chi-sono', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gettone })
+    });
+    r = await risposta.json();
+  } catch (e) { return; }
+  if (!r || !r.ok) return;
+
+  const collegato = Array.isArray(r.collegatoCon) ? r.collegatoCon : [];
+  const protetto = !!r.registrato || collegato.length > 0;
+
+  $('accessoStato').innerHTML = protetto
+    ? (r.registrato ? 'Account protetto · <span class="b">' + r.email + '</span>'
+                    : 'Collegato con <span class="b">' + collegato.join(', ') + '</span>')
+    : 'Stai giocando <span class="b">come ospite</span>';
+  $('accessoNota').textContent = protetto
+    ? 'Le tue carte e i tuoi sharkini ti seguono: puoi rientrare da un altro dispositivo.'
+    : 'Le tue carte e i tuoi sharkini vivono solo in questo browser: se cancelli i dati del sito, o cambi telefono, riparti da zero. Collegando un accesso te li porti dietro.';
+  $('accessoBottone').style.display = protetto ? 'none' : '';
+  $('riquadroAccesso').style.display = '';
+}
+
 (async function avvia() {
   const r = await leggiStato();
 
+  // DUE MOTIVI DIVERSI PER NON AVERE DATI, DETTI IN MODO DIVERSO.
+  // Prima erano lo stesso messaggio ("dati di prova") accanto a una
+  // pagina piena di zeri: sembrava che l'account fosse vuoto, non che
+  // non lo si stesse leggendo. Ora i riquadri spariscono del tutto —
+  // meglio niente che numeri che non vogliono dire niente.
   if (!r || !r.ok) {
-    $('avvisoProva').classList.add('mostra');
+    const a = $('avvisoProva');
+    a.textContent = !DAL_SERVER
+      ? 'Questa pagina è aperta senza server, quindi non ha nessun conto da leggere: apri il gioco dal suo indirizzo per vedere il tuo account.'
+      : 'Non risulta nessun account su questo dispositivo. Torna alla home: se il tuo era andato perso, da lì ne viene creato uno nuovo.';
+    a.classList.add('mostra');
+    for (const el of document.querySelectorAll('.pagina > .riquadro, .pagina > .intestazione')) el.remove();
     return;
   }
 
@@ -207,6 +271,14 @@ function giorniDa(iso) {
   $('carteInTutto').textContent = r.carteInTutto || 0;
   $('pacchettiAperti').textContent = r.pacchettiAperti || 0;
   $('carteAperte').textContent = r.carteAperte || 0;
+
+  // COME SEI ENTRATO — e cosa succede se perdi questo dispositivo.
+  // Il gettone anonimo vive solo in questo browser: chi non ha collegato
+  // niente e' a un "cancella dati" di distanza dal ripartire da zero, ed
+  // e' giusto che lo sappia da qui, dove guarda le sue cose. Chi invece
+  // ha gia' un'email o un accesso collegato non deve vedersi proporre di
+  // registrarsi come se fosse un ospite.
+  chiSono();
 
   const premio = r.premio || {};
   $('serieGiorno').textContent = premio.giorno ? (premio.giorno + ' di fila') : '—';
