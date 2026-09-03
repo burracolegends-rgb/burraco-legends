@@ -77,9 +77,22 @@
   .picker { margin-top: 10px; display: none; flex-direction: column; gap: 6px; }
   /* Aperto, il picker non spinge più via il resto della pagina: si
      sovrappone a tutto schermo, come un pannello vero, invece di
-     allungare la colonna e far scorrere via ciò che sta sotto. */
+     allungare la colonna e far scorrere via ciò che sta sotto.
+
+     LO Z-INDEX STA SOPRA IL TUTORIAL, e non è un dettaglio: il pannello
+     del tutorial (.bb-tut-pannello, in tutorial-gestionale.js) è fisso
+     in cima allo schermo a 9999, e con il vecchio 200 questa lista gli
+     finiva sotto. L'effetto, segnalato con due schermate, era di quelli
+     che sembrano un blocco: si toccava una casella, la pagina diventava
+     tutta scura (è questo velo allo 0.94) e in cima restava solo il
+     testo del tutorial — gli eroi fra cui scegliere c'erano, sotto, ma
+     coperti. Toccabili però sì: il pannello ha pointer-events:none, così
+     si sceglieva alla cieca e il contatore saliva da solo (1/4, 2/4)
+     senza aver visto niente. Sopra il tutorial, invece, il picker si
+     comporta come qualsiasi finestra modale: copre, si usa, si chiude, e
+     il tutorial ricompare dov'era. */
   .picker.open {
-    display: flex; position: fixed; inset: 0; z-index: 200; margin: 0;
+    display: flex; position: fixed; inset: 0; z-index: 10100; margin: 0;
     padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
     background: rgba(10, 7, 16, 0.94); overflow-y: auto;
   }

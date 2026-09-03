@@ -253,7 +253,27 @@
     // griglia delle Carte Magiche facendole sembrare spente/non
     // selezionabili proprio mentre lo erano. Resta solo il bagliore
     // intorno all'elemento giusto, il resto della pagina si legge normale.
-    '.bb-tut-alone { position: relative; z-index: 9998; outline: 3px solid #e8c46a; ' +
+    // NIENTE Z-INDEX QUI DENTRO, e non e' una svista: era 9998, avanzo dei
+    // tempi del riquadro-scudo (che stava a 9997 e andava scavalcato). Lo
+    // scudo non esiste piu' da un pezzo, questo numero invece era rimasto —
+    // e faceva danni da solo. Un elemento posizionato CON uno z-index apre
+    // un livello di impilamento suo: tutto quello che nasce dentro di lui
+    // resta prigioniero li' dentro, per quanto alto lo si metta.
+    // In selezione.html l'elemento illuminato e' #suitsRow, cioe' proprio
+    // il riquadro che CONTIENE la lista degli eroi fra cui scegliere: quel
+    // pannello a tutto schermo, messo a 10100 per stare sopra al tutorial,
+    // valeva in realta' 9998 — sotto il pannello del tutorial, che sta a
+    // 9999. Chi toccava una casella vedeva la pagina farsi tutta nera (il
+    // velo del pannello, che c'era) e in cima solo il testo del tutorial:
+    // gli eroi c'erano, sotto, ma coperti. E siccome il pannello del
+    // tutorial lascia passare i tocchi (pointer-events:none), si sceglieva
+    // alla cieca e il contatore saliva da solo, 1/4, 2/4, senza aver visto
+    // niente. Due schermate, mandate una dopo l'altra, mostravano
+    // esattamente questo.
+    // position:relative da solo NON apre nessun livello: il bagliore resta
+    // dov'e', e chi apre una finestra da dentro l'elemento illuminato torna
+    // a poter competere con il resto della pagina ad armi pari.
+    '.bb-tut-alone { position: relative; outline: 3px solid #e8c46a; ' +
       'outline-offset: 3px; border-radius: 10px; ' +
       'box-shadow: 0 0 22px rgba(232,196,106,0.85); ' +
       'animation: bbTutPulsa 1.6s ease-in-out infinite; }' +
