@@ -2250,6 +2250,11 @@
       box-shadow: 0 0 0 2px rgba(126,255,204,0.55), 0 0 14px rgba(126,255,204,0.4);
     }
     body.ho-selezione .meld-side.mine .card-column:hover { transform: translateY(-3px); box-shadow: 0 0 0 2px #7effcc, 0 0 20px rgba(126,255,204,0.8); }
+    /* Quando i giochi sono tanti si accavallano (vedi stringiGiochi nello
+       script): quello che sto puntando deve venire davanti a tutti, non
+       restare mezzo nascosto sotto il vicino di destra proprio mentre
+       decido se agganciarci una carta. */
+    .meld-side .card-column:hover { z-index: 60; }
 
     /* --- Prima colonna riservata alle Carte Trappola --- */
     .slot-trappole {
@@ -7631,6 +7636,9 @@ function disegnaTutto() {
   // colonne dei giochi calati, precedute dallo spazio riservato alle Trappole
   $('myMelds').innerHTML  = slotTrappole(0) + io.melds.map((m) => colonnaMeld(m, $('myMelds'))).join('');
   $('oppMelds').innerHTML = slotTrappole(1) + avv.melds.map((m) => colonnaMeld(m, $('oppMelds'))).join('');
+  // ...e subito dopo si stringono, se sono troppi per la fascia
+  stringiGiochi($('myMelds'));
+  stringiGiochi($('oppMelds'));
 
   // I due pozzetti, a sinistra del mazzo (come nel tavolo originale).
   // Uno per giocatore: si prendono automaticamente quando la mano si
@@ -7728,6 +7736,92 @@ function pozzettoHtml(giocatore, posizione, titolo) {
   const preso = giocatore.pozzettoTaken;
   return '<div class="pozzetto-card ' + posizione + (preso ? ' preso' : '') + '" title="' + titolo +
          (preso ? ' — già preso' : ' — ancora da prendere') + '"></div>';
+}
+
+// ------------------------------------------------------------
+// I GIOCHI CALATI SI STRINGONO INVECE DI SPARIRE
+//
+// Ogni gioco calato e' una colonna larga quanto una carta, e le colonne
+// stanno una accanto all'altra dentro meta' campo. Finche' sono poche ci
+// stanno; poi finiscono lo spazio. La fascia ha overflow-x:auto, quindi
+// tecnicamente non si perdeva niente — ma in pratica si': su una partita
+// vera, segnalato da chi ci ha giocato, "quando lo spazio e' quasi finito
+// va oltre e le nuove scale non si vedono". Una barra di scorrimento
+// orizzontale dentro una striscia alta poche decine di pixel, su un
+// tavolo dove tutto il resto sta fermo, nessuno la cerca: si cala un
+// gioco, sparisce, e sembra che la calata non sia riuscita.
+//
+// La colonna verticale, dentro se stessa, questo problema lo aveva gia'
+// risolto da tempo: le carte di un gioco lungo si sovrappongono lasciando
+// vedere solo una striscia in cima (il PASSO qui sotto in colonnaMeld, che
+// si assottiglia finche' la colonna rientra in altezza). Qui si fa la
+// stessa identica cosa, ma in orizzontale: quando la fila non ci sta, ogni
+// colonna scivola sotto la successiva e ne lascia scoperto il bordo
+// sinistro, come un mazzo di carte aperto a ventaglio in mano.
+//
+// Il limite del 62% e' il punto oltre il quale una colonna smetterebbe di
+// essere riconoscibile: di ogni gioco resta scoperto almeno il 38% della
+// carta, cioe' l'angolo dove sono stampati valore e seme. Se nemmeno cosi'
+// ci stanno (servirebbero piu' di una dozzina di giochi calati per lato,
+// caso che nel burraco non capita), lo scorrimento orizzontale e' ancora
+// li' sotto a fare da rete.
+// ------------------------------------------------------------
+function stringiGiochi(lato) {
+  if (!lato) return;
+  const colonne = Array.prototype.slice.call(lato.querySelectorAll('.card-column'));
+  // si riparte sempre da zero: la fascia viene ridisegnata a ogni mossa e
+  // a ogni ridimensionamento della finestra, e un margine avanzato dal
+  // giro prima falserebbe la misura di questo
+  colonne.forEach((c) => { c.style.marginRight = ''; });
+  if (colonne.length < 2) return;
+
+  const stile = getComputedStyle(lato);
+  const utile = lato.clientWidth -
+                (parseFloat(stile.paddingLeft) || 0) -
+                (parseFloat(stile.paddingRight) || 0);
+  if (utile <= 0) return;
+
+  // QUI NON SI PUO' USARE getBoundingClientRect, E VALE LA PENA DIRE
+  // PERCHE': su un telefono tenuto in verticale il tavolo si gira in
+  // blocco, con una rotazione di 90 gradi applicata a tutta la pagina
+  // (provaOrientamento, in cima allo script). Il rettangolo sullo schermo
+  // di un elemento ruotato torna con larghezza e altezza scambiate — una
+  // fascia larga 401 e alta 66 si misura larga 66. Il primo tentativo
+  // sottraeva proprio quei numeri e concludeva ogni volta che ci stava
+  // tutto: la funzione non si accendeva mai, oppure si accendeva al
+  // massimo con soli tre giochi calati. Verificato dal vivo, non dedotto.
+  //
+  // Le misure del foglio di stile invece la rotazione non la sentono: si
+  // sommano quelle, larghezza piu' margini di ogni pezzo, e cosi' dentro
+  // il conto ci finisce da solo anche il riquadro delle Trappole, che sta
+  // in testa alla fila e un margine destro ce l'ha. Si legge dallo stile
+  // calcolato e non da offsetWidth perche' quello arrotonda all'intero, e
+  // con una dozzina di pezzi gli arrotondamenti si sommano fino a far
+  // sbordare la fila di qualche pixel proprio quando doveva rientrare.
+  function largo(pezzo) {
+    const suo = getComputedStyle(pezzo);
+    return (parseFloat(suo.width) || pezzo.offsetWidth || 0) +
+           (parseFloat(suo.paddingLeft) || 0) + (parseFloat(suo.paddingRight) || 0) +
+           (parseFloat(suo.borderLeftWidth) || 0) + (parseFloat(suo.borderRightWidth) || 0);
+  }
+  let servono = 0;
+  for (let i = 0; i < lato.children.length; i++) {
+    const pezzo = lato.children[i];
+    const suo = getComputedStyle(pezzo);
+    servono += largo(pezzo) +
+               (parseFloat(suo.marginLeft) || 0) + (parseFloat(suo.marginRight) || 0);
+  }
+  const eccesso = servono - utile;
+  if (eccesso <= 1) return;   // ci stanno: non si tocca niente
+
+  const larghezza = largo(colonne[0]) || 1;
+  const giunzioni = colonne.length - 1;
+  const passo = Math.min(eccesso / giunzioni, larghezza * 0.62);
+  // l'ultima colonna non si accavalla su niente: e' quella appena calata,
+  // ed e' giusto che sia l'unica a vedersi per intero
+  for (let i = 0; i < giunzioni; i++) {
+    colonne[i].style.marginRight = (-passo).toFixed(2) + 'px';
+  }
 }
 
 function colonnaMeld(m, contenitore) {
