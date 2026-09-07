@@ -243,7 +243,15 @@ check('nessuno dei due tavoli va in errore aprendosi', guasti.length === 0, guas
 
     // secondo tocco: si va
     bottone.click();
-    await attendi(900);
+    // Chi abbandona perde tutti e quattro gli eroi in un colpo solo: i
+    // suoi punti vita vanno a zero insieme, e da quando esiste l'animazione
+    // "un eroe cade" (genera-tavolo.py, eroeCade) il tavolo la mette in
+    // scena prima di coprire tutto con la schermata di fine — la stessa
+    // regola gia' in vigore per l'ultimo colpo di una partita vinta a
+    // viso aperto (segnaAnimazione/mostraFine). 900ms bastavano quando la
+    // sconfitta arrivava muta; ora l'animazione dichiara 1000ms del suoi,
+    // e serve aspettarli.
+    await attendi(1200);
 
     const suo = C.w.__tavolo(), altrui = D.w.__tavolo();
     check('chi abbandona vede la partita finita', suo.status === 'finished');

@@ -102,6 +102,66 @@ PANNELLO_IMPOSTAZIONI = r'''
 src = io.open(SRC, encoding='utf-8').read()
 css = re.search(r'<style>(.*?)</style>', src, re.S).group(1)
 
+
+# ============================================================
+# LA POTATURA DEL FOGLIO DI STILE EREDITATO
+#
+# Il <style> di Burraco Pulito arriva qui copiato parola per parola, ed e'
+# giusto cosi': e' quello che tiene il tavolo identico all'originale. Ma
+# il CORPO e lo SCRIPT di questa pagina sono di Legends, e alcune cose che
+# in Burraco Pulito c'erano qui non ci sono proprio — non sono spente, non
+# esistono: la chat al tavolo, gli emoji da mandare all'avversario.
+#
+# Il loro stile continuava a viaggiare lo stesso, animazioni comprese:
+# regole per un bottone che nessuno disegna, un lampeggio per messaggi che
+# nessuno riceve. Peso morto scaricato da ogni giocatore a ogni partita, e
+# soprattutto una bugia per chi legge il codice — un @keyframes che sembra
+# vivo perche' una regola lo usa, mentre quella regola non tocca mai
+# niente.
+#
+# Ogni blocco si toglie per intero, con scritto perche'. Se un giorno
+# game.html cambia e il testo non combacia piu', il generatore si ferma
+# invece di far finta di niente: meglio accorgersene qui che scoprire fra
+# sei mesi che la potatura non pota piu'.
+# ============================================================
+def pota(foglio, perche, pezzo):
+    if not pezzo or pezzo not in foglio:
+        raise SystemExit(
+            'La potatura "' + perche + '" non trova piu il suo pezzo in game.html.\n'
+            'Vuol dire che l originale e cambiato: vai a vedere com e fatto adesso\n'
+            'e aggiorna il testo qui sotto, invece di lasciar passare CSS morto.')
+    return foglio.replace(pezzo, '', 1)
+
+
+def fra(foglio, da, a):
+    i = foglio.find(da)
+    j = foglio.find(a)
+    return foglio[i:j] if 0 <= i < j else ''
+
+
+# --- la chat al tavolo: in Legends non c'e' nessun #tableChat nel corpo ---
+css = pota(css, 'chat: la riga che la nasconde in modalita rivedi',
+           '    body.modalita-rivedi #tableChat,\n')
+css = pota(css, 'chat: bustina, pallino dei non letti e lampeggio',
+           fra(css, '    /* ---- chat al tavolo', "    /* DI CHI E' IL TURNO."))
+css = pota(css, 'chat: il pannello dei messaggi',
+           fra(css, '    /* Il pannello scende SOPRA il tavolo', '       ORIENTAMENTO'))
+
+# --- gli emoji da mandare: in Legends non esiste la scheda che li spedisce ---
+css = pota(css, 'gesti: il faccino che sale e il nome di chi lo manda',
+           fra(css, '    /* il gesto che arriva: sale dal basso e svanisce */',
+                    '    .turn-indicator {'))
+
+# --- due animazioni superate dal volo delle carte, non perse ---
+# Il tavolo di Legends non fa COMPARIRE le carte: le fa volare dal posto
+# vecchio a quello nuovo (faiVolareLeCarte, piu' sotto nello script). Una
+# carta che atterra facendo anche il suo salto d'ingresso farebbe due
+# movimenti sovrapposti, e il secondo mangerebbe il primo.
+css = pota(css, "l'ingresso della singola carta, sostituito dal volo",
+           fra(css, '    @keyframes cardEnter {', '    @keyframes meldPop {'))
+css = pota(css, "il balzo del gioco appena calato, sostituito dal volo",
+           fra(css, '    @keyframes meldPop {', '    .card.cuori, .card.quadri'))
+
 BATTLE_CSS = r'''
     /* =========================================================
        BURRACO LEGENDS — aggiunte al tavolo originale.
@@ -326,11 +386,105 @@ BATTLE_CSS = r'''
       color: #fff; text-shadow: 0 1px 2px #000, 0 0 4px #000; letter-spacing: -0.3px;
     }
     .bcard .scudo.intero { opacity: 0.55; }              /* pieno: presente ma discreto */
-    .bcard .scudo.rotto  { animation: scudoColpito 0.6s ease-out; }
+    /* alzato sopra il pieno: non e' un danno, e non deve sembrarlo */
+    .bcard .scudo.caricato { filter: drop-shadow(0 0 5px rgba(138,214,255,0.85)); }
+    /* IL BALZO SI FA QUANDO LO SCUDO CALA, non quando è diverso da pieno.
+       Prima questa animazione stava attaccata a .rotto, e .rotto vuol dire
+       soltanto "non esattamente 100%". Due guai in una riga sola, tutti e
+       due misurati:
+         - un eroe con la difesa ALZATA a 125% — un dono, non una ferita —
+           faceva il balzo di chi viene colpito;
+         - la carta si ridisegna intera a ogni mossa, quindi l'animazione
+           ripartiva da capo a ogni pescata e a ogni scarto per il resto
+           della partita (currentTime tornato a 0, verificato).
+       Il segnale che doveva dire "ti hanno bucato la difesa" era diventato
+       rumore di sottofondo, e nel caso del dono diceva il contrario del
+       vero. Adesso la classe la mette lo script, e solo nel momento in cui
+       il numero scende davvero: vedi raccontaIMomenti(). */
+    .bcard .scudo.colpito { animation: scudoColpito 0.6s ease-out; }
     @keyframes scudoColpito {
       0%   { transform: scale(1); }
       35%  { transform: scale(1.35); }
       100% { transform: scale(1); }
+    }
+
+    /* ---------- UN EROE CHE CADE ----------
+       Perdere un eroe è una delle cose più pesanti che capitano: da lì in
+       poi le carte di quel seme picchiano con la penalità, per sempre. E
+       succedeva senza dire niente — la carta diventava grigia fra un
+       fotogramma e l'altro, come se qualcuno avesse abbassato una luce.
+       Il colpo che uccide la sua animazione ce l'ha già (il proiettile, la
+       scossa, il numero rosso); quello che mancava è il momento DOPO: il
+       bagliore bianco, il cedimento, e poi il grigio che resta. */
+    .bcard.cade { animation: eroeCade 1s cubic-bezier(0.3, 0, 0.35, 1); }
+    @keyframes eroeCade {
+      0%   { opacity: 1; filter: grayscale(0) brightness(1); transform: none; }
+      9%   { opacity: 1; filter: grayscale(0) brightness(2.8) saturate(0.5); transform: scale(1.09); }
+      22%  { opacity: 1; filter: grayscale(0.15) brightness(1.2); transform: translateX(6px) rotate(3deg); }
+      36%  { filter: grayscale(0.45); transform: translateX(-5px) rotate(-2.5deg); }
+      50%  { filter: grayscale(0.7); transform: translateX(3px) rotate(1.5deg); }
+      78%  { opacity: 0.5; filter: grayscale(1); transform: translateY(7px) rotate(1deg) scale(0.965); }
+      100% { opacity: 0.32; filter: grayscale(1); transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .bcard.cade { animation: none; }
+    }
+
+    /* ---------- IL POZZETTO CHE SI APRE ----------
+       Nel burraco prendere il pozzetto è il momento: finisci le carte e
+       te ne arrivano altre undici, la partita riparte. Qui c'erano un
+       suono e una scritta, e il mazzetto passava da acceso a spento senza
+       che niente lo raccontasse. Ora si apre: si accende d'oro, si gonfia
+       e si spegne nel grigio di "preso". Le undici carte, intanto, gli
+       volano fuori per davvero — prima uscivano dal mazzo, che non è dove
+       stavano (vedi origineDiUnaCartaNuova). */
+    .pozzetto-card.appena-preso { animation: pozzettoSiApre 1.1s ease-out; position: relative; z-index: 3; }
+    @keyframes pozzettoSiApre {
+      0%   { opacity: 1; filter: none; transform: scale(1); box-shadow: 0 0 0 0 rgba(232,196,106,0); }
+      14%  { opacity: 1; filter: brightness(2.2); transform: scale(1.28) rotate(-4deg);
+             box-shadow: 0 0 26px 10px rgba(232,196,106,0.95); }
+      34%  { opacity: 1; filter: brightness(1.5); transform: scale(1.16) rotate(3deg);
+             box-shadow: 0 0 34px 16px rgba(232,196,106,0.55); }
+      62%  { opacity: 0.8; filter: grayscale(0.4); transform: scale(1.04);
+             box-shadow: 0 0 20px 6px rgba(232,196,106,0.22); }
+      100% { opacity: 0.25; filter: grayscale(1); transform: scale(1);
+             box-shadow: 0 0 0 0 rgba(232,196,106,0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pozzetto-card.appena-preso { animation: none; }
+    }
+
+    /* ---------- IL BURRACO ----------
+       Sette carte in un gioco solo: è la giocata che dà il nome al gioco.
+       Si vedeva soltanto dalla targhetta +35% che cominciava a pulsare —
+       un cambio di stato, non un traguardo. Adesso la colonna si accende
+       una volta, e la targhetta le fa da eco. */
+    .card-column.burraco { animation: burracoFatto 1.2s ease-out; z-index: 5; }
+    @keyframes burracoFatto {
+      0%   { transform: none; filter: none; }
+      12%  { transform: translateY(-9px) scale(1.07); filter: brightness(1.9) saturate(1.3); }
+      26%  { transform: translateY(2px) scale(0.99); filter: brightness(1.3); }
+      40%  { transform: translateY(-4px) scale(1.03); filter: brightness(1.55); }
+      70%  { transform: none; filter: brightness(1.15); }
+      100% { transform: none; filter: none; }
+    }
+    /* l'alone d'oro che si allarga da sotto la colonna: sta in un pezzo a
+       parte perché il filtro qui sopra, applicato alla colonna, si
+       porterebbe dietro anche questo e lo farebbe sbiadire */
+    .card-column.burraco::before {
+      content: ''; position: absolute; inset: -8px; border-radius: 12px;
+      pointer-events: none; z-index: -1;
+      background: radial-gradient(ellipse at center, rgba(255,214,120,0.75), rgba(255,214,120,0) 70%);
+      animation: burracoAlone 1.2s ease-out forwards;
+    }
+    @keyframes burracoAlone {
+      0%   { opacity: 0; transform: scale(0.6); }
+      18%  { opacity: 1; transform: scale(1.15); }
+      100% { opacity: 0; transform: scale(1.5); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .card-column.burraco, .card-column.burraco::before { animation: none; }
+      .card-column.burraco::before { display: none; }
     }
 
     /* La carta con l'abilità pronta si accende e diventa cliccabile */
@@ -2132,7 +2286,13 @@ function scudoHtml(ch) {
   // il numero, non si puo' riempire piu' del pieno
   const quota = Math.max(0, Math.min(1, v / 100));
   const colore = v > 100 ? '#8ad6ff' : (v < 100 ? '#ff9db0' : '#cbd6f5');
-  return '<div class="scudo ' + (pieno ? 'intero' : 'rotto') + '" ' +
+  // TRE STATI, NON DUE. Finche' le classi erano soltanto "intero" e
+  // "rotto", uno scudo POTENZIATO al 125% risultava rotto — perche' rotto
+  // voleva dire "non esattamente 100". Era il nome sbagliato a reggere
+  // l'animazione del colpo subito, ed e' da li' che nasceva il difetto.
+  // Adesso lo scudo alzato ha un nome suo e si vede che e' un dono.
+  const nomeStato = pieno ? 'intero' : (v > 100 ? 'caricato' : 'rotto');
+  return '<div class="scudo ' + nomeStato + '" ' +
            'title="Scudo ' + v + '%">' +
          '<svg viewBox="0 0 24 26" aria-hidden="true">' +
            '<defs><clipPath id="sc' + (ch.cardId || '') + '">' +
@@ -2292,7 +2452,19 @@ function origineDiUnaCartaNuova(el) {
     const n = $(id);
     return n ? n.getBoundingClientRect() : null;
   };
-  if (el.closest('#handBox')) return rettangolo('palTallone') || rettangolo('palScarti');
+  if (el.closest('#handBox')) {
+    // LE UNDICI DEL POZZETTO VENGONO DAL POZZETTO. Il mazzetto non
+    // disegna le sue carte una per una — e' una pila coperta, un
+    // rettangolo solo — quindi per il volo quelle undici sono carte
+    // "nuove" e finivano nel caso generale qui sotto: partivano dal
+    // mazzo. Il momento piu' bello del burraco raccontato male, con le
+    // carte che escono da dove non erano.
+    if (pozzettoAppenaPreso === 0) {
+      const mio = document.querySelector('.pozzetto-card.sotto');
+      if (mio) return mio.getBoundingClientRect();
+    }
+    return rettangolo('palTallone') || rettangolo('palScarti');
+  }
   // Una carta nuova sul monte scarti arriva dalla mano di CHI l'ha
   // scartata — la mia se l'ho scartata io, quella dell'avversario se
   // l'ha scartata lui. Prima veniva sempre da 'handBox' (la mia), quindi
@@ -2336,10 +2508,161 @@ function faiVolareLeCarte(prima) {
 // Il disegno vero sta in disegnaTutto(); qui intorno c'e' solo il
 // movimento. Cosi' ogni chiamata a disegna(), da qualunque punto del
 // tavolo arrivi, anima le carte senza doversene ricordare.
+// ============================================================
+// I MOMENTI CHE PRIMA PASSAVANO AL BUIO
+//
+// Il tavolo si ridisegna tutto intero a ogni cambiamento. Va benissimo
+// per lo STATO — chi ha quante carte, quanti punti vita, di chi è il
+// turno — ma non sa raccontare i PASSAGGI: fra un disegno e l'altro un
+// eroe è caduto, uno scudo si è bucato, sono arrivate undici carte dal
+// pozzetto, un gioco è diventato burraco. Cose che succedevano e basta,
+// come se qualcuno avesse cambiato la diapositiva.
+//
+// Attaccare l'animazione allo stato non funziona, ed è un errore che al
+// tavolo c'era davvero: il balzo dello scudo stava su .rotto, cioè su
+// "adesso è sotto il 100%", e quindi ripartiva a ogni singolo ridisegno
+// finché lo scudo restava basso — e partiva anche quando lo scudo era
+// stato ALZATO, perché anche 125% non è 100%.
+//
+// Qui si tiene una fotografia di com'era il tavolo l'ultima volta, e si
+// accende qualcosa solo dove le due fotografie sono DIVERSE. Un momento
+// si vede una volta sola, quando accade: è la differenza fra raccontare
+// e ripetere.
+// ============================================================
+// sette carte in un gioco solo: la stessa soglia oltre la quale
+// bonusLunghezza() comincia a dare il +35%
+const CARTE_PER_BURRACO = 7;
+let memoriaScena = null;          // la fotografia del disegno precedente
+let pozzettoAppenaPreso = null;   // 0 o 1 — lo legge il volo delle carte, qui sotto
+
+function fotografiaScena() {
+  const foto = { scudi: {}, pv: {}, vivi: {}, pozzetti: [], giochi: {},
+                 malus: !!S.malusTempoScaduto };
+  for (let p = 0; p < 2; p++) {
+    const g = S.players[p];
+    foto.pozzetti.push(!!g.pozzettoTaken);
+    for (const s of SEMI) {
+      const ch = g.characters[s];
+      if (!ch) continue;
+      foto.scudi[p + s] = scudoPercento(ch);
+      foto.pv[p + s] = ch.pv;
+      foto.vivi[p + s] = ch.pv > 0;
+    }
+    for (const m of g.melds) foto.giochi[m.id] = m.cards.length;
+  }
+  return foto;
+}
+
+function cartaEroe(giocatore, seme) {
+  return document.querySelector('.bcard[data-lato="' + (giocatore === 0 ? 'mio' : 'avv') +
+                                '"][data-seme="' + seme + '"]');
+}
+
+// Accende una classe che porta un'animazione "una volta sola". Il
+// remove/offsetWidth/add in mezzo non è superstizione: se la classe c'è
+// già, rimetterla non fa ripartire niente — il browser deve prima vedere
+// l'elemento senza, e leggere offsetWidth è ciò che lo costringe a
+// guardare adesso invece che alla fine del giro.
+// `durata` la si dichiara a mostraFine(), che aspetta a coprire il tavolo
+// con la schermata di fine partita finché c'è qualcosa in scena.
+function accendiUnaVolta(el, classe, durata) {
+  if (!el) return;
+  el.classList.remove(classe);
+  void el.offsetWidth;
+  el.classList.add(classe);
+  if (durata) segnaAnimazione(durata);
+}
+
+function raccontaIMomenti() {
+  const ora = fotografiaScena();
+  const prima = memoriaScena;
+  memoriaScena = ora;
+  // al primo disegno non c'è un "prima": tutto sarebbe una novità, e il
+  // tavolo si accenderebbe tutto insieme appena aperto
+  if (!prima) return;
+
+  for (let p = 0; p < 2; p++) {
+    for (const s of SEMI) {
+      const chiave = p + s;
+      if (!(chiave in prima.scudi)) continue;
+      const carta = cartaEroe(p, s);
+      if (!carta) continue;
+
+      // lo scudo che CALA: solo in discesa, mai perché è diverso da pieno
+      if (ora.scudi[chiave] < prima.scudi[chiave]) {
+        accendiUnaVolta(carta.querySelector('.scudo'), 'colpito', 600);
+      }
+      // l'eroe che cade: da vivo a zero, una volta sola per partita
+      if (prima.vivi[chiave] && !ora.vivi[chiave]) {
+        accendiUnaVolta(carta, 'cade', 1000);
+      }
+    }
+
+    // il pozzetto che si apre
+    if (!prima.pozzetti[p] && ora.pozzetti[p]) {
+      pozzettoAppenaPreso = p;
+      accendiUnaVolta(document.querySelector('.pozzetto-card.' + (p === 0 ? 'sotto' : 'sopra')),
+                      'appena-preso', 1100);
+    }
+  }
+
+  // il burraco: un gioco che arriva a sette carte. Si guarda il passaggio
+  // e non la lunghezza, se no ogni carta agganciata dopo la settima
+  // rifarebbe la festa da capo.
+  for (const id in ora.giochi) {
+    const eraPrima = prima.giochi[id] || 0;
+    if (ora.giochi[id] >= CARTE_PER_BURRACO && eraPrima < CARTE_PER_BURRACO) {
+      accendiUnaVolta(document.querySelector('.card-column[data-meld-id="' + id + '"]'),
+                      'burraco', 1200);
+    }
+  }
+
+  // il crollo del tempo scaduto
+  if (!prima.malus && ora.malus) mostraCrolloDelTempo(prima, ora);
+}
+
+// ------------------------------------------------------------
+// IL CROLLO DEL TEMPO SCADUTO
+// Chi lascia scadere il minuto paga le carte che gli sono rimaste in
+// mano, e le paga sui punti vita dei propri eroi. È la regola che
+// decide chi vince, e finora succedeva in silenzio: i punti sparivano
+// e la spiegazione arrivava dopo, scritta, nella schermata di fine —
+// quando ormai non c'era più niente da guardare.
+// Qui i numeri volano via davvero, uno per eroe, sfalsati così che si
+// legga la sequenza invece di una macchia sola. Non servono animazioni
+// nuove: sono le stesse che usa un colpo qualsiasi, ed è giusto, perché
+// è esattamente quello che è — un colpo, solo che a darlo è l'orologio.
+// ------------------------------------------------------------
+function mostraCrolloDelTempo(prima, ora) {
+  const chi = S.malusTempoScaduto && S.malusTempoScaduto.giocatore;
+  if (chi !== 0 && chi !== 1) return;
+  let ritardo = 0;
+  for (const s of SEMI) {
+    const chiave = chi + s;
+    const perso = (prima.pv[chiave] || 0) - (ora.pv[chiave] || 0);
+    if (perso <= 0) continue;
+    const carta = cartaEroe(chi, s);
+    if (!carta) continue;
+    setTimeout(() => {
+      if (!carta.isConnected) return;
+      numeroDanno(carta, perso);
+      accendiUnaVolta(carta, 'colpita', 0);
+      setTimeout(() => carta.classList.remove('colpita'), 1100);
+    }, ritardo);
+    ritardo += 260;
+  }
+  // la schermata di fine aspetta che l'ultimo numero sia volato via
+  if (ritardo > 0) segnaAnimazione(ritardo + 900);
+}
+
 function disegna() {
   const prima = rettangoliDelleCarte();
   disegnaTutto();
   faiVolareLeCarte(prima);
+  // il volo ha gia' letto da dove partivano le carte del pozzetto:
+  // lasciare acceso il segnale farebbe uscire dal pozzetto anche le
+  // pescate normali del giro dopo
+  pozzettoAppenaPreso = null;
 }
 
 function disegnaTutto() {
@@ -2452,6 +2775,27 @@ function disegnaTutto() {
   $('oppLiveScore').textContent = Math.round(SEMI.reduce((t, s) => t + avv.characters[s].pv, 0)) + ' PV';
   aggiornaMonteTempo();
 
+  // DI CHI E' IL TURNO, ADESSO. La scritta in alto lampeggia quando il
+  // turno CAMBIA, ed e' un'altra cosa: dice "e' successo", non "sei tu".
+  // Chi torna a guardare lo schermo dopo dieci secondi il lampo se lo e'
+  // perso, e gli resta solo una parola piccola in una fascia piena di
+  // numeri. Qui invece pulsa la faccia di chi deve giocare — sempre allo
+  // stesso posto, mai coperta da niente — e sul monitor anche l'alone
+  // attorno al suo ventaglio. Sono lo stile e il ritmo che il tavolo
+  // aveva gia' scritti (pulsaFaccia e pulsaTurno, due secondi tondi come
+  // il resto dei segnali): mancava solo qualcuno che li accendesse.
+  // A partita finita non pulsa niente: il turno non e' piu' di nessuno.
+  {
+    const diTurno = S.status === 'in_progress' ? S.currentPlayerIndex : -1;
+    const facce = [document.querySelectorAll('.my-avatar-ring'),
+                   [$('oppAvatarRing')].filter(Boolean)];
+    const ventagli = [[$('handBox')].filter(Boolean), [$('oppHandBox')].filter(Boolean)];
+    for (let p = 0; p < 2; p++) {
+      for (const f of facce[p]) f.classList.toggle('tocca-a-lui-faccia', p === diTurno);
+      for (const v of ventagli[p]) v.classList.toggle('tocca-a-lui', p === diTurno);
+    }
+  }
+
   const g = S.players[S.currentPlayerIndex];
   document.body.classList.toggle('ho-selezione', selezione.size > 0 && S.status === 'in_progress');
   document.body.classList.toggle('scelta-bersaglio', !!bersaglioAttivo);
@@ -2462,6 +2806,13 @@ function disegnaTutto() {
              ? 'Tocca un gioco già calato per agganciarci le carte (anche una sola), lo spazio vuoto per calarne uno nuovo, o gli scarti per scartare.'
              : 'Tocca lo spazio delle calate per calare (minimo 3 carte), o gli scarti per scartare.')
           : 'Scegli le carte da giocare, oppure scarta.'));
+
+  // I PASSAGGI si raccontano qui, e prima di mostraFine(): le animazioni
+  // che parte da questa riga dichiarano quanto durano, e la schermata di
+  // fine partita aspetta che abbiano finito prima di coprire il tavolo.
+  // Invertendo le due righe, il crollo del tempo scaduto verrebbe
+  // nascosto dalla schermata che dovrebbe spiegarlo.
+  raccontaIMomenti();
 
   if (S.status === 'finished') mostraFine();
 }
