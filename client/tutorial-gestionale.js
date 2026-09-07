@@ -237,7 +237,15 @@
       // "il tutorial della home va bene... ma quando vado al tavolo non
       // parte". Ora il tocco sull'illuminato chiude il passo come tutti
       // gli altri.
-      illumina: '.modo[href="tavolo.html"]', clic: '.modo[href="tavolo.html"]', fine: true }
+      // "IL TAVOLO" come riquadro a se' non c'e' piu' in home.html:
+      // "Il tavolo", "Gioca con un amico" e "Sfida uno sconosciuto"
+      // sono confluiti in un unico "GIOCA" (client/gioca.html), che fa
+      // la stessa domanda una volta sola invece che su tre riquadri
+      // diversi. Il passo finale punta quindi li' — un tocco in piu'
+      // prima del tavolo vero, ma il tutorial del tavolo si accende lo
+      // stesso: aspetta solo che bb_tutorial_completato sia scritto,
+      // non che si arrivi a tavolo.html per una strada precisa.
+      illumina: '.modo[href="gioca.html"]', clic: '.modo[href="gioca.html"]', fine: true }
   ];
 
   // ------------------------------------------------------------

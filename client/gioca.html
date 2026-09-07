@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends — Gioca</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a1e12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  /* ============================================================
+     GIOCA — LA DOMANDA FATTA UNA VOLTA SOLA
+     "Contro chi vuoi giocare?" stava sparsa su tre riquadri diversi
+     nella home ("Il tavolo", "Gioca con un amico", "Sfida uno
+     sconosciuto"): tre risposte alla stessa domanda, una per riga,
+     invece che raccolte in un posto solo. Qui si scelgono le tre
+     insieme — le carte, lo stile e le classi .modo/.modalita sono
+     copiate identiche da home.html, non reinventate.
+     ============================================================ */
+  :root {
+    --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;
+    --pergamena: #f2e6cc; --tenue: #b7a686; --notte: #0b0810;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(42,29,61,0.65) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(58,36,16,0.6) 0%, transparent 55%),
+      url('immagini/decorazioni/sfondo-tavolo.webp') center / cover no-repeat,
+      var(--notte);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; padding: max(76px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+    min-height: 100vh;
+  }
+
+  .insegna { text-align: center; }
+  .insegna h1 {
+    margin: 0; font-family: Georgia, serif; font-size: clamp(1.7rem, 5vw, 2.5rem);
+    letter-spacing: 3px; font-weight: 700;
+    background: linear-gradient(180deg, #fff6d8, var(--oro) 45%, var(--oro-scuro) 75%, #ffe9ae);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.7));
+  }
+  .insegna .sotto { font-size: 0.85rem; color: var(--tenue); margin-top: 6px; letter-spacing: 0.4px; }
+
+  /* ---------- le tre carte, copiate da .modalita/.modo di home.html ---------- */
+  .modalita { display: flex; flex-direction: column; gap: 13px; max-width: 520px; width: 100%; }
+  .modo {
+    position: relative; display: flex; align-items: stretch; gap: 0;
+    text-decoration: none; color: inherit; cursor: pointer;
+    border-radius: 13px; overflow: hidden; isolation: isolate;
+    border: 1px solid var(--oro-scuro);
+    background: linear-gradient(100deg, rgba(58,41,24,0.95) 0%, rgba(32,22,13,0.95) 55%, rgba(22,15,9,0.95) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.2), 0 5px 18px rgba(0,0,0,0.6);
+    transition: transform 0.16s cubic-bezier(.2,.9,.3,1), box-shadow 0.16s, border-color 0.16s;
+  }
+  .modo::after {
+    content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: linear-gradient(105deg, transparent 38%, rgba(255,238,190,0.16) 50%, transparent 62%);
+    transform: translateX(-130%); transition: transform 0.55s ease;
+  }
+  .modo:hover { transform: translateY(-3px); border-color: var(--oro);
+                box-shadow: inset 0 1px 0 rgba(255,240,200,0.3), 0 10px 26px rgba(0,0,0,0.7), 0 0 26px rgba(232,196,106,0.28); }
+  .modo:hover::after { transform: translateX(130%); }
+  .modo:active { transform: translateY(0); }
+  .modo .cornice { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; z-index: 3; opacity: 0.85; }
+  .modo .scena { position: relative; width: clamp(84px, 22vw, 124px); flex: 0 0 auto; overflow: hidden; }
+  .modo .scena img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #171025; }
+  .modo .scena::after { content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 55%, rgba(24,16,10,0.96) 100%); }
+  .modo .testo { flex: 1; padding: clamp(11px, 1.9vh, 17px) 16px; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; }
+  .modo .titolo {
+    font-family: Georgia, serif; font-size: clamp(1.05rem, 2.7vw, 1.4rem); font-weight: 700;
+    letter-spacing: 1.6px; color: var(--oro-chiaro); text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+  }
+  .modo .sotto { font-size: 0.76rem; color: var(--tenue); letter-spacing: 0.3px; }
+  .modo .freccia { display: grid; place-items: center; padding-right: 16px; color: var(--oro); flex: 0 0 auto; }
+  .modo .freccia svg { width: 17px; height: 17px; transition: transform 0.16s; }
+  .modo:hover .freccia svg { transform: translateX(4px); }
+
+  .torna { position: fixed; top: 16px; left: 16px; font-size: 1.275rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+  .torna .icona-torna { width: 60px; height: 60px; object-fit: contain; }
+  .torna:hover { color: var(--oro); }
+</style>
+</head>
+<body>
+
+<a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Home</a>
+
+<div class="insegna">
+  <h1>GIOCA</h1>
+  <div class="sotto">Scegli con chi</div>
+</div>
+
+<div class="modalita">
+
+  <a class="modo" href="sfida.html">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
+    <div class="scena"><img src="immagini/decorazioni/icona-amico.webp" alt=""></div>
+    <div class="testo">
+      <span class="titolo">SIEDITI</span>
+      <span class="sotto">Il server ti abbina a chi cerca come te, adesso</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+  <a class="modo" href="sala.html">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
+    <div class="scena"><img src="immagini/decorazioni/icona-amico.webp" alt=""></div>
+    <div class="testo">
+      <span class="titolo">GIOCA CON UN AMICO</span>
+      <span class="sotto">Un codice da passargli &middot; partita vera</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+  <a class="modo" href="tavolo.html">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
+    <div class="scena"><img src="immagini/decorazioni/icona-tavolo.webp" alt=""></div>
+    <div class="testo">
+      <span class="titolo">GIOCA CONTRO IL PC</span>
+      <span class="sotto">Partita rapida, subito, senza aspettare nessuno</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+</div>
+
+</body>
+</html>
