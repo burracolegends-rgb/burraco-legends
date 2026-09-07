@@ -248,10 +248,11 @@ check('nessuno dei due tavoli va in errore aprendosi', guasti.length === 0, guas
     // "un eroe cade" (genera-tavolo.py, eroeCade) il tavolo la mette in
     // scena prima di coprire tutto con la schermata di fine — la stessa
     // regola gia' in vigore per l'ultimo colpo di una partita vinta a
-    // viso aperto (segnaAnimazione/mostraFine). 900ms bastavano quando la
-    // sconfitta arrivava muta; ora l'animazione dichiara 1000ms del suoi,
-    // e serve aspettarli.
-    await attendi(1200);
+    // viso aperto (segnaAnimazione/mostraFine). L'animazione dichiara
+    // 1000ms dei suoi: 1200 bastavano di misura ma ballavano da un giro
+    // all'altro (visto fallire una volta su tre con la macchina occupata
+    // da altro) — 1800 lascia un margine vero, non solo sulla carta.
+    await attendi(1800);
 
     const suo = C.w.__tavolo(), altrui = D.w.__tavolo();
     check('chi abbandona vede la partita finita', suo.status === 'finished');

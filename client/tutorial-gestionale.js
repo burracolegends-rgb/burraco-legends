@@ -281,10 +281,23 @@
     // position:relative da solo NON apre nessun livello: il bagliore resta
     // dov'e', e chi apre una finestra da dentro l'elemento illuminato torna
     // a poter competere con il resto della pagina ad armi pari.
+    // ANIMATION CON !IMPORTANT, e non e' un capriccio: l'elemento
+    // illuminato a volte porta gia' un'animazione SUA, per un motivo che
+    // non ha niente a che fare col tutorial — il saldo sharkini, per
+    // esempio, ne accende una da 0.7 secondi ogni volta che il numero
+    // cambia (".cifra.cambiata", in negozio.html), e quella regola ha piu'
+    // classi quindi piu' specificita' di questa. Vinceva lei: l'oro
+    // pulsante del tutorial spariva non appena quel mezzo secondo finiva,
+    // lasciando solo il bordo fermo — "evidenziato ma non lampeggia piu'",
+    // segnalato proprio su questo passo. Una singola proprieta' forzata
+    // qui non tocca il resto della regola (bordo, ombra restano normali,
+    // sovrascrivibili come sempre): serve solo a garantire che QUALUNQUE
+    // animazione stesse gia' girando sull'elemento, il bagliore del
+    // tutorial vinca sempre lui, su ogni pagina, non solo su questa.
     '.bb-tut-alone { position: relative; outline: 3px solid #e8c46a; ' +
       'outline-offset: 3px; border-radius: 10px; ' +
       'box-shadow: 0 0 22px rgba(232,196,106,0.85); ' +
-      'animation: bbTutPulsa 1.6s ease-in-out infinite; }' +
+      'animation: bbTutPulsa 1.6s ease-in-out infinite !important; }' +
     '@keyframes bbTutPulsa { 0%,100% { outline-color: #e8c46a; } 50% { outline-color: #fff3cf; } }' +
     // POINTER-EVENTS: NONE sul riquadro — segnalato da chi ci ha sbattuto
     // contro davvero: nella schermata del riepilogo il bottone vero
@@ -353,6 +366,43 @@
   var listenerClicAttuale = null;
   var riprovaAlone = null;    // il setTimeout dei ritentativi di illumina()
   var pannelloEmergenzaAspetta = null;
+
+  // ------------------------------------------------------------
+  // "TORNA ALLA HOME" NON È MAI QUELLO CHE UN PASSO STA CHIEDENDO.
+  //
+  // Lo scudo per-passo qui sotto (listenerClicAttuale) si monta SOLO
+  // quando def.aspetta non c'è — nei passi che aspettano un gesto libero
+  // del giocatore (strappare il pacchetto, scegliere i quattro eroi) non
+  // c'è nessuno scudo affatto, di proposito: quel gesto non ha un
+  // selettore comodo da mettere in `libero`, e senza scudo il resto
+  // della pagina resta comunque quieto — di solito.
+  //
+  // "Torna alla home", pero', sta in cima a quasi ogni pagina del tour
+  // ed e' sempre raggiungibile, aspetta compresi. Segnalato da chi l'ha
+  // toccato per davvero proprio mentre il pacchetto delle Carte Magiche
+  // si stava aprendo: il tour finiva li', zitto — bb_tutorial_completato
+  // non veniva mai scritto, e il tutorial del tavolo (che aspetta quel
+  // flag) restava spento per sempre, lo stesso guaio di sempre ma da una
+  // porta diversa.
+  //
+  // Questo ascoltatore gira SEMPRE, in ogni passo — aspetta compresi —
+  // e non sa niente di illumina/clic/libero: sa solo che "Torna alla
+  // home" non e' MAI, in nessun passo di questo tour, quello che si sta
+  // chiedendo di toccare. Si spegne da solo appena il tour finisce
+  // (legge lo stato ad ogni click, non una volta sola all'avvio) o non
+  // e' mai partito.
+  document.addEventListener('click', function (e) {
+    if (leggi(CHIAVE_FATTO) === 'si' || !leggi(CHIAVE_PASSO)) return;   // nessun tour in corso: non e' affar suo
+    var fuga = e.target && e.target.closest ? e.target.closest('.torna') : null;
+    if (!fuga) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (pannelloAttuale) {
+      pannelloAttuale.classList.remove('bb-tut-scuoti');
+      void pannelloAttuale.offsetWidth; // fa ripartire l'animazione da capo
+      pannelloAttuale.classList.add('bb-tut-scuoti');
+    }
+  }, true);
 
   function pulisciPassoPrecedente() {
     if (pannelloAttuale) { pannelloAttuale.remove(); pannelloAttuale = null; }
