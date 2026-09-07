@@ -93,6 +93,43 @@ const registrato = async (nome) => {
 }
 
 // ============================================================
+console.log('\n--- IL NOME AL TAVOLO, SENZA CHIEDERLO ---');
+// "Gioca con un amico" e "Siediti" chiedevano "come ti chiami" ogni
+// volta, in un campo di testo libero mai salvato da nessuna parte: la
+// volta dopo si ridigitava daccapo. Da qui in poi il nome lo decide il
+// server (server.js: nomeDiAccount) e basta — /api/apri e /api/siediti
+// non accettano piu' nessun `nome` dal messaggio.
+{
+  const gA = gettoneFinto(), gB = gettoneFinto();
+  const tavA = (await posta('/api/apri', { gettone: gA })).corpo;
+  const tavB = (await posta('/api/apri', { gettone: gB })).corpo;
+  const nomeA = stanze.stanza(tavA.codice).posti[0].nome;
+  const nomeB = stanze.stanza(tavB.codice).posti[0].nome;
+
+  check('un ospite senza nome riceve "Ospite" seguito da un numero',
+    /^Ospite\d{4}$/.test(nomeA), nomeA);
+  check('due ospiti diversi non ricevono lo stesso numero',
+    nomeA !== nomeB, nomeA + ' vs ' + nomeB);
+
+  const tavAdiNuovo = (await posta('/api/apri', { gettone: gA })).corpo;
+  const nomeAdiNuovo = stanze.stanza(tavAdiNuovo.codice).posti[0].nome;
+  check('lo STESSO gettone riceve SEMPRE lo stesso numero, non uno a caso ogni volta',
+    nomeA === nomeAdiNuovo, nomeA + ' vs ' + nomeAdiNuovo);
+
+  const gettoneRegistrato = await registrato('Marisa');
+  const tavReg = (await posta('/api/apri', { gettone: gettoneRegistrato })).corpo;
+  check('chi è registrato si siede col suo nome vero, non "Ospite..."',
+    stanze.stanza(tavReg.codice).posti[0].nome === 'Marisa');
+
+  // Lo stesso, sedendosi con uno sconosciuto invece che aprendo un
+  // tavolo privato: è la stessa funzione, ma la si prova comunque da
+  // entrambe le porte perché sono due route diverse in server.js.
+  const daSconosciuto = (await posta('/api/siediti', { gettone: gettoneFinto() })).corpo;
+  check('anche sedendosi con uno sconosciuto il nome è "Ospite...", non richiesto',
+    /^Ospite\d{4}$/.test(stanze.stanza(daSconosciuto.codice).posti[0].nome));
+}
+
+// ============================================================
 console.log('\n--- LA MISSIONE: UN TENTATIVO SOLO, MAZZO UGUALE PER TUTTI ---');
 {
   const gettoneA = await registrato('Elio'), gettoneB = await registrato('Fosca');

@@ -58,13 +58,6 @@
   }
   .riquadro p { margin: 0; font-size: 0.83rem; color: var(--tenue); line-height: 1.55; }
 
-  input {
-    width: 100%; padding: 12px 14px; border-radius: 10px; font-family: inherit;
-    border: 1px solid var(--oro-scuro); background: rgba(0,0,0,0.4); color: var(--pergamena);
-    font-size: 1rem; outline: none;
-  }
-  input:focus { border-color: var(--oro); box-shadow: 0 0 0 3px rgba(232,196,106,0.16); }
-
   button {
     padding: 13px; border-radius: 11px; border: none; cursor: pointer; font-family: inherit;
     font-size: 0.96rem; font-weight: 800; letter-spacing: 0.7px;
@@ -136,8 +129,7 @@
 
 <!-- ---------- scelta ---------- -->
 <div id="scelta" class="riquadro">
-  <h2>Come ti chiami</h2>
-  <input id="nome" maxlength="20" placeholder="Il tuo nome" autocomplete="off">
+  <h2>Siediti al tavolo</h2>
   <button id="cerca">Trova un avversario</button>
   <p>Ti sediamo al primo tavolo libero. Se non c'è nessuno, il tavolo lo apri tu — e aspetti il prossimo che arriva.</p>
 </div>
@@ -151,7 +143,7 @@
       <span class="piu">+</span>
       <div class="posto vuoto">?</div>
     </div>
-    <span class="nome-mio" id="nome-mostrato"></span>
+    <span class="nome-mio">Tu</span>
     <span class="conta-posti">1 / 2 seduti</span>
   </div>
   <div class="attesa">
@@ -217,13 +209,12 @@ $('cerca').addEventListener('click', async () => {
   zitto();
   $('cerca').disabled = true;
   try {
-    const r = await chiedi('/api/siediti', { nome: $('nome').value, mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
+    const r = await chiedi('/api/siediti', { mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
     if (!r.ok) { dice(r.motivo || 'Non è stato possibile sedersi al tavolo.'); $('cerca').disabled = false; return; }
     mio = r;
     fermo = false;
     $('scelta').classList.add('nascosto');
     $('attesa').classList.remove('nascosto');
-    $('nome-mostrato').textContent = $('nome').value.trim() || 'Tu';
     if (r.giocatore === 1) {
       // il tavolo c'era già: si è il secondo, quindi si va SUBITO,
       // niente attesa da mostrare

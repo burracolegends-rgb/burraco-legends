@@ -326,6 +326,44 @@ async function eRegistrato(gettone) {
 // dopo che tutte e tre esistono già.
 const missioni = creaMissioni({ archivio, stanze, anagrafe, catalogo: Object.values(CARTE), eRegistrato });
 
+// ------------------------------------------------------------
+// IL NOME CON CUI TI SIEDI AL TAVOLO — SENZA CHIEDERLO
+//
+// "Gioca con un amico" e "Siediti" chiedevano "come ti chiami" ogni
+// volta, in un campo di testo libero: un passo in più prima di ogni
+// singola partita, per un nome che poi non veniva nemmeno salvato da
+// nessuna parte — la volta dopo lo si ridigitava daccapo. Segnalato
+// giocandoci per davvero: non serve chiederlo.
+//
+// Chi è registrato ha già un nome vero sull'account (dato una volta
+// sola, alla registrazione): quello si usa. Chi è ospite non ne ha
+// mai scritto uno, e va bene così — riceve "Ospite" seguito da un
+// numero SEMPRE UGUALE per lui, ricavato dal suo stesso gettone: non a
+// caso a ogni partita, così l'avversario vede sempre "Ospite4217" e non
+// un ospite diverso ogni volta che si aggiorna la pagina.
+function nomeOspite(gettone) {
+  // Un hash di stringa, non un parseInt esadecimale: i gettoni veri
+  // sono sempre hex (gettoneNuovo(), in giocatori.js), ma questa
+  // funzione non deve fidarsene — un parseInt su qualcosa che non è
+  // hex torna NaN, e un NaN nascosto dietro un "|| Math.random()"
+  // smetterebbe di essere stabile proprio nel caso che dovrebbe
+  // gestire meglio (misurato scrivendo il test: bastava un gettone di
+  // prova con una sola lettera fuori da 0-9a-f per farlo cambiare a
+  // ogni chiamata). Con la somma dei codici carattere non serve che il
+  // testo sia hex, numerico, o lungo — deve solo esistere.
+  const s = String(gettone || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return 'Ospite' + String(h % 10000).padStart(4, '0');
+}
+async function nomeDiAccount(gettone) {
+  if (gettone) {
+    const suo = await anagrafe.stato(gettone);
+    if (suo && suo.ok && suo.nome) return suo.nome;
+  }
+  return nomeOspite(gettone);
+}
+
 // il tempo che scorre da solo: i turni scadono anche se nessuno gioca
 const battito = setInterval(() => stanze.battito(), 1000);
 if (battito.unref) battito.unref();
@@ -403,7 +441,7 @@ const server = http.createServer(async (req, res) => {
       // il mazzo si controlla PRIMA di sedersi: dentro la stanza deve
       // entrare solo roba che quel giocatore possiede davvero
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
-      const r = stanze.apri(nomePulito(corpo.nome), chiChiama(req), mazzo, corpo.gettone);
+      const r = stanze.apri(await nomeDiAccount(corpo.gettone), chiChiama(req), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 429, r);
     }
 
@@ -411,7 +449,7 @@ const server = http.createServer(async (req, res) => {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
-      const r = stanze.entra(corpo.codice, nomePulito(corpo.nome), mazzo, corpo.gettone);
+      const r = stanze.entra(corpo.codice, await nomeDiAccount(corpo.gettone), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 404, r);
     }
 
@@ -422,7 +460,7 @@ const server = http.createServer(async (req, res) => {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
-      const r = stanze.siediti(nomePulito(corpo.nome), chiChiama(req), mazzo, corpo.gettone);
+      const r = stanze.siediti(await nomeDiAccount(corpo.gettone), chiChiama(req), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 429, r);
     }
 

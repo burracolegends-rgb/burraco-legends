@@ -144,8 +144,7 @@
 <!-- ---------- scelta ---------- -->
 <div id="scelta">
   <div class="riquadro">
-    <h2>Come ti chiami</h2>
-    <input id="nome" maxlength="20" placeholder="Il tuo nome" autocomplete="off">
+    <h2>Apri un tavolo</h2>
     <button id="apri">Apri un tavolo</button>
     <p>Ricevi un codice da mandare al tuo amico.</p>
   </div>
@@ -252,7 +251,7 @@ $('apri').addEventListener('click', async () => {
   zitto();
   $('apri').disabled = true;
   try {
-    const r = await chiedi('/api/apri', { nome: $('nome').value, mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
+    const r = await chiedi('/api/apri', { mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
     if (!r.ok) { dice(r.motivo || 'Non è stato possibile aprire il tavolo.'); $('apri').disabled = false; return; }
     mio = r;
     $('scelta').classList.add('nascosto');
@@ -301,7 +300,7 @@ $('entra').addEventListener('click', async () => {
   zitto();
   $('entra').disabled = true;
   try {
-    const r = await chiedi('/api/entra', { codice: $('codice').value, nome: $('nome').value, mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
+    const r = await chiedi('/api/entra', { codice: $('codice').value, mazzo: mazzoDaPortare(), gettone: gettoneDaPortare() });
     if (!r.ok) { dice(r.motivo || 'Questo codice non funziona.'); $('entra').disabled = false; return; }
     mio = r;
     vaiAlTavolo();
