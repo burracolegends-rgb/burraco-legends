@@ -377,8 +377,59 @@ export function creaAnagrafe({
   // ----------------------------------------------------------
   async function quanti() { return (await archivio.tutte()).filter((k) => k.startsWith('giocatore:')).length; }
 
+  // ----------------------------------------------------------
+  // UN PACCHETTO REGALATO, NON COMPRATO
+  //
+  // Stessa strada di compraPacchetto — stesso sorteggio, stessa
+  // garanzia a soglia, la coda di benvenuto si consuma allo stesso modo
+  // — ma senza controllare né toccare il saldo. Serve ai premi che il
+  // gioco stesso assegna (oggi: chi vince la classifica della Missione
+  // del giorno), dove il pacchetto non lo paga chi lo riceve.
+  // ----------------------------------------------------------
+  async function regalaPacchetto(gettone, quanteCarte, tipo = 'eroe') {
+    const g = await carica(gettone);
+    if (!g) return { ok: false, motivo: 'Non ti conosco.' };
+
+    let bacino;
+    try { bacino = carteDiTipo(inVendita, tipo); }
+    catch (e) { return { ok: false, motivo: e.message }; }
+    if (!bacino.length) return { ok: false, motivo: 'Nessuna carta di quel tipo è ancora in vendita.' };
+
+    let carte, contatorePityDopo = g.contatorePity, pityScattato = false;
+    const dallaCoda = (tipo === 'magia') ? 0 : Math.min(quanteCarte, (g.codaBenvenuto || []).length);
+    if (dallaCoda > 0) {
+      const ids = g.codaBenvenuto.slice(0, dallaCoda);
+      g.codaBenvenuto = g.codaBenvenuto.slice(dallaCoda);
+      carte = apriPacchettoGarantito(inVendita, g.collezione, ids).carte;
+      const restano = quanteCarte - dallaCoda;
+      if (restano > 0) {
+        const conteggioProvvisorio = { ...g.collezione };
+        for (const c of carte) conteggioProvvisorio[c.carta.id] = (conteggioProvvisorio[c.carta.id] || 0) + 1;
+        const resto = apriPacchetto(bacino, conteggioProvvisorio, g.contatorePity, caso, restano);
+        carte = carte.concat(resto.carte);
+        contatorePityDopo = resto.contatore;
+        pityScattato = resto.pityScattato;
+      }
+    } else {
+      const risultato = apriPacchetto(bacino, g.collezione, g.contatorePity, caso, quanteCarte);
+      carte = risultato.carte;
+      contatorePityDopo = risultato.contatore;
+      pityScattato = risultato.pityScattato;
+    }
+
+    g.contatorePity = contatorePityDopo;
+    g.pacchettiAperti += 1;
+    g.carteAperte += quanteCarte;
+    for (const c of carte) {
+      g.collezione[c.carta.id] = (g.collezione[c.carta.id] || 0) + 1;
+    }
+    await salva(gettone, g);
+
+    return { ok: true, carte, pityScattato, ...vetrina(g, orologio()) };
+  }
+
   return { entra, stato, ritiraIlPremio, compraPacchetto, ricarica, quanti, vetrina, carica,
-           possiedeTutte, consumaCarta };
+           possiedeTutte, consumaCarta, regalaPacchetto };
 }
 
 export { OFFERTE, RICARICHE };

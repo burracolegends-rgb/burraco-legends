@@ -27,6 +27,7 @@ import { createMatch } from '../engine/partita.js';
 import { applica, faiScorrereIlTempo } from '../engine/azioni.js';
 import { SECONDI_DI_STUDIO } from '../engine/partita.js';
 import { vistaPer } from '../engine/vista.js';
+import { botGiocaTurno } from '../engine/bot.js';
 
 // Lettere senza quelle che si confondono a voce o a occhio: niente
 // O/0, I/1, L. Il codice si detta al telefono.
@@ -106,7 +107,12 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
   // in nessuna vista e non finisce nel registro: il registro serve a
   // rigiocare le partite, e per rigiocarle non serve sapere di chi
   // erano le carte.
-  function apri(nome, indirizzo, mazzo, gettone = null) {
+  // `semeForzato` esiste per una sola ragione: la Missione del giorno
+  // (vedi apriControBot, poco più sotto) vuole che il mazzo esca UGUALE
+  // per ogni giocatore che la gioca — lo stesso seme per tutti, cambiato
+  // solo quando cambia il giorno. Un tavolo aperto normalmente non lo
+  // passa mai: resta il seme a caso di sempre.
+  function apri(nome, indirizzo, mazzo, gettone = null, semeForzato = null) {
     if (stanze.size >= stanzeMassime) {
       return { ok: false, motivo: 'Il server è pieno di tavoli in questo momento. Riprova fra poco.' };
     }
@@ -116,7 +122,7 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
     let codice;
     do { codice = codiceNuovo(); } while (stanze.has(codice));
 
-    const seme = randomBytes(4).readUInt32BE(0);
+    const seme = Number.isFinite(semeForzato) ? (semeForzato >>> 0) : randomBytes(4).readUInt32BE(0);
     const adesso = orologio();
     const stanza = {
       codice,
@@ -137,6 +143,34 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
     return { ok: true, codice, giocatore: 0, segreto: stanza.posti[0].segreto };
   }
 
+  // ------------------------------------------------------------
+  // UN TAVOLO CONTRO IL BOT, MA SUL SERVER
+  //
+  // Fin qui il bot girava solo nel browser: comodo, ma un browser puo'
+  // mentire su come e' andata. Per la Missione del giorno, dove in
+  // classifica c'e' un premio vero, il risultato deve nascere da una
+  // partita che il server ha visto giocare — non da uno stato che il
+  // client dichiara essere il proprio punteggio finale.
+  //
+  // La stanza che nasce qui e' IDENTICA a una aperta con apri(): stesso
+  // oggetto, stesso guarda() per seguirla, stesso tavolo.html alla
+  // fine. L'unica differenza sta nel secondo posto: invece di aspettare
+  // che un secondo umano lo riempia, lo si riempie subito con un
+  // segnaposto marcato `bot: true`, e la partita comincia all'istante —
+  // chi la apre non aspetta mai nessuno.
+  function apriControBot(nome, indirizzo, mazzo, gettone, semeDelGiorno) {
+    const r = apri(nome, indirizzo, mazzo, gettone, semeDelGiorno);
+    if (!r.ok) return r;
+    const stanza = stanze.get(r.codice);
+    stanza.posti[1] = {
+      segreto: segretoNuovo(), nome: 'Il Bot', collegatoAlle: orologio(),
+      mazzo: null,     // niente mazzo: la squadra del bot e' quella predefinita, sempre la stessa
+      gettone: null, bot: true
+    };
+    avviaPartita(stanza);
+    return r;
+  }
+
   function entra(codice, nome, mazzo, gettone = null) {
     const stanza = stanze.get(String(codice || '').toUpperCase().trim());
     if (!stanza) return { ok: false, motivo: 'Questo codice non corrisponde a nessun tavolo.' };
@@ -145,6 +179,56 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
     stanza.posti[1] = { segreto: segretoNuovo(), nome: nome || 'Giocatore 2', collegatoAlle: orologio(), mazzo: mazzo || null, gettone: gettone || null };
     avviaPartita(stanza);
     return { ok: true, codice: stanza.codice, giocatore: 1, segreto: stanza.posti[1].segreto };
+  }
+
+  // ------------------------------------------------------------
+  // SEDERSI CON UNO SCONOSCIUTO
+  //
+  // Fin qui l'abbinamento lo facevano le persone: uno apre, manda il
+  // codice su whatsapp, l'altro lo digita. Qui lo fa il server — ma la
+  // stanza che nasce è IDENTICA a una aperta con `apri()`: stesso
+  // oggetto, stesso `guarda()` per aspettare, stesso `tavolo.html` alla
+  // fine. L'unica cosa che cambia è chi decide con chi si siede.
+  //
+  // Un solo posto pubblico alla volta, non una coda vera: qui si gioca
+  // in due, quindi in ogni istante o c'è un tavolo che aspetta il
+  // secondo, o non c'è nessuno in attesa. Il terzo che arriva mentre
+  // due si stanno già sedendo semplicemente apre un tavolo nuovo, che
+  // diventa lui il prossimo posto pubblico.
+  let postoPubblico = null;   // { codice } di un tavolo pubblico ancora scoperto, o null
+
+  // Quanto puo' restare scoperto un posto pubblico prima di considerarlo
+  // abbandonato e riaprirne uno. Non i due ore di STANZA_ABBANDONATA_MS
+  // (quella e' la rete di sicurezza per un tavolo PRIVATO, dove chi
+  // aspetta puo' essersi allontanato dal telefono ma tornare) — qui chi
+  // aspetta sta con la pagina aperta in un lungo-polling continuo (vedi
+  // aspettaLAmico in sala.html), quindi il suo ultimo contatto si
+  // rinnova da solo ogni ATTESA_MASSIMA_MS circa. Se non si rinnova per
+  // piu' di un giro e mezzo, la scheda non c'e' piu' — meglio liberare
+  // subito il posto pubblico che far aspettare un fantasma.
+  const POSTO_PUBBLICO_MURTO_MS = ATTESA_MASSIMA_MS * 2 - 5000;
+
+  function siediti(nome, indirizzo, mazzo, gettone = null) {
+    if (postoPubblico) {
+      const stanza = stanze.get(postoPubblico.codice);
+      const ancoraVivo = stanza && !stanza.posti[1] &&
+        (orologio() - stanza.posti[0].collegatoAlle) <= POSTO_PUBBLICO_MURTO_MS;
+      if (ancoraVivo) {
+        // Lo stesso gettone che richiama (pagina ricaricata, doppio
+        // tocco): lo si rimanda al SUO tavolo in attesa invece di
+        // fargli aprire un secondo posto pubblico e sedersi da solo
+        // contro se stesso.
+        if (gettone && stanza.posti[0].gettone === gettone) {
+          return { ok: true, codice: stanza.codice, giocatore: 0, segreto: stanza.posti[0].segreto };
+        }
+        postoPubblico = null;   // questo tavolo sta per riempirsi: non e' piu' "il" posto pubblico
+        return entra(stanza.codice, nome, mazzo, gettone);
+      }
+      postoPubblico = null;     // era vuoto, scaduto, o non c'e' piu': si riparte da capo
+    }
+    const r = apri(nome, indirizzo, mazzo, gettone);
+    if (r.ok) postoPubblico = { codice: r.codice };
+    return r;
   }
 
   function avviaPartita(stanza) {
@@ -364,6 +448,58 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
     if (esito.ok) stanza.ultimoEsito = resocontoPubblico(io, azione, esito);
     if (esito.ok || esito.turnoScaduto) cambiata(stanza);
 
+    // ------------------------------------------------------------
+    // SE IL SECONDO POSTO È IL BOT, GIOCA DA SOLO, SUBITO.
+    //
+    // Contro un umano vero il turno dell'altro arriva quando arriva:
+    // nessuno lo forza da qui. Contro il bot invece non c'è nessuno
+    // dall'altra parte che possa mai muovere — se non lo facesse
+    // qualcuno qui, la partita resterebbe ferma per sempre sul suo
+    // turno. Si gioca in un ciclo e non con una chiamata sola perché
+    // certe Carte Magiche regalano un turno extra: il bot deve
+    // continuare finché il turno non torna davvero all'umano, o la
+    // partita non finisce.
+    //
+    // Il resoconto che l'umano legge ("l'avversario ha calato...") non
+    // prova a raccontare ogni singola mossa del bot una per una — sarebbe
+    // la stessa complicazione già risolta per l'avversario umano, ma
+    // moltiplicata per un turno intero invece che una mossa sola. Si
+    // registra invece un resoconto UNICO per tutto il turno, dando
+    // precedenza a quello che si vede di più: un colpo subito prima di
+    // tutto il resto (il giocatore lo aspetta, l'animazione del danno
+    // resta la cosa piu' importante da mostrare), altrimenti il pozzetto
+    // preso, altrimenti niente di speciale — il tavolo si ridisegna
+    // comunque con lo stato nuovo.
+    if (stanza.posti[1] && stanza.posti[1].bot) {
+      // IL BOT NON È MAI "DA QUANTO NON SI VEDE": non ha una pagina sua
+      // che lo tenga aggiornato (guardaSeCEAncora guarda proprio questo
+      // numero, lato client, per avvisare "l'avversario non risponde").
+      // Senza rinfrescarlo qui, dopo 45 secondi di partita vera il bot
+      // risulterebbe assente da un'eternità — un falso allarme su un
+      // avversario che sta giocando benissimo.
+      stanza.posti[1].collegatoAlle = orologio();
+      let giriDiSicurezza = 8;   // non puo' mai servire un numero cosi' alto: e' solo la rete di sicurezza
+      const mosseBot = [];
+      while (giriDiSicurezza-- > 0 && stanza.partita.status === 'in_progress' &&
+             stanza.partita.currentPlayerIndex === 1) {
+        mosseBot.push(...botGiocaTurno(stanza.partita, 1, orologio()));
+      }
+      if (mosseBot.length) {
+        const colDanno = mosseBot.filter((m) => m.danno).sort((a, b) => b.danno - a.danno)[0];
+        stanza.ultimoEsito = colDanno
+          ? { giocatore: 1, tipo: colDanno.tipo, danno: colDanno.danno, ondata: colDanno.ondata,
+              colpi: colDanno.colpi, quando: orologio(),
+              pozzettoPreso: mosseBot.some((m) => m.pozzetto) }
+          : { giocatore: 1, tipo: 'turno_bot', quando: orologio(),
+              pozzettoPreso: mosseBot.some((m) => m.pozzetto) };
+        stanza.registro.push({
+          versione: stanza.versione + 1, tipo: 'turno_bot', giocatore: 1,
+          mosse: mosseBot, quando: orologio()
+        });
+        cambiata(stanza);
+      }
+    }
+
     return { ...esito, versione: stanza.versione, vista: statoPer(stanza, io).vista };
   }
 
@@ -432,7 +568,7 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
   }
 
   return {
-    apri, entra, guarda, muovi, battito, registroDi,
+    apri, entra, siediti, apriControBot, guarda, muovi, battito, registroDi,
     quante: () => stanze.size,
     stanza: (codice) => stanze.get(String(codice || '').toUpperCase().trim()) || null
   };

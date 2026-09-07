@@ -28,6 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { creaRegistroStanze } from './stanze.js';
+import { creaMissioni } from './missioni.js';
 
 // ------------------------------------------------------------
 // UN ERRORE IMPREVISTO NON DEVE SPEGNERE IL SERVER PER TUTTI.
@@ -272,6 +273,11 @@ const DOVE_SALVO = process.env.MAGAZZINO || path.join(RADICE, 'dati', 'giocatori
 const archivio = archivioSuFile(DOVE_SALVO);
 const anagrafe = creaAnagrafe({ archivio, catalogo: Object.values(CARTE) });
 
+// La Missione del giorno vive sopra le stanze (per il tavolo vero contro
+// il bot) e sopra l'anagrafe (per consegnare il premio): nasce quindi
+// qui, dopo che tutte e due esistono già.
+const missioni = creaMissioni({ archivio, stanze, anagrafe, catalogo: Object.values(CARTE) });
+
 // ------------------------------------------------------------
 // COME SI ENTRA
 //
@@ -393,6 +399,17 @@ const server = http.createServer(async (req, res) => {
       return rispondi(res, r.ok ? 200 : 404, r);
     }
 
+    // Stesso ingresso di /api/apri, ma qui non sei tu a decidere chi
+    // arriva al tuo tavolo: se qualcuno sta già aspettando, ti siedi con
+    // lui e si parte subito; se no, sei tu il prossimo ad aspettare.
+    if (via === '/api/siediti' && req.method === 'POST') {
+      const corpo = await leggiCorpo(req);
+      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
+      const r = stanze.siediti(nomePulito(corpo.nome), chiChiama(req), mazzo, corpo.gettone);
+      return rispondi(res, r.ok ? 200 : 429, r);
+    }
+
     if (via === '/api/stato' && req.method === 'GET') {
       return stanze.guarda(
         url.searchParams.get('codice'),
@@ -406,7 +423,40 @@ const server = http.createServer(async (req, res) => {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const r = stanze.muovi(corpo.codice, corpo.segreto, corpo.azione);
+      // Se questo codice è una Missione e la mossa l'ha appena chiusa
+      // (vinta, persa, o finita in un altro modo), il punteggio finisce
+      // in classifica qui — subito dopo che il server stesso ha visto
+      // finire la partita, non perché il browser dice di aver vinto.
+      // Per ogni altra mossa di ogni altra partita normale questa riga
+      // costa una sola lettura di Map e non fa nient'altro.
+      missioni.registraSeFinita(corpo.codice).catch((e) =>
+        console.error('[missioni] non sono riuscito a registrare il punteggio:', e && e.message));
       return rispondi(res, 200, r);           // "mossa rifiutata" non è un errore di rete
+    }
+
+    // Un tentativo al giorno, sempre contro lo stesso mazzo per tutti
+    // (vedi server/missioni.js). Se oggi l'hai già giocata, torna il
+    // risultato di allora invece di un tavolo nuovo.
+    if (via === '/api/missione/inizia' && req.method === 'POST') {
+      const corpo = await leggiCorpo(req);
+      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
+      const r = await missioni.inizia(nomePulito(corpo.nome), chiChiama(req), mazzo, corpo.gettone);
+      return rispondi(res, r.ok ? 200 : 400, r);
+    }
+
+    // Solo per sapere se oggi hai già giocato, senza aprire niente: la
+    // pagina lo chiede appena si apre, per decidere subito cosa
+    // mostrare invece di scoprirlo solo dopo aver premuto "comincia".
+    if (via === '/api/missione/oggi' && req.method === 'GET') {
+      const risultato = await missioni.giocataOggi(url.searchParams.get('gettone'));
+      return rispondi(res, 200, { ok: true, giocataOggi: !!risultato, risultato: risultato || null });
+    }
+
+    if (via === '/api/missione/classifica' && req.method === 'GET') {
+      const chi = url.searchParams.get('giorno') === 'ieri' ? 'ieri' : 'oggi';
+      const r = await missioni.classificaDi(chi, url.searchParams.get('gettone'));
+      return rispondi(res, 200, r);
     }
 
     // ---------- CHI SEI E COSA HAI ----------

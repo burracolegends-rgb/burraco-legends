@@ -720,13 +720,29 @@
     <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
   </a>
 
-  <a class="modo chiuso" href="#" onclick="return false;">
+  <!-- Stesso tavolo online di "Gioca con un amico" — cambia solo chi
+       decide con chi ti siedi: qui lo decide il server (server/stanze.js,
+       siediti()), abbinandoti a chi sta cercando come te in questo
+       momento, invece di un codice passato a mano. -->
+  <a class="modo" href="sfida.html">
     <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
-    <span class="sigillo-presto">Presto</span>
+    <div class="scena"><img src="immagini/decorazioni/icona-tavolo.webp" alt=""></div>
+    <div class="testo">
+      <span class="titolo">SFIDA UNO SCONOSCIUTO</span>
+      <span class="sotto">Il server ti abbina &middot; partita vera</span>
+    </div>
+    <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+  </a>
+
+  <!-- Riattivata (server/missioni.js): un tentativo al giorno contro un
+       bot col mazzo identico per tutti, con la sua classifica giornaliera
+       a parte — non tocca il livello di "Sfida uno sconosciuto" qui sopra. -->
+  <a class="modo" href="missione.html">
+    <img class="cornice" src="immagini/decorazioni/cornice-orizzontale.webp" alt="">
     <div class="scena"><img src="immagini/decorazioni/icona-missioni.webp" alt=""></div>
     <div class="testo">
-      <span class="titolo">LE MISSIONI</span>
-      <span class="sotto">Sfide contro l'intelligenza artificiale</span>
+      <span class="titolo">LA MISSIONE DEL GIORNO</span>
+      <span class="sotto">Un tentativo, mazzo uguale per tutti &middot; classifica e premio</span>
     </div>
     <div class="freccia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
   </a>

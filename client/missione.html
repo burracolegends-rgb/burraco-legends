@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends — La Missione del giorno</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a1e12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  /* ============================================================
+     LA MISSIONE DEL GIORNO
+     Un tentativo, sempre contro lo stesso mazzo di oggi (vedi
+     server/missioni.js: il seme cambia solo quando cambia il giorno a
+     Roma). Questa pagina non gioca niente da sola: prepara il
+     tentativo e rimanda a tavolo.html — la partita vera è identica in
+     tutto e per tutto a una online, solo che il secondo posto lo tiene
+     un bot che gioca sul server. Qui si torna solo per vedere com'è
+     andata e chi guida la classifica di oggi.
+     ============================================================ */
+  :root {
+    --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;
+    --pergamena: #f2e6cc; --tenue: #b7a686; --notte: #0b0810;
+    --verde: #58c48a; --rosso: #f0736b;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(42,29,61,0.65) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(58,36,16,0.6) 0%, transparent 55%),
+      url('immagini/decorazioni/sfondo-tavolo.webp') center / cover no-repeat,
+      var(--notte);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 20px; padding: max(70px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+    min-height: 100vh;
+  }
+
+  .insegna { text-align: center; }
+  .insegna h1 {
+    margin: 0; font-family: Georgia, serif; font-size: clamp(1.5rem, 5vw, 2.3rem);
+    letter-spacing: 2.5px; font-weight: 700;
+    background: linear-gradient(180deg, #fff6d8, var(--oro) 45%, var(--oro-scuro) 75%, #ffe9ae);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.7));
+  }
+  .insegna .sotto { font-size: 0.83rem; color: var(--tenue); margin-top: 6px; letter-spacing: 0.4px; }
+
+  .riquadro {
+    width: min(460px, 100%); border-radius: 16px; padding: 20px;
+    border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(52,38,22,0.92), rgba(22,15,9,0.95));
+    box-shadow: inset 0 1px 0 rgba(255,224,160,0.18), 0 8px 26px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column; gap: 13px;
+  }
+  .riquadro h2 {
+    margin: 0; font-family: Georgia, serif; font-size: 1rem;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--oro);
+  }
+  .riquadro p { margin: 0; font-size: 0.85rem; color: var(--tenue); line-height: 1.6; }
+
+  input {
+    width: 100%; padding: 12px 14px; border-radius: 10px; font-family: inherit;
+    border: 1px solid var(--oro-scuro); background: rgba(0,0,0,0.4); color: var(--pergamena);
+    font-size: 1rem; outline: none;
+  }
+  input:focus { border-color: var(--oro); box-shadow: 0 0 0 3px rgba(232,196,106,0.16); }
+
+  button {
+    padding: 13px; border-radius: 11px; border: none; cursor: pointer; font-family: inherit;
+    font-size: 0.96rem; font-weight: 800; letter-spacing: 0.7px;
+    background: linear-gradient(180deg, #fff0c2, var(--oro) 55%, #b98d2c); color: #2a1c08;
+    box-shadow: 0 5px 16px rgba(0,0,0,0.5); transition: transform 0.14s, opacity 0.14s;
+  }
+  button:hover:not(:disabled) { transform: translateY(-2px); }
+  button:disabled { opacity: 0.45; cursor: default; transform: none; }
+  button.tenue { background: rgba(255,255,255,0.07); color: var(--pergamena); border: 1px solid var(--oro-scuro); box-shadow: none; }
+
+  .premio {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    border-radius: 12px; border: 1px dashed var(--oro); background: rgba(232,196,106,0.08);
+  }
+  .premio .icona { font-size: 1.8rem; }
+  .premio b { color: var(--oro-chiaro); }
+
+  .esito-mio {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 14px; border-radius: 12px; background: rgba(0,0,0,0.28);
+  }
+  .esito-mio .pv { font-family: Georgia, serif; font-size: 1.7rem; color: var(--oro-chiaro); }
+  .esito-mio .etichetta { font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--tenue); }
+  .pillola { padding: 4px 11px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.6px; }
+  .pillola.vinto { background: rgba(88,196,138,0.22); color: var(--verde); border: 1px solid var(--verde); }
+  .pillola.perso { background: rgba(240,115,107,0.18); color: var(--rosso); border: 1px solid var(--rosso); }
+
+  table.classifica { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  table.classifica th {
+    text-align: left; font-size: 0.68rem; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--tenue); padding: 4px 6px; border-bottom: 1px solid rgba(232,196,106,0.2);
+  }
+  table.classifica td { padding: 7px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  table.classifica td.posto { color: var(--oro); font-weight: 800; width: 28px; }
+  table.classifica td.pv { text-align: right; font-variant-numeric: tabular-nums; color: var(--pergamena); }
+  table.classifica tr.mio { background: rgba(232,196,106,0.1); }
+  table.classifica tr.mio td { color: var(--oro-chiaro); font-weight: 700; }
+  .vuoto-classifica { font-size: 0.83rem; color: var(--tenue); text-align: center; padding: 10px 0; }
+
+  .puntini { display: inline-flex; gap: 4px; }
+  .puntini i { width: 7px; height: 7px; border-radius: 50%; background: var(--oro); animation: respira 1.3s ease-in-out infinite; }
+  .puntini i:nth-child(2) { animation-delay: 0.18s; }
+  .puntini i:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes respira { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+
+  .avviso {
+    font-size: 0.82rem; padding: 10px 13px; border-radius: 10px; line-height: 1.5;
+    border: 1px solid rgba(240,115,107,0.5); background: rgba(90,30,26,0.35); color: #ffc9c4;
+  }
+  .nascosto { display: none !important; }
+  .torna { position: fixed; top: 16px; left: 16px; font-size: 1.275rem; color: var(--tenue); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+  .torna .icona-torna { width: 60px; height: 60px; object-fit: contain; }
+  .torna:hover { color: var(--oro); }
+</style>
+</head>
+<body>
+
+<a class="torna" href="home.html"><img src="immagini/decorazioni/torna-home.webp" alt="" class="icona-torna">Home</a>
+
+<div class="insegna">
+  <h1>LA MISSIONE DEL GIORNO</h1>
+  <div class="sotto" id="sottotitolo">Si prepara…</div>
+</div>
+
+<!-- ---------- caricamento ---------- -->
+<div id="carica" class="riquadro">
+  <span class="puntini"><i></i><i></i><i></i></span>
+</div>
+
+<!-- ---------- non ancora giocata oggi ---------- -->
+<div id="daGiocare" class="riquadro nascosto">
+  <h2>Un tentativo solo, per tutti lo stesso</h2>
+  <p>Oggi affronti un avversario che ha esattamente il tuo stesso mazzo iniziale — le sue carte, il tuo, l'ordine di pesca: sono identici per chiunque giochi la Missione oggi. Cambia solo come la si gioca.</p>
+  <div class="premio">
+    <span class="icona">🎁</span>
+    <span>Chi finisce primo in classifica <b>oggi</b> vince un pacchetto da 5 carte.</span>
+  </div>
+  <p>Vale anche se perdi: la classifica guarda i punti vita finali dei tuoi eroi, non solo vittoria o sconfitta.</p>
+  <input id="nome" maxlength="20" placeholder="Il tuo nome, per la classifica" autocomplete="off">
+  <button id="comincia">Comincia la missione</button>
+</div>
+
+<!-- ---------- già giocata: il tuo risultato + classifica di oggi ---------- -->
+<div id="giaFatto" class="riquadro nascosto">
+  <h2>Hai già giocato oggi</h2>
+  <div class="esito-mio">
+    <div>
+      <div class="etichetta">I tuoi PV finali</div>
+      <div class="pv" id="mioPv">—</div>
+    </div>
+    <span class="pillola" id="mioEsito"></span>
+  </div>
+  <p>Torna domani per un nuovo mazzo, uguale per tutti.</p>
+</div>
+
+<!-- ---------- classifica di oggi ---------- -->
+<div id="classificaOggi" class="riquadro nascosto">
+  <h2>Classifica di oggi</h2>
+  <table class="classifica"><thead><tr><th></th><th>Giocatore</th><th style="text-align:right">PV</th></tr></thead>
+    <tbody id="righeOggi"></tbody>
+  </table>
+  <div class="vuoto-classifica nascosto" id="vuotoOggi">Nessuno ha ancora giocato oggi. Sii il primo.</div>
+</div>
+
+<!-- ---------- ieri: chi ha vinto il pacchetto ---------- -->
+<div id="classificaIeri" class="riquadro nascosto">
+  <h2>Il vincitore di ieri</h2>
+  <p id="testoIeri"></p>
+</div>
+
+<div id="avviso" class="avviso nascosto"></div>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+function dice(testo) { $('avviso').textContent = testo; $('avviso').classList.remove('nascosto'); }
+
+async function chiedi(via, corpo) {
+  const risposta = await fetch(via, corpo ? {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo)
+  } : undefined);
+  return risposta.json();
+}
+
+function mazzoDaPortare() {
+  try {
+    const salvato = JSON.parse(localStorage.getItem('bb_mazzo') || 'null');
+    if (salvato && salvato.personaggi && Array.isArray(salvato.carteMagiche)) return salvato;
+  } catch (e) {}
+  return undefined;
+}
+function gettoneDaPortare() {
+  try { return localStorage.getItem('bb_gettone') || undefined; } catch (e) { return undefined; }
+}
+
+function riempiClassifica(corpo, righe) {
+  corpo.innerHTML = '';
+  if (!righe.length) return false;
+  for (const r of righe) {
+    const tr = document.createElement('tr');
+    if (r.mio) tr.className = 'mio';
+    tr.innerHTML = '<td class="posto">' + r.posto + '</td><td>' + (r.nome || 'Giocatore') +
+      '</td><td class="pv">' + r.pvFinali + '</td>';
+    corpo.appendChild(tr);
+  }
+  return true;
+}
+
+async function mostraClassificaIeri() {
+  const r = await chiedi('/api/missione/classifica?giorno=ieri');
+  if (!r.ok) return;
+  $('classificaIeri').classList.remove('nascosto');
+  if (!r.righe.length) {
+    $('testoIeri').textContent = 'Ieri non ha giocato nessuno.';
+  } else if (r.vincitore) {
+    $('testoIeri').innerHTML = '<b>' + (r.vincitore.nome || 'Un giocatore') + '</b> ha chiuso primo con ' +
+      r.vincitore.pvFinali + ' PV' + (r.premioConsegnato ? ' — pacchetto consegnato.' : '.');
+  } else {
+    $('testoIeri').textContent = 'Classifica di ieri non ancora chiusa.';
+  }
+}
+
+(async function avvia() {
+  const gettone = gettoneDaPortare();
+  mostraClassificaIeri();
+
+  if (!gettone) {
+    $('carica').classList.add('nascosto');
+    $('sottotitolo').textContent = '';
+    dice('Apri prima la home: senza sapere chi sei non posso salvare il tuo tentativo di oggi.');
+    return;
+  }
+
+  // "Hai già giocato oggi?" si chiede SEPARATAMENTE dalla classifica, e
+  // con un endpoint che si limita a guardare — se lo si scoprisse solo
+  // dentro /api/missione/inizia, l'unico modo di saperlo in anticipo
+  // sarebbe cominciare per davvero, e il solo aprire questa pagina
+  // brucerebbe il tentativo di oggi.
+  const giaFatto = await chiedi('/api/missione/oggi?gettone=' + encodeURIComponent(gettone));
+  const oggi = await chiedi('/api/missione/classifica?giorno=oggi&gettone=' + encodeURIComponent(gettone));
+  $('carica').classList.add('nascosto');
+  $('sottotitolo').textContent = 'Un mazzo, uguale per tutti, fino a domani';
+  if (oggi.ok) {
+    const ceNe = riempiClassifica($('righeOggi'), oggi.righe);
+    $('vuotoOggi').classList.toggle('nascosto', ceNe);
+    $('classificaOggi').classList.remove('nascosto');
+  }
+
+  if (giaFatto.ok && giaFatto.giocataOggi) {
+    mostraGiaFatto(giaFatto.risultato);
+    return;
+  }
+
+  try { $('nome').value = localStorage.getItem('bb_nome_missione') || ''; } catch (e) {}
+
+  $('comincia').addEventListener('click', async () => {
+    $('comincia').disabled = true;
+    const nome = $('nome').value.trim();
+    try { localStorage.setItem('bb_nome_missione', nome || 'Giocatore'); } catch (e) {}
+    try {
+      const r = await chiedi('/api/missione/inizia', { nome, mazzo: mazzoDaPortare(), gettone });
+      if (!r.ok) { dice(r.motivo || 'Non è stato possibile cominciare.'); $('comincia').disabled = false; return; }
+      if (r.giaGiocataOggi) {
+        mostraGiaFatto(r.risultato);
+        return;
+      }
+      try {
+        localStorage.setItem('bb_tavolo', JSON.stringify({ codice: r.codice, segreto: r.segreto, giocatore: r.giocatore, quando: Date.now() }));
+      } catch (e) {}
+      location.href = 'tavolo.html#' + new URLSearchParams({ codice: r.codice, segreto: r.segreto, giocatore: String(r.giocatore) }).toString();
+    } catch (e) {
+      dice('Il server non risponde. È acceso?');
+      $('comincia').disabled = false;
+    }
+  });
+
+  $('daGiocare').classList.remove('nascosto');
+})();
+
+function mostraGiaFatto(risultato) {
+  $('daGiocare').classList.add('nascosto');
+  $('mioPv').textContent = risultato.pvFinali;
+  $('mioEsito').textContent = risultato.vinto ? 'VINTA' : 'PERSA';
+  $('mioEsito').className = 'pillola ' + (risultato.vinto ? 'vinto' : 'perso');
+  $('giaFatto').classList.remove('nascosto');
+}
+
+if (location.protocol === 'file:') {
+  dice('Questa pagina va aperta dal server, non con un doppio clic. Avvia "node server/server.js" e vai su http://localhost:8080');
+}
+})();
+</script>
+</body>
+</html>
