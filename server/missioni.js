@@ -67,10 +67,13 @@ function giornoPrecedente(giorno) {
   return d.toISOString().slice(0, 10);
 }
 
-export function creaMissioni({ archivio, stanze, anagrafe, catalogo, orologio = Date.now }) {
+export function creaMissioni({ archivio, stanze, anagrafe, catalogo, orologio = Date.now, eRegistrato }) {
   if (!archivio) throw new Error('Le missioni hanno bisogno di un magazzino.');
   if (!stanze) throw new Error('Le missioni hanno bisogno del registro delle stanze.');
   if (!anagrafe) throw new Error('Le missioni hanno bisogno dell\'anagrafe, per consegnare il premio.');
+  if (typeof eRegistrato !== 'function') {
+    throw new Error('Le missioni hanno bisogno di sapere chi è registrato, per decidere chi può parteciparvi.');
+  }
 
   // Il pacchetto in palio deve poter uscire per davvero: se il catalogo
   // non ha nessuna carta 'eroe' in vendita, meglio saperlo ora che il
@@ -104,8 +107,23 @@ export function creaMissioni({ archivio, stanze, anagrafe, catalogo, orologio = 
   // ------------------------------------------------------------
   // COMINCIARE
   // ------------------------------------------------------------
-  async function inizia(nome, indirizzo, mazzo, gettone) {
+  async function inizia(indirizzo, mazzo, gettone) {
     if (!gettone) return { ok: false, motivo: 'Serve sapere chi sei per giocare la Missione: apri prima la home.' };
+
+    // SOLO CHI È REGISTRATO PUÒ PARTECIPARE.
+    // Segnalato da chi ci ha provato per davvero: chiedere di scrivere
+    // un nome a mano non aveva senso — quel nome esiste già sull'account
+    // (lo si è dato registrandosi), e chi entra come ospite non ha un
+    // account che duri: cambia dispositivo o cancella i dati del
+    // browser e sparisce, portandosi via anche il posto in classifica.
+    // Un premio non avrebbe dove arrivare, e una riga di classifica
+    // firmata da chiunque scriva "Pietro" non significherebbe niente.
+    // La verifica sta fuori da qui (vedi eRegistrato in server.js):
+    // questo modulo non deve sapere COME si è registrato uno, solo SE.
+    if (!(await eRegistrato(gettone))) {
+      return { ok: false, serveRegistrazione: true,
+        motivo: 'La Missione del giorno è per chi ha un account registrato: da ospite le tue carte si perdono al primo cambio di dispositivo, e un premio non avrebbe dove arrivare. Registrati — è gratis — e torna qui.' };
+    }
 
     const adesso = orologio();
     const giorno = giornoDi(adesso);
@@ -114,9 +132,14 @@ export function creaMissioni({ archivio, stanze, anagrafe, catalogo, orologio = 
     const gia = await archivio.leggi(chiaveTentativo(giorno, gettone));
     if (gia) return { ok: true, giaGiocataOggi: true, risultato: gia };
 
+    // Il nome non lo manda il client: è quello vero dell'account, lo
+    // stesso che si vede ovunque nel resto del gioco.
+    const suo = await anagrafe.stato(gettone);
+    const nome = (suo && suo.ok && suo.nome) || 'Giocatore';
+
     const r = stanze.apriControBot(nome, indirizzo, mazzo, gettone, semeDelGiorno(giorno));
     if (!r.ok) return r;
-    inCorso.set(r.codice, { gettone, giorno, nome: nome || 'Giocatore' });
+    inCorso.set(r.codice, { gettone, giorno, nome });
     return { ok: true, giaGiocataOggi: false, codice: r.codice, giocatore: r.giocatore, segreto: r.segreto };
   }
 

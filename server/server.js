@@ -273,11 +273,6 @@ const DOVE_SALVO = process.env.MAGAZZINO || path.join(RADICE, 'dati', 'giocatori
 const archivio = archivioSuFile(DOVE_SALVO);
 const anagrafe = creaAnagrafe({ archivio, catalogo: Object.values(CARTE) });
 
-// La Missione del giorno vive sopra le stanze (per il tavolo vero contro
-// il bot) e sopra l'anagrafe (per consegnare il premio): nasce quindi
-// qui, dopo che tutte e due esistono già.
-const missioni = creaMissioni({ archivio, stanze, anagrafe, catalogo: Object.values(CARTE) });
-
 // ------------------------------------------------------------
 // COME SI ENTRA
 //
@@ -309,6 +304,27 @@ const conti = creaAccessoEmail({
   indirizzoSito: process.env.INDIRIZZO_SITO || 'http://localhost:' + PORTA,
   spedisci: null
 });
+
+// UN ACCOUNT È "REGISTRATO" SE C'È UN MODO DI RITROVARLO oltre al
+// gettone nel browser: un accesso social (Google/Facebook) o
+// un'email con password. Chi è entrato solo come ospite non ha
+// nessuno dei due — vedi comeSeiEntrato/comeSeiRegistrato più sopra —
+// e sparisce al primo cambio di dispositivo. Serve alla Missione del
+// giorno, che ha un premio vero e una classifica che deve reggere nel
+// tempo: un ospite non può parteciparvi (vedi missioni.js, inizia()).
+async function eRegistrato(gettone) {
+  if (!gettone) return false;
+  const social = await accessi.comeSeiEntrato(gettone);
+  if (social.ok && !social.ospite) return true;
+  const email = await conti.comeSeiRegistrato(gettone);
+  return !!(email.ok && email.registrato);
+}
+
+// La Missione del giorno vive sopra le stanze (per il tavolo vero contro
+// il bot), sopra l'anagrafe (per consegnare il premio) e sopra
+// eRegistrato (per decidere chi può parteciparvi): nasce quindi qui,
+// dopo che tutte e tre esistono già.
+const missioni = creaMissioni({ archivio, stanze, anagrafe, catalogo: Object.values(CARTE), eRegistrato });
 
 // il tempo che scorre da solo: i turni scadono anche se nessuno gioca
 const battito = setInterval(() => stanze.battito(), 1000);
@@ -441,7 +457,7 @@ const server = http.createServer(async (req, res) => {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
-      const r = await missioni.inizia(nomePulito(corpo.nome), chiChiama(req), mazzo, corpo.gettone);
+      const r = await missioni.inizia(chiChiama(req), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 400, r);
     }
 

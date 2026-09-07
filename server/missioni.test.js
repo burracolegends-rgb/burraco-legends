@@ -69,17 +69,43 @@ console.log('--- SEDERSI CON UNO SCONOSCIUTO ---');
 }
 
 // ============================================================
+console.log('\n--- SOLO CHI È REGISTRATO PUÒ GIOCARE LA MISSIONE ---');
+// Registrarsi crea un account vero, con un vero indirizzo email: un
+// modo di ritrovarlo che sopravvive a un cambio di browser, e a cui un
+// premio può davvero arrivare. Serve una password che rispetti le
+// regole vere (server/password.js): otto caratteri, non troppo facile.
+const registrato = async (nome) => {
+  const email = 'prova_' + Math.random().toString(36).slice(2) + '@esempio.it';
+  const r = (await posta('/api/registrati', { email, password: 'BurracoProva#42', nome })).corpo;
+  if (!r.ok) throw new Error('registrazione di prova fallita: ' + r.motivo);
+  return r.gettone;
+};
+{
+  const ospite = (await posta('/api/entra-ospite', { nome: 'Turista' })).corpo.gettone;
+  const daOspite = (await posta('/api/missione/inizia', { gettone: ospite })).corpo;
+  check('un account ospite non può cominciare la Missione',
+    daOspite.ok === false && daOspite.serveRegistrazione === true, JSON.stringify(daOspite));
+  check('e nessun tavolo si è aperto per lui', !daOspite.codice);
+
+  const senzaAccount = (await posta('/api/missione/inizia', { gettone: gettoneFinto() })).corpo;
+  check('e nemmeno un gettone che non esiste proprio',
+    senzaAccount.ok === false && senzaAccount.serveRegistrazione === true);
+}
+
+// ============================================================
 console.log('\n--- LA MISSIONE: UN TENTATIVO SOLO, MAZZO UGUALE PER TUTTI ---');
 {
-  const gettoneA = gettoneFinto(), gettoneB = gettoneFinto();
+  const gettoneA = await registrato('Elio'), gettoneB = await registrato('Fosca');
 
-  const iniA = (await posta('/api/missione/inizia', { nome: 'Elio', gettone: gettoneA })).corpo;
+  const iniA = (await posta('/api/missione/inizia', { gettone: gettoneA })).corpo;
   check('il primo tentativo di oggi apre un tavolo', iniA.ok === true && iniA.giaGiocataOggi === false);
   check('e la partita comincia SUBITO: nessuno resta ad aspettare un secondo giocatore',
     !!stanze.stanza(iniA.codice).partita);
   check('il secondo posto è il bot', stanze.stanza(iniA.codice).posti[1].bot === true);
+  check('il nome in tavola è quello vero dell\'account, non uno scritto a mano',
+    stanze.stanza(iniA.codice).posti[0].nome === 'Elio');
 
-  const iniB = (await posta('/api/missione/inizia', { nome: 'Fosca', gettone: gettoneB })).corpo;
+  const iniB = (await posta('/api/missione/inizia', { gettone: gettoneB })).corpo;
   const mazzoBotA = stanze.stanza(iniA.codice).partita.players[1].hand.map((c) => c.suit + c.value).sort();
   const mazzoBotB = stanze.stanza(iniB.codice).partita.players[1].hand.map((c) => c.suit + c.value).sort();
   check('il bot ha in mano ESATTAMENTE le stesse carte per tutti, oggi',
@@ -108,7 +134,7 @@ console.log('\n--- LA MISSIONE: UN TENTATIVO SOLO, MAZZO UGUALE PER TUTTI ---');
   check('e per chi non ha mai giocato dice di no, senza aprire un tavolo',
     giaOggiC.ok === true && giaOggiC.giocataOggi === false && giaOggiC.risultato === null);
 
-  const secondoTentativo = (await posta('/api/missione/inizia', { nome: 'Elio', gettone: gettoneA })).corpo;
+  const secondoTentativo = (await posta('/api/missione/inizia', { gettone: gettoneA })).corpo;
   check('un secondo tentativo lo stesso giorno non apre un altro tavolo',
     secondoTentativo.ok === true && secondoTentativo.giaGiocataOggi === true);
   check('e restituisce il risultato di prima',
@@ -140,7 +166,8 @@ console.log('\n--- IN ISOLAMENTO: IL SEME DEL GIORNO E LA CHIUSURA DI IERI ---')
   const archivioFinto = archivioInMemoria();
   const missioniFinte = creaMissioni({
     archivio: archivioFinto, stanze, anagrafe: anagrafeFinta,
-    orologio: () => Date.parse('2026-05-10T10:00:00+02:00')
+    orologio: () => Date.parse('2026-05-10T10:00:00+02:00'),
+    eRegistrato: async () => true   // qui si prova la chiusura del giorno, non chi può giocare
   });
   await archivioFinto.scrivi('classificaMissione:2026-05-09', {
     chiuso: false,

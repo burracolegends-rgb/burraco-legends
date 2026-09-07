@@ -76,6 +76,14 @@
   button:hover:not(:disabled) { transform: translateY(-2px); }
   button:disabled { opacity: 0.45; cursor: default; transform: none; }
   button.tenue { background: rgba(255,255,255,0.07); color: var(--pergamena); border: 1px solid var(--oro-scuro); box-shadow: none; }
+  .bottone-link {
+    display: block; text-align: center; text-decoration: none; box-sizing: border-box;
+    padding: 13px; border-radius: 11px; border: none; cursor: pointer; font-family: inherit;
+    font-size: 0.96rem; font-weight: 800; letter-spacing: 0.7px;
+    background: linear-gradient(180deg, #fff0c2, var(--oro) 55%, #b98d2c); color: #2a1c08;
+    box-shadow: 0 5px 16px rgba(0,0,0,0.5); transition: transform 0.14s;
+  }
+  .bottone-link:hover { transform: translateY(-2px); }
 
   .premio {
     display: flex; align-items: center; gap: 12px; padding: 12px 14px;
@@ -145,8 +153,19 @@
     <span>Chi finisce primo in classifica <b>oggi</b> vince un pacchetto da 5 carte.</span>
   </div>
   <p>Vale anche se perdi: la classifica guarda i punti vita finali dei tuoi eroi, non solo vittoria o sconfitta.</p>
-  <input id="nome" maxlength="20" placeholder="Il tuo nome, per la classifica" autocomplete="off">
   <button id="comincia">Comincia la missione</button>
+</div>
+
+<!-- ---------- serve un account: da ospite non si può partecipare ----------
+     Il nome in classifica è quello vero dell'account (si scrive una
+     volta sola, registrandosi) — non ha senso chiederlo a mano ogni
+     volta, e un ospite non ha un account che regga fino a domani: cambia
+     dispositivo o cancella i dati del browser e sparisce, portandosi via
+     anche il posto in classifica. Un premio non avrebbe dove arrivare. -->
+<div id="servetessera" class="riquadro nascosto">
+  <h2>Serve un account</h2>
+  <p>La Missione ha una classifica che deve reggere fino a domani, e un premio vero da consegnare a qualcuno di preciso — da ospite non c'è modo di ritrovarti. Registrati (è gratis, bastano pochi secondi) e torna qui.</p>
+  <a class="bottone-link" href="accedi.html">Registrati o accedi</a>
 </div>
 
 <!-- ---------- già giocata: il tuo risultato + classifica di oggi ---------- -->
@@ -247,8 +266,16 @@ async function mostraClassificaIeri() {
   // dentro /api/missione/inizia, l'unico modo di saperlo in anticipo
   // sarebbe cominciare per davvero, e il solo aprire questa pagina
   // brucerebbe il tentativo di oggi.
-  const giaFatto = await chiedi('/api/missione/oggi?gettone=' + encodeURIComponent(gettone));
-  const oggi = await chiedi('/api/missione/classifica?giorno=oggi&gettone=' + encodeURIComponent(gettone));
+  //
+  // SEI REGISTRATO? Si chiede allo stesso posto che usa account.html
+  // (/api/chi-sono): niente logica di "chi conta come registrato"
+  // duplicata qui — si legge lo stesso ospite/registrato che decide
+  // già tutto il resto del gioco.
+  const [giaFatto, oggi, chiSono] = await Promise.all([
+    chiedi('/api/missione/oggi?gettone=' + encodeURIComponent(gettone)),
+    chiedi('/api/missione/classifica?giorno=oggi&gettone=' + encodeURIComponent(gettone)),
+    chiedi('/api/chi-sono', { gettone })
+  ]);
   $('carica').classList.add('nascosto');
   $('sottotitolo').textContent = 'Un mazzo, uguale per tutti, fino a domani';
   if (oggi.ok) {
@@ -262,14 +289,16 @@ async function mostraClassificaIeri() {
     return;
   }
 
-  try { $('nome').value = localStorage.getItem('bb_nome_missione') || ''; } catch (e) {}
+  const registrato = chiSono.ok && (chiSono.ospite === false || chiSono.registrato === true);
+  if (!registrato) {
+    $('servetessera').classList.remove('nascosto');
+    return;
+  }
 
   $('comincia').addEventListener('click', async () => {
     $('comincia').disabled = true;
-    const nome = $('nome').value.trim();
-    try { localStorage.setItem('bb_nome_missione', nome || 'Giocatore'); } catch (e) {}
     try {
-      const r = await chiedi('/api/missione/inizia', { nome, mazzo: mazzoDaPortare(), gettone });
+      const r = await chiedi('/api/missione/inizia', { mazzo: mazzoDaPortare(), gettone });
       if (!r.ok) { dice(r.motivo || 'Non è stato possibile cominciare.'); $('comincia').disabled = false; return; }
       if (r.giaGiocataOggi) {
         mostraGiaFatto(r.risultato);
