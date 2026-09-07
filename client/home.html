@@ -663,6 +663,15 @@
     </div>
 
     <div class="riga-imp">
+      <span class="etichetta">Lingua</span>
+      <div class="scelte-stile" id="scelteLingua"></div>
+      <p class="spiega-imp">
+        Cambia la lingua delle carte, nella scelta del mazzo. Il resto del
+        gioco per ora resta in italiano.
+      </p>
+    </div>
+
+    <div class="riga-imp">
       <span class="etichetta">Il tour guidato</span>
       <button class="bottone-imp" id="rivediTutorial">Rivedi il tutorial</button>
       <p class="spiega-imp">
@@ -1771,8 +1780,44 @@ function aggiornaBottoniSuoni() {
   $('suoniSi').classList.toggle('scelto', suoniAccesi());
   $('suoniNo').classList.toggle('scelto', !suoniAccesi());
 }
+
+// LA STESSA PREFERENZA CHE LEGGE selezione.html (bb_lingua) — qui si
+// scrive, lì si legge. Non serve duplicare I18N/SUPPORTED_LANGS per
+// intero: bastano i nomi da mostrare nei bottoni, la lista delle carte
+// (e il resto della pagina) restano solo in italiano per ora, come dice
+// l'avviso qui sopra.
+const NOMI_LINGUA_IMP = { it: 'Italiano', en: 'English', es: 'Español', pt: 'Português' };
+function linguaAttuale() {
+  try {
+    const v = localStorage.getItem('bb_lingua');
+    return NOMI_LINGUA_IMP[v] ? v : 'it';
+  } catch (e) { return 'it'; }
+}
+function costruisciScelteLingua() {
+  const el = $('scelteLingua');
+  el.innerHTML = '';
+  for (const [codice, nome] of Object.entries(NOMI_LINGUA_IMP)) {
+    const b = document.createElement('button');
+    b.className = 'bottone-imp'; b.type = 'button'; b.dataset.lingua = codice;
+    b.textContent = nome;
+    b.addEventListener('click', () => {
+      try { localStorage.setItem('bb_lingua', codice); } catch (e) {}
+      aggiornaBottoniLingua();
+    });
+    el.appendChild(b);
+  }
+}
+function aggiornaBottoniLingua() {
+  const attuale = linguaAttuale();
+  $('scelteLingua').querySelectorAll('button').forEach((b) => {
+    b.classList.toggle('scelto', b.dataset.lingua === attuale);
+  });
+}
+costruisciScelteLingua();
+
 $('apriImpostazioni').addEventListener('click', () => {
   aggiornaBottoniSuoni();
+  aggiornaBottoniLingua();
   $('veloImpostazioni').classList.add('aperto');
 });
 $('chiudiImpostazioni').addEventListener('click', () => {
