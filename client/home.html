@@ -1485,6 +1485,14 @@ const $ = (id) => document.getElementById(id);
 let mio = { saldo: 0, premio: { puoRitirare: false, giorno: 1, quanto: 100,
                                 serieRotta: false, giaRitiratoOggi: false } };
 
+// Se è registrato o no lo decide il server (server.js: eRegistrato) —
+// qui si tiene solo l'ultima risposta, per sapere se mostrare il premio
+// di oggi o l'invito a registrarsi. Parte da true (permissivo) finché
+// non arriva la risposta vera: un lampo del bottone "Ritira" per una
+// frazione di secondo è meno grave di negare per sbaglio un premio a
+// chi ha davvero diritto.
+let registrato = true;
+
 function mostraSaldo(animato) {
   const n = $('saldo');
   n.textContent = formattaSharkini(mio.saldo);
@@ -1533,6 +1541,18 @@ function disegna() {
 
   const stt = $('stato-serie'), bottone = $('ritira');
   stt.className = 'stato';
+
+  // UN OSPITE VEDE QUESTO INVECE DEL PREMIO, DAL SECONDO GIORNO IN POI
+  // — il server rifiuterebbe comunque (giocatori.js: ritiraIlPremio),
+  // qui lo si dice PRIMA di far vedere un bottone che poi si scopre finto.
+  if (!registrato && !primoRitiroDiSempre(stato)) {
+    stt.className = 'stato rotta';
+    stt.innerHTML = 'Spiacente: per ottenere sharkini giornalieri devi essere un utente registrato. ' +
+      '<a href="accedi.html" style="color:inherit;text-decoration:underline;">Registrati</a>';
+    bottone.disabled = true;
+    bottone.textContent = 'Serve un account';
+    return;
+  }
 
   if (stato.giaRitiratoOggi) {
     stt.innerHTML = 'Ritirato. Sei al giorno <b>' + stato.giorno + '</b> di fila — ' +
@@ -1606,9 +1626,20 @@ function pioggiaDiMonete(quante) {
   }
 }
 
+// L'unico modo in cui statoSerie() (engine/sharkini.js) restituisce
+// "giorno 1, serie non rotta" è quando non si è MAI ritirato niente:
+// il primissimo ritiro di sempre. È l'unico che un ospite può fare
+// (giocatori.js: ritiraIlPremio) — usata sia per decidere se aprire lo
+// scrigno del "premio del giorno", sia per il pannello sotto.
+function primoRitiroDiSempre(stato) { return stato.giorno === 1 && !stato.serieRotta; }
+
 function apriLaFesta() {
   const stato = mio.premio;
   if (!stato.puoRitirare) return;             // niente da festeggiare
+  // Da ospite, oltre al primo ritiro di sempre, non c'è niente da
+  // festeggiare: lo scrigno prometterebbe sharkini che il server non
+  // darà. Il pannello sotto (disegna()) dice perché.
+  if (!registrato && !primoRitiroDiSempre(stato)) return;
 
   $('festa-scala').innerHTML = scalaHtml(stato);
   $('festa-cifra').innerHTML = '+' + stato.quanto + '<em class="moneta-nome">sharkini</em>';
@@ -1659,6 +1690,11 @@ $('festa-raccogli').addEventListener('click', async () => {
     pioggiaDiMonete(16);
     setTimeout(() => mostraSaldo(true), 260);
   } else if (r) {
+    // Se il rifiuto arriva PRIMA che /api/chi-sono abbia risposto (una
+    // corsa possibile ma stretta: il bottone parte abilitato finché non
+    // si sa se serve un account), il server resta comunque l'unica
+    // verità — lo si allinea qui invece di aspettare il prossimo giro.
+    if (r.serveRegistrazione) registrato = false;
     mio = { ...mio, ...r };
   }
   chiudiLaFesta();
@@ -1672,7 +1708,14 @@ $('festa').addEventListener('click', (e) => { if (e.target === $('festa')) chiud
 $('ritira').addEventListener('click', async () => {
   $('ritira').disabled = true;
   const esito = await SCORTA.ritiraPremio();
-  if (!esito || !esito.ok) { if (esito) mio = { ...mio, ...esito }; disegna(); return; }
+  if (!esito || !esito.ok) {
+    if (esito) {
+      if (esito.serveRegistrazione) registrato = false;   // vedi lo stesso commento più sopra
+      mio = { ...mio, ...esito };
+    }
+    disegna();
+    return;
+  }
   mio = esito;
   if (typeof $('ritira').animate === 'function') moneteVerso(9);
   setTimeout(() => mostraSaldo(true), 480);
@@ -1755,6 +1798,16 @@ $('rivediTutorial').addEventListener('click', () => {
   apriLaFesta();
   avvisaSeDiProva();
   guardaSeCEUnaPartitaAperta();
+
+  // Sapere se si è registrati non deve bloccare tutto il resto: arriva
+  // quando arriva, e a quel punto si ridisegna il pannello del premio
+  // (lo scrigno, se già aperto, resta com'era — non si chiude sotto le
+  // dita di chi lo sta guardando).
+  const chi = await SCORTA.chiSono();
+  if (chi && chi.ok) {
+    registrato = chi.ospite === false || chi.registrato === true;
+    disegna();
+  }
 })();
 
 window.__prova = {

@@ -546,14 +546,16 @@ const server = http.createServer(async (req, res) => {
     if (via === '/api/premio' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
-      return rispondi(res, 200, await anagrafe.ritiraIlPremio(corpo.gettone));
+      const registrato = await eRegistrato(corpo.gettone);
+      return rispondi(res, 200, await anagrafe.ritiraIlPremio(corpo.gettone, registrato));
     }
 
     if (via === '/api/compra' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const quante = Number(corpo.carte);
-      return rispondi(res, 200, await anagrafe.compraPacchetto(corpo.gettone, quante, corpo.tipo));
+      const registrato = await eRegistrato(corpo.gettone);
+      return rispondi(res, 200, await anagrafe.compraPacchetto(corpo.gettone, quante, corpo.tipo, registrato));
     }
 
     if (via === '/api/ricarica' && req.method === 'POST') {

@@ -37,7 +37,7 @@ import {
 } from '../engine/pacchetti.js';
 import {
   dotazioneIniziale, aggiungiDotazione, EROI_DI_PARTENZA,
-  BONUS_BENVENUTO_SHARKINI, CODA_PACCHETTO_BENVENUTO
+  BONUS_BENVENUTO_SHARKINI, CODA_PACCHETTO_BENVENUTO, carteFisseOspite
 } from '../engine/dotazione.js';
 
 const gettoneNuovo = () => randomBytes(32).toString('hex');
@@ -196,10 +196,29 @@ export function creaAnagrafe({
   // browser non può dire "sono al settimo giorno": lo dice il server
   // guardando quando ha ritirato l'ultima volta.
   // ----------------------------------------------------------
-  async function ritiraIlPremio(gettone) {
+  // `registrato` di default a true, come compraPacchetto: solo la route
+  // vera (server.js, /api/premio) sa davvero chi è registrato e chi no.
+  async function ritiraIlPremio(gettone, registrato = true) {
     const g = await carica(gettone);
     if (!g) return { ok: false, motivo: 'Non ti conosco.' };
     const adesso = orologio();
+
+    // UN OSPITE RITIRA UNA VOLTA SOLA, MAI PIÙ.
+    // `ultimoRitiro === null` vuol dire "non ha mai ritirato niente":
+    // è il primissimo ritiro di sempre, quello che il tutorial stesso fa
+    // fare a chiunque arrivi — quello resta permesso. Il secondo, il
+    // decimo, quello di domani: no. Non conta se nel frattempo ha
+    // saltato dei giorni e la serie si sarebbe "resettata" — quel
+    // reset è per chi è già passato di qui, e un ospite non deve poter
+    // sfruttarlo per fingersi sempre al primo giorno.
+    if (!registrato && g.serie.ultimoRitiro !== null) {
+      return {
+        ok: false, serveRegistrazione: true,
+        motivo: 'Spiacente: per ottenere sharkini giornalieri devi essere un utente registrato.',
+        ...vetrina(g, adesso)
+      };
+    }
+
     const esito = ritiraDalMotore(g.serie, adesso);
     if (esito.guadagno === 0) {
       return { ok: false, motivo: 'Il premio di oggi l\'hai già ritirato.', ...vetrina(g, adesso) };
@@ -229,7 +248,11 @@ export function creaAnagrafe({
   // in vendita. Cambia anche il prezzario: 'magia' costa un terzo — una
   // Carta Magica si consuma con un solo utilizzo, un eroe no (vedi
   // OFFERTE_MAGIA in engine/pacchetti.js).
-  async function compraPacchetto(gettone, quanteCarte, tipo) {
+  // `registrato` di default a true: gli altri chiamanti (i test, prima
+  // di tutto) non devono sapere niente di questa distinzione per
+  // continuare a funzionare come sempre — solo la route vera
+  // (server.js, /api/compra) passa il valore che conta davvero.
+  async function compraPacchetto(gettone, quanteCarte, tipo, registrato = true) {
     const g = await carica(gettone);
     if (!g) return { ok: false, motivo: 'Non ti conosco.' };
 
@@ -251,14 +274,31 @@ export function creaAnagrafe({
     catch (e) { return { ok: false, motivo: e.message }; }
     if (!bacino.length) return { ok: false, motivo: 'Nessuna carta di quel tipo è ancora in vendita.' };
 
-    // LA CODA DI BENVENUTO SI CONSUMA PRIMA DEL CASO.
+    // QUELLO CHE ESCE DOPO LA CODA DI BENVENUTO: A SORTE, O NO.
+    // Chi è registrato pesca dal catalogo vero, con le rarità vere —
+    // sempre stata la regola. Chi gioca da ospite invece non pesca mai:
+    // riceve le stesse carte di partenza IN CICLO (dotazione.js,
+    // carteFisseOspite) — niente pity, niente rarità, perché non c'è
+    // nessuna sorte da far maturare. È così di proposito: il tutorial fa
+    // comprare pacchetti a chiunque, ma quello che se ne ottiene resta
+    // uguale per tutti finché non ci si registra.
+    const estraiIlResto = (conteggio, quante) => {
+      if (!registrato) {
+        const fisse = carteFisseOspite(tipo);
+        const ids = [];
+        for (let i = 0; i < quante; i++) ids.push(fisse[i % fisse.length]);
+        return { carte: apriPacchettoGarantito(bacino, conteggio, ids).carte,
+                 contatore: g.contatorePity, pityScattato: false };
+      }
+      return apriPacchetto(bacino, conteggio, g.contatorePity, caso, quante);
+    };
+
+    // LA CODA DI BENVENUTO SI CONSUMA PRIMA DI TUTTO, PER TUTTI.
     // Vale solo per i pacchetti che possono contenere eroi (misti o
     // 'eroe': la coda e' fatta di personaggio_*, non di Carte Magiche —
     // un pacchetto 'magia' non la tocca). Se il taglio comprato e' piu'
-    // grande di quel che resta in coda, il resto si estrae a sorte come
-    // sempre, nello stesso acquisto: chi compra uno scrigno da dieci con
-    // in coda solo tre carte garantite si ritrova tre carte sicure e
-    // sette vere.
+    // grande di quel che resta in coda, il resto segue la regola sopra
+    // (a sorte se registrato, in ciclo se ospite) nello stesso acquisto.
     let carte, contatorePityDopo = g.contatorePity, pityScattato = false;
     const dallaCoda = (tipo === 'magia') ? 0 : Math.min(offerta.carte, (g.codaBenvenuto || []).length);
     if (dallaCoda > 0) {
@@ -269,13 +309,13 @@ export function creaAnagrafe({
       if (restano > 0) {
         const conteggioProvvisorio = { ...g.collezione };
         for (const c of carte) conteggioProvvisorio[c.carta.id] = (conteggioProvvisorio[c.carta.id] || 0) + 1;
-        const resto = apriPacchetto(bacino, conteggioProvvisorio, g.contatorePity, caso, restano);
+        const resto = estraiIlResto(conteggioProvvisorio, restano);
         carte = carte.concat(resto.carte);
         contatorePityDopo = resto.contatore;
         pityScattato = resto.pityScattato;
       }
     } else {
-      const risultato = apriPacchetto(bacino, g.collezione, g.contatorePity, caso, offerta.carte);
+      const risultato = estraiIlResto(g.collezione, offerta.carte);
       carte = risultato.carte;
       contatorePityDopo = risultato.contatore;
       pityScattato = risultato.pityScattato;

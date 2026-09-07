@@ -107,6 +107,25 @@ export function oltreLaDotazione(collezione) {
   return quante;
 }
 
+// ============================================================
+// I PACCHETTI DI CHI GIOCA DA OSPITE
+//
+// Un ospite può comprare pacchetti — lo stabilisce il tutorial stesso,
+// che lo fa fare a chiunque — ma quello che ne esce non è mai a sorte:
+// sono sempre e solo le carte di partenza, IN CICLO. Niente rarità,
+// niente carta che nessun altro ha mai visto: chi vuole scoprire il
+// resto del roster vero deve registrarsi.
+//
+// Sono di proposito le stesse quattro/tre carte della dotazione qui
+// sopra — non un roster a parte da tenere sincronizzato — e sono un
+// segnaposto dichiarato: la lista si allargherà quando ci saranno
+// carte pensate apposta per l'assaggio da ospite (vedi il commento in
+// cima al file su EROI_DI_PARTENZA).
+// ============================================================
+export function carteFisseOspite(tipo) {
+  return tipo === 'magia' ? MAGICHE_DI_PARTENZA : EROI_DI_PARTENZA;
+}
+
 // Aggiunge la dotazione a una collezione che esiste già, SENZA
 // sovrascrivere quello che c'è: chi ha già delle copie se le tiene e
 // riceve le sue in più. Serve ai giocatori nati prima che la dotazione

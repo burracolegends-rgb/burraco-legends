@@ -9,7 +9,7 @@ import { archivioInMemoria, archivioSuFile } from './archivio.js';
 import { creaAnagrafe } from './giocatori.js';
 import { OFFERTE, SOGLIA_PITY } from '../engine/pacchetti.js';
 import { PREMI_SETTIMANA, RICARICHE } from '../engine/sharkini.js';
-import { dotazioneIniziale } from '../engine/dotazione.js';
+import { dotazioneIniziale, EROI_DI_PARTENZA, MAGICHE_DI_PARTENZA, carteFisseOspite } from '../engine/dotazione.js';
 
 let ko = 0;
 const check = (l, c) => { console.log((c ? 'OK   ' : 'FAIL ') + l); if (!c) ko++; };
@@ -109,6 +109,36 @@ console.log('\n--- IL PREMIO NON SI RITIRA DUE VOLTE ---');
   check('chi salta un giorno riparte da 100', dopoIlSalto.guadagno === 100);
   check('e il server lo dice', dopoIlSalto.serieRotta === true);
   check('ma non gli toglie quello che aveva', dopoIlSalto.saldo === 2900);
+}
+
+// ============================================================
+console.log('\n--- IL PREMIO GIORNALIERO, DAL SECONDO GIORNO, È SOLO PER CHI È REGISTRATO ---');
+// `registrato` lo decide chi chiama (server.js, dietro /api/premio):
+// qui lo si passa a mano per provare i due casi senza bisogno di un
+// account vero, social o email che sia.
+{
+  const a = nuovaAnagrafe();
+  const { gettone } = await a.entra(null, 'Ospite');
+
+  const primo = await a.ritiraIlPremio(gettone, false);
+  check('il primissimo ritiro di sempre riesce anche da ospite (serve al tutorial)',
+    primo.ok === true && primo.guadagno === 100);
+
+  avanti(GIORNO);
+  const secondo = await a.ritiraIlPremio(gettone, false);
+  check('il giorno dopo, da ospite, viene rifiutato',
+    secondo.ok === false && secondo.serveRegistrazione === true);
+  check('e il saldo resta quello di ieri', secondo.saldo === 100);
+
+  // insistere non serve a niente, nemmeno saltando altri giorni
+  avanti(5 * GIORNO);
+  const insiste = await a.ritiraIlPremio(gettone, false);
+  check('nemmeno saltando giorni si sblocca da solo', insiste.ok === false && insiste.serveRegistrazione === true);
+
+  // lo stesso identico account, ma con registrato:true, ritira normalmente
+  const comeSeSiRegistrasse = await a.ritiraIlPremio(gettone, true);
+  check('lo stesso account, registrato, ritira senza problemi',
+    comeSeSiRegistrasse.ok === true && comeSeSiRegistrasse.guadagno === 100);
 }
 
 // ============================================================
@@ -217,6 +247,55 @@ console.log('\n--- PACCHETTI MIRATI: SOLO EROI, O SOLO CARTE MAGICHE ---');
 
   const inventato = await a.compraPacchetto(gettone, 10, 'sirena');
   check('un tipo che non esiste viene rifiutato', inventato.ok === false);
+}
+
+// ============================================================
+console.log('\n--- CHI GIOCA DA OSPITE, DAI PACCHETTI, RICEVE SEMPRE LE STESSE CARTE ---');
+// `carteFisseOspite` punta ai veri EROI_DI_PARTENZA/MAGICHE_DI_PARTENZA
+// (engine/dotazione.js), non a un roster di prova: qui il catalogo
+// finto include apposta anche quegli id, così il meccanismo si prova
+// senza dover passare dal catalogo vero (quello lo controlla
+// engine/carte-lint.test.js).
+{
+  const CATALOGO_CON_FISSE = [...CATALOGO];
+  for (const id of EROI_DI_PARTENZA) CATALOGO_CON_FISSE.push({ id, rarita: 3, seme: '♥', vita: 100, att: 90 });
+  for (const id of MAGICHE_DI_PARTENZA) CATALOGO_CON_FISSE.push({ id, rarita: 3, tipo: 'sorpresa' });
+
+  const a = creaAnagrafe({
+    archivio: archivioInMemoria(), catalogo: CATALOGO_CON_FISSE, orologio: () => ORA, caso: casoFisso(11),
+    bonusBenvenuto: 0, codaBenvenuto: []   // niente coda di benvenuto: si prova SOLO il ciclo fisso
+  });
+  const { gettone: gOspite } = await a.entra(null, 'Ospite');
+  const { gettone: gVero } = await a.entra(null, 'Vero');
+  await a.ricarica(gOspite, 'montagna');
+  await a.ricarica(gVero, 'montagna');
+
+  const ricevute = new Set();
+  for (let i = 0; i < 6; i++) {
+    const r = await a.compraPacchetto(gOspite, 10, 'eroe', false);
+    check('l\'ospite compra comunque (il tutorial lo fa fare a chiunque)', r.ok === true);
+    for (const c of r.carte) ricevute.add(c.carta.id);
+  }
+  check('in sessanta carte, l\'ospite non ha MAI ricevuto altro che gli eroi di partenza',
+    [...ricevute].every((id) => EROI_DI_PARTENZA.includes(id)),
+    [...ricevute].join(', '));
+  check('e li ha visti tutti (il ciclo passa per tutti e quattro)',
+    EROI_DI_PARTENZA.every((id) => ricevute.has(id)));
+
+  const magiaOspite = await a.compraPacchetto(gOspite, 10, 'magia', false);
+  check('lo stesso vale per le Carte Magiche',
+    magiaOspite.carte.every((c) => MAGICHE_DI_PARTENZA.includes(c.carta.id)));
+
+  const ricevuteVero = new Set();
+  for (let i = 0; i < 6; i++) {
+    const r = await a.compraPacchetto(gVero, 10, 'eroe', true);
+    for (const c of r.carte) ricevuteVero.add(c.carta.id);
+  }
+  check('un account vero, sulle stesse sessanta carte, trova qualcosa FUORI dal roster di partenza',
+    [...ricevuteVero].some((id) => !EROI_DI_PARTENZA.includes(id)), [...ricevuteVero].join(', '));
+
+  check('la funzione risponde giusto anche da sola, senza nessun account intorno',
+    carteFisseOspite('eroe') === EROI_DI_PARTENZA && carteFisseOspite('magia') === MAGICHE_DI_PARTENZA);
 }
 
 // ============================================================
