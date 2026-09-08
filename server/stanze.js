@@ -227,7 +227,12 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
       postoPubblico = null;     // era vuoto, scaduto, o non c'e' piu': si riparte da capo
     }
     const r = apri(nome, indirizzo, mazzo, gettone);
-    if (r.ok) postoPubblico = { codice: r.codice };
+    // Segnata SOLO qui, non in apri(): serve a server/livelli.js per sapere
+    // quali partite contano per il livello ranked — solo quelle nate da
+    // "Sfida uno sconosciuto", mai quelle aperte con un codice per un
+    // amico (altrimenti due amici d'accordo potrebbero scambiarsi
+    // vittorie a comando per gonfiare il proprio livello).
+    if (r.ok) { stanze.get(r.codice).daClassifica = true; postoPubblico = { codice: r.codice }; }
     return r;
   }
 

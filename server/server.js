@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { creaRegistroStanze } from './stanze.js';
 import { creaMissioni } from './missioni.js';
+import { creaLivelli, livelloDaRating } from './livelli.js';
 
 // ------------------------------------------------------------
 // UN ERRORE IMPREVISTO NON DEVE SPEGNERE IL SERVER PER TUTTI.
@@ -326,6 +327,13 @@ async function eRegistrato(gettone) {
 // dopo che tutte e tre esistono già.
 const missioni = creaMissioni({ archivio, stanze, anagrafe, catalogo: Object.values(CARTE), eRegistrato });
 
+// Il livello ranked vive sopra le stanze (per sapere quando una
+// partita da classifica è finita e chi era seduto) e sopra eRegistrato
+// (per sapere di chi tenere il rating): stessa idea della Missione,
+// una dipendenza in meno perché qui non c'è nessun premio da
+// consegnare.
+const livelli = creaLivelli({ archivio, stanze, eRegistrato });
+
 // ------------------------------------------------------------
 // IL NOME CON CUI TI SIEDI AL TAVOLO — SENZA CHIEDERLO
 //
@@ -485,6 +493,11 @@ const server = http.createServer(async (req, res) => {
       // costa una sola lettura di Map e non fa nient'altro.
       missioni.registraSeFinita(corpo.codice).catch((e) =>
         console.error('[missioni] non sono riuscito a registrare il punteggio:', e && e.message));
+      // Stessa idea, stesso punto: se questo codice è una partita da
+      // classifica (server/stanze.js: siediti()) ed è appena finita, il
+      // livello ranked di chi era registrato si aggiorna qui.
+      livelli.registraSeFinita(corpo.codice).catch((e) =>
+        console.error('[livelli] non sono riuscito ad aggiornare il rating:', e && e.message));
       return rispondi(res, 200, r);           // "mossa rifiutata" non è un errore di rete
     }
 
@@ -657,6 +670,17 @@ const server = http.createServer(async (req, res) => {
       const social = await accessi.comeSeiEntrato(corpo.gettone);
       const conto = await conti.comeSeiRegistrato(corpo.gettone);
       return rispondi(res, 200, { ...social, ...conto });
+    }
+
+    // Il livello ranked (server/livelli.js): chi non ha mai giocato una
+    // partita da classifica vede semplicemente il rating di partenza —
+    // non serve essere registrati per LEGGERLO, solo per farlo salire
+    // davvero giocando "Sfida uno sconosciuto".
+    if (via === '/api/livello' && req.method === 'POST') {
+      const corpo = await leggiCorpo(req);
+      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      const mio = await livelli.livelloDi(corpo.gettone);
+      return rispondi(res, 200, { ok: true, ...mio, livello: livelloDaRating(mio.rating) });
     }
 
     if (via === '/api/carte' && req.method === 'GET') {

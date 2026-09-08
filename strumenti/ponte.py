@@ -58,7 +58,12 @@ function creaPonteServer() {
     // home.html, per decidere se mostrare il premio del giorno o
     // l'invito a registrarsi) — stessa chiamata già usata da
     // missione.html.
-    chiSono: () => chiedi('/api/chi-sono', {})
+    chiSono: () => chiedi('/api/chi-sono', {}),
+    // Il livello ranked (server/livelli.js): quanto vale il rating di
+    // chi gioca "Sfida uno sconosciuto". Si può leggere anche da
+    // ospiti — vedono semplicemente il rating di partenza, che è la
+    // stessa cosa onesta di "non hai ancora un livello vero".
+    livello: () => chiedi('/api/livello', {})
   };
 }
 
@@ -136,7 +141,16 @@ function creaPonteBrowser() {
     },
     // Senza server non esistono account veri: si è sempre "ospite",
     // proprio come chi gioca in prova senza aver mai fatto login.
-    async chiSono() { return { ok: true, diProva: true, ospite: true, registrato: false }; }
+    async chiSono() { return { ok: true, diProva: true, ospite: true, registrato: false }; },
+    // Senza server non c'è nessuna partita ranked vera da giocare: si
+    // vede sempre il rating di partenza (1000, "Livello 15" — stessi
+    // numeri di RATING_INIZIALE/livelloDaRating in server/livelli.js,
+    // ripetuti qui a mano perché questo ponte è puro JS di pagina e non
+    // può importare un modulo del server).
+    async livello() {
+      return { ok: true, diProva: true, rating: 1000, livello: 15,
+               partite: 0, vittorie: 0, sconfitte: 0, pareggi: 0 };
+    }
   };
 }
 
