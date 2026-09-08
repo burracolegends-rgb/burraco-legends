@@ -241,11 +241,25 @@
       // "Il tavolo", "Gioca con un amico" e "Sfida uno sconosciuto"
       // sono confluiti in un unico "GIOCA" (client/gioca.html), che fa
       // la stessa domanda una volta sola invece che su tre riquadri
-      // diversi. Il passo finale punta quindi li' — un tocco in piu'
-      // prima del tavolo vero, ma il tutorial del tavolo si accende lo
-      // stesso: aspetta solo che bb_tutorial_completato sia scritto,
-      // non che si arrivi a tavolo.html per una strada precisa.
-      illumina: '.modo[href="gioca.html"]', clic: '.modo[href="gioca.html"]', fine: true }
+      // diversi. Questo NON e' piu' l'ultimo passo (niente fine:true):
+      // il tour prosegue dentro gioca.html, sul riquadro vero da
+      // toccare per iniziare — vedi il passo subito sotto.
+      illumina: '.modo[href="gioca.html"]', clic: '.modo[href="gioca.html"]' },
+
+    // Segnalato con una foto: dopo il tocco su "GIOCA" il tour si
+    // fermava li', e in gioca.html restava tutto spento — nessun
+    // riquadro illuminato, nessuno scudo attivo, si poteva toccare
+    // qualunque dei tre modi (o tornare indietro) senza che il tour se
+    // ne accorgesse. Ora il tour continua un passo in piu': illumina
+    // proprio "GIOCA CONTRO IL PC" (quello con cui si impara a
+    // giocare, contro il bot, senza dover aspettare nessuno), e SOLO
+    // qui, a tour finito per davvero, si scrive bb_tutorial_completato —
+    // che e' anche cio' che il tutorial del tavolo aspetta prima di
+    // accendersi da solo.
+    { pagina: 'gioca.html', titolo: 'Comincia da qui',
+      testo: 'Per la tua prima partita, gioca contro il PC: stessa logica del burraco, stesse Carte ' +
+             'Magiche, ma senza dover aspettare un avversario vero.',
+      illumina: '.modo[href="tavolo.html"]', clic: '.modo[href="tavolo.html"]', fine: true }
   ];
 
   // ------------------------------------------------------------
@@ -294,11 +308,24 @@
     // sovrascrivibili come sempre): serve solo a garantire che QUALUNQUE
     // animazione stesse gia' girando sull'elemento, il bagliore del
     // tutorial vinca sempre lui, su ogni pagina, non solo su questa.
+    //
+    // IL PULSARE C'ERA GIA', E NON SI VEDEVA LO STESSO — segnalato con
+    // foto vere, su piu' pagine diverse (il saldo sharkini, il bottone
+    // "Vedi l'album"): misurato col browser, l'animazione girava per
+    // davvero (il colore del bordo cambia, verificato leggendolo due
+    // volte a distanza di tempo), ma cambiava SOLO la tinta dell'oro —
+    // due gialli quasi uguali, una differenza che si perde su un vero
+    // schermo alla luce del giorno. Il bagliore intorno (box-shadow)
+    // restava fisso, ed era proprio quello il segnale che l'occhio
+    // cerca per dire "sta lampeggiando". Ora pulsa anche lui, insieme
+    // al bordo: piu' stretto e piu' debole, poi piu' largo e piu'
+    // acceso — un respiro vero, non solo un cambio di tinta.
     '.bb-tut-alone { position: relative; outline: 3px solid #e8c46a; ' +
       'outline-offset: 3px; border-radius: 10px; ' +
-      'box-shadow: 0 0 22px rgba(232,196,106,0.85); ' +
       'animation: bbTutPulsa 1.6s ease-in-out infinite !important; }' +
-    '@keyframes bbTutPulsa { 0%,100% { outline-color: #e8c46a; } 50% { outline-color: #fff3cf; } }' +
+    '@keyframes bbTutPulsa { ' +
+      '0%,100% { outline-color: #e8c46a; box-shadow: 0 0 14px rgba(232,196,106,0.6); } ' +
+      '50% { outline-color: #fff3cf; box-shadow: 0 0 34px rgba(255,243,207,1); } }' +
     // POINTER-EVENTS: NONE sul riquadro — segnalato da chi ci ha sbattuto
     // contro davvero: nella schermata del riepilogo il bottone vero
     // "torna al negozio" finisce proprio sotto questo pannello (fisso in

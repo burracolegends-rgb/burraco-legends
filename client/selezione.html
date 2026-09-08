@@ -34,58 +34,6 @@
   h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.5px; }
   h1 span { color: var(--gold); }
   .subtitle { color: var(--text-dim); margin-top: 4px; font-size: 0.9rem; }
-  /* ============================================================
-     LA LINGUA NON SI CHIEDE PIÙ: SI INDOVINA
-
-     Prima questa riga mostrava sempre le quattro bandiere — IT EN ES PT,
-     tutte e quattro, per sempre, su ogni visita. Non aveva senso: la
-     pagina sa già che lingua parla chi la apre (detectLocale, poco più
-     sotto, guarda navigator.language), e chiederlo comunque è come
-     salutare qualcuno in quattro lingue diverse sperando che risponda a
-     una.
-
-     Ora la scelta si fa UNA VOLTA, alla primissima visita: si indovina,
-     si salva (bb_lingua), e si mostra un avviso piccolo — non un
-     popup da chiudere — con un solo tasto, "Cambia lingua". Non
-     toccarlo vuol dire accettare: è la lingua giusta più spesso di
-     quanto non lo sia, e chi la vuole cambiare ha comunque un modo,
-     sempre a portata (il pallino col codice lingua, in alto), anche il
-     giorno dopo.
-     ============================================================ */
-  .lang-switch { position: relative; }
-  .lang-pill {
-    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim);
-    padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.8rem;
-    font-weight: 600; letter-spacing: 0.4px; display: flex; align-items: center; gap: 5px;
-  }
-  .lang-pill:hover { border-color: var(--gold); color: var(--text); }
-  /* finché c'è l'avviso di prima visita, il pallino sta esattamente
-     dove sta lui — due cose nello stesso punto si leggerebbero come una
-     sola, rotta. Si nasconde e riappare da solo quando l'avviso sparisce:
-     nessuno stato da tenere a mano, lo dice il DOM stesso. */
-  .lang-switch:has(#linguaAvviso) .lang-pill { visibility: hidden; }
-  .lang-scelte {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 20;
-    flex-direction: column; gap: 4px; padding: 6px; border-radius: 10px;
-    background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-  }
-  .lang-scelte.aperto { display: flex; }
-  .lang-scelte button {
-    background: transparent; border: 1px solid transparent; color: var(--text-dim);
-    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; text-align: left;
-  }
-  .lang-scelte button:hover { border-color: var(--border); color: var(--text); }
-  .lang-scelte button.active { color: var(--bg); background: var(--gold); font-weight: 600; }
-  .lang-avviso {
-    position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; white-space: nowrap;
-    display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px;
-    background: var(--bg-card); border: 1px solid var(--gold); box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-    font-size: 0.8rem; color: var(--text-dim);
-  }
-  .lang-avviso button {
-    background: none; border: none; color: var(--gold); cursor: pointer;
-    font-size: 0.8rem; font-weight: 600; text-decoration: underline; padding: 0;
-  }
 
   section { margin-bottom: 32px; }
   section h2 { font-size: 1.1rem; margin-bottom: 4px; }
@@ -254,7 +202,6 @@
     <h1>Burraco <span>Legends</span></h1>
     <div class="subtitle" data-i18n-key="sottotitolo">Scegli 4 Personaggi (uno per seme) e 3 Carte Magiche: sono quelli con cui scenderai in campo.</div>
   </div>
-  <div class="lang-switch" id="langSwitch"></div>
 </header>
 
 <section>
@@ -1483,86 +1430,10 @@ function sortCards(list, mode) {
   return arr;
 }
 
-const NOME_LINGUA = { it: 'Italiano', en: 'English', es: 'Español', pt: 'Português' };
-
-// Chiamata una volta sola, al primo disegno: costruisce il pallino e il
-// menu a tendina che gli sta sotto. renderLangSwitch() (più sotto), che
-// gira a ogni renderAll(), si limita ad aggiornare quali sono giusti —
-// ricostruire tutto da capo ogni volta chiuderebbe il menu appena
-// aperto, proprio mentre lo si sta guardando.
-function costruisciSelettoreLingua() {
-  const contenitore = document.getElementById('langSwitch');
-  contenitore.innerHTML = '';
-
-  const pillola = document.createElement('button');
-  pillola.className = 'lang-pill';
-  pillola.id = 'linguaPillola';
-  pillola.type = 'button';
-  pillola.title = 'Cambia lingua';
-  contenitore.appendChild(pillola);
-
-  const scelte = document.createElement('div');
-  scelte.className = 'lang-scelte';
-  scelte.id = 'linguaScelte';
-  for (const lang of SUPPORTED_LANGS) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.dataset.lang = lang;
-    btn.textContent = NOME_LINGUA[lang] || lang.toUpperCase();
-    btn.onclick = () => {
-      currentLang = lang;
-      salvaLingua(lang);
-      scelte.classList.remove('aperto');
-      const avviso = document.getElementById('linguaAvviso');
-      if (avviso) avviso.remove();
-      renderAll();
-    };
-    scelte.appendChild(btn);
-  }
-  contenitore.appendChild(scelte);
-
-  pillola.addEventListener('click', (e) => {
-    e.stopPropagation();
-    scelte.classList.toggle('aperto');
-  });
-  // un tocco fuori richiude, come ogni menu a tendina onesto
-  document.addEventListener('click', (e) => {
-    if (!contenitore.contains(e.target)) scelte.classList.remove('aperto');
-  });
-
-  // L'AVVISO SI VEDE UNA VOLTA SOLA: solo alla primissima visita, quando
-  // la lingua è stata appena indovinata e non ancora confermata da
-  // nessuno. Non è un popup da chiudere — un tocco altrove (aprire il
-  // menu, scegliere un personaggio, qualunque cosa) lo fa sparire da
-  // solo, cosi' come non toccarlo affatto: silenzio vuol dire "va bene
-  // così", esattamente come chiesto.
-  if (PRIMA_VOLTA) {
-    const avviso = document.createElement('div');
-    avviso.className = 'lang-avviso';
-    avviso.id = 'linguaAvviso';
-    avviso.innerHTML = '<span>Lingua: <b>' + (NOME_LINGUA[currentLang] || currentLang) + '</b></span>';
-    const cambia = document.createElement('button');
-    cambia.type = 'button';
-    cambia.textContent = 'Cambia lingua';
-    cambia.onclick = (e) => { e.stopPropagation(); scelte.classList.add('aperto'); avviso.remove(); };
-    avviso.appendChild(cambia);
-    contenitore.appendChild(avviso);
-    document.addEventListener('click', function chiudiAvvisoAlPrimoTocco(e) {
-      if (contenitore.contains(e.target)) return;   // il tocco sull'avviso stesso non lo chiude qui: ci pensa già cambia.onclick
-      avviso.remove();
-      document.removeEventListener('click', chiudiAvvisoAlPrimoTocco, true);
-    }, true);
-  }
-}
-
-function renderLangSwitch() {
-  if (!document.getElementById('linguaPillola')) costruisciSelettoreLingua();
-  const pillola = document.getElementById('linguaPillola');
-  pillola.textContent = '🌐 ' + currentLang.toUpperCase();
-  document.querySelectorAll('#linguaScelte button').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.lang === currentLang);
-  });
-}
+// La lingua non si sceglie più da qui: si indovina in silenzio
+// (detectLocale/leggiLinguaSalvata, poco sopra) e chi la vuole cambiare
+// lo fa dalle Impostazioni della home — un solo posto, non due che
+// dicono la stessa cosa.
 
 function renderSuits() {
   const row = document.getElementById('suitsRow');
@@ -1684,7 +1555,6 @@ function renderFooter() {
 }
 
 function renderAll() {
-  renderLangSwitch();
   renderStaticText();
   renderSuits();
   renderMagic();

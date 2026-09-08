@@ -1026,7 +1026,12 @@ function creaPonteServer() {
     },
     ritiraPremio: () => chiedi('/api/premio', {}),
     compra: (carte, tipo) => chiedi('/api/compra', { carte, tipo }),
-    ricarica: (offerta) => chiedi('/api/ricarica', { offerta })
+    ricarica: (offerta) => chiedi('/api/ricarica', { offerta }),
+    // Serve solo a sapere se si è ospiti o registrati (per esempio in
+    // home.html, per decidere se mostrare il premio del giorno o
+    // l'invito a registrarsi) — stessa chiamata già usata da
+    // missione.html.
+    chiSono: () => chiedi('/api/chi-sono', {})
   };
 }
 
@@ -1101,7 +1106,10 @@ function creaPonteBrowser() {
       if (!r) return { ok: false, diProva: true, motivo: 'Quella ricarica non esiste.' };
       scrivi('bb_sharkini', { ...st.serie, saldo: st.serie.saldo + r.sharkini });
       return { ok: true, diProva: true, accreditati: r.sharkini, ...statoAttuale() };
-    }
+    },
+    // Senza server non esistono account veri: si è sempre "ospite",
+    // proprio come chi gioca in prova senza aver mai fatto login.
+    async chiSono() { return { ok: true, diProva: true, ospite: true, registrato: false }; }
   };
 }
 

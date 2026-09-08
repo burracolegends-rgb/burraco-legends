@@ -2662,6 +2662,45 @@
       display: inline-block; margin-top: 12px; padding: 8px 18px; border-radius: 9px;
       background: var(--oro); color: #1b1220; font-weight: 800; text-decoration: none; font-size: 0.88rem;
     }
+
+    /* ---------- I SEI GESTI ----------
+       Solo in rete: contro un avversario vero c'e' qualcuno dall'altra
+       parte a cui dire qualcosa, contro il bot non c'e' nessuno ad
+       ascoltare. Sei faccine fisse, non testo libero — un tavolo con un
+       campo di testo aperto fra sconosciuti e' un problema che non
+       vogliamo avere, e sei bastano a dire quasi tutto quello che serve
+       durante una partita. */
+    #oppProfilo.gesti-disponibili { cursor: pointer; }
+    .gesti-scelta {
+      display: none; position: fixed; z-index: 860; gap: 4px;
+      padding: 6px; border-radius: 10px; background: rgba(20,14,8,0.96);
+      border: 1px solid #9a6f21; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    .gesti-scelta.aperto { display: flex; }
+    .gesti-scelta button {
+      background: rgba(255,255,255,0.06); border: 1px solid transparent; border-radius: 8px;
+      font-size: 20px; padding: 4px 7px; cursor: pointer; line-height: 1;
+    }
+    .gesti-scelta button:hover { border-color: #e8c46a; background: rgba(232,196,106,0.14); }
+    .gesti-scelta button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* la faccina che sale dal nome di chi l'ha mandata, sia per chi la
+       manda (conferma "e' partita") sia per chi la riceve */
+    .gesto-volante {
+      position: fixed; z-index: 850; font-size: 34px; pointer-events: none;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));
+      animation: gestoVolanteSu 2.2s ease-out forwards;
+    }
+    @keyframes gestoVolanteSu {
+      0%   { opacity: 0; transform: translate(-50%, -60%) scale(0.5); }
+      15%  { opacity: 1; transform: translate(-50%, -112%) scale(1.2); }
+      26%  { transform: translate(-50%, -120%) scale(1); }
+      78%  { opacity: 1; transform: translate(-50%, -140%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -190%) scale(0.85); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .gesto-volante { animation: none; opacity: 0.9; transform: translate(-50%, -120%); }
+    }
     /* ---------- IMPOSTAZIONI ---------- */
     .velo-impostazioni {
       position: fixed; inset: 0; z-index: 90; display: none;
@@ -2877,12 +2916,24 @@
 
     <div class="opp-groups-stack">
         <div class="opp-center-group" id="oppSeatGroup1">
-            <div class="opp-profile">
+            <div class="opp-profile" id="oppProfilo">
                 <div class="avatar-ring" id="oppAvatarRing"><div class="opp-avatar">👤</div></div>
                 <div class="opp-text-col">
                     <span class="opp-name" id="oppName">Avversario</span>
                     <span class="opp-live-score" id="oppLiveScore">0 pt</span>
                 </div>
+            </div>
+            <!-- I sei gesti: solo in rete (contro un avversario vero c'è
+                 qualcuno dall'altra parte a cui dire qualcosa; contro il
+                 bot non c'è nessuno ad ascoltare). Un tocco sul nome li
+                 apre — vedi lo script piu' in basso, "I SEI GESTI". -->
+            <div class="gesti-scelta" id="gestiScelta">
+                <button type="button" data-simbolo="👋" title="Ciao">👋</button>
+                <button type="button" data-simbolo="👍" title="Ben giocato">👍</button>
+                <button type="button" data-simbolo="😂" title="Ridere">😂</button>
+                <button type="button" data-simbolo="😮" title="Sorpreso">😮</button>
+                <button type="button" data-simbolo="🤔" title="Pensare">🤔</button>
+                <button type="button" data-simbolo="😢" title="Peccato">😢</button>
             </div>
             <div class="opp-hand-box" id="oppHandBox"></div>
             <div class="conta-carte" id="oppConta">11 carte</div>
@@ -3103,6 +3154,15 @@ function provaOrientamento() {
     }
   } catch (e) {}
 }
+function sistemaAvvisoRotazione() {
+  var el = document.getElementById('ruotaAvviso');
+  if (!el) return;
+  var davveroVerticale = window.innerHeight > window.innerWidth;
+  el.style.setProperty('display', davveroVerticale ? '' : 'none', 'important');
+}
+sistemaAvvisoRotazione();
+window.addEventListener('resize', sistemaAvvisoRotazione);
+window.addEventListener('orientationchange', sistemaAvvisoRotazione);
 function provaSchermoIntero() {
   var el = document.documentElement;
   if (document.fullscreenElement || document.webkitFullscreenElement) { provaOrientamento(); return; }
@@ -8636,8 +8696,20 @@ function accettaVista(risposta) {
 
 // Racconta a chi ha subito la mossa che cosa è appena successo: senza,
 // i punti vita calerebbero e basta.
+//
+// SI RICORDA L'ULTIMA GIA' RACCONTATA (per `quando`, non per contenuto:
+// due mosse diverse potrebbero avere campi identici). Serve da quando
+// esistono i gesti (vedi mandaGesto/mostraGestoArrivato, piu' sotto):
+// mandare una faccina fa scattare cambiata(stanza) sul server, la
+// versione del tavolo sale, e senza questo controllo l'ascolta() qui
+// sotto ripeteva ogni volta l'ultimo VERO esito — un colpo subito ore
+// prima tornava a far tremare la carta e a far volare il numero, solo
+// perche' qualcuno aveva mandato un pollice in su.
+let ultimoEsitoRaccontato = null;
 function raccontaLaMossaDellAltro(esito) {
   if (!esito || esito.giocatore === RETE.io) return;
+  if (esito.quando && esito.quando === ultimoEsitoRaccontato) return;
+  if (esito.quando) ultimoEsitoRaccontato = esito.quando;
   const nome = RETE.nomi[esito.giocatore] || 'L\'avversario';
   if (esito.tipo === 'tempo_scaduto') { avviso('Tempo scaduto per ' + nome + '.'); return; }
   if (esito.pozzettoPreso) avviso(nome + ' ha preso il pozzetto!');
