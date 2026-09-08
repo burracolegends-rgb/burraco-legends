@@ -2822,7 +2822,12 @@ function disegnaTutto() {
       indicatore.classList.add('cambiato');
     }
   }
-  $('oppName').textContent = 'Avversario';
+  // Contro il bot "Avversario" va benissimo — non ha un nome vero da
+  // mostrare. In rete invece c'e' un giocatore vero dall'altra parte:
+  // RETE.nomi usa gli indici ASSOLUTI del server (non quelli "mio/suo"
+  // di statoDaVista()), quindi il suo nome e' sempre quello all'indice
+  // diverso dal mio.
+  $('oppName').textContent = (ONLINE && RETE.nomi && RETE.nomi[RETE.io === 0 ? 1 : 0]) || 'Avversario';
   $('oppLiveScore').textContent = Math.round(SEMI.reduce((t, s) => t + avv.characters[s].pv, 0)) + ' PV';
   aggiornaMonteTempo();
 
@@ -3637,6 +3642,105 @@ function raccontaLaMossaDellAltro(esito) {
   if (!esito.danno) setTimeout(() => mostraResoconto(esito, 1), attesa + 300);
 }
 
+// ------------------------------------------------------------
+// I SEI GESTI — vedi la CSS ".gesti-scelta"/".gesto-volante" e
+// server/stanze.js: gesto(). Solo in rete: contro il bot non c'e'
+// nessuno dall'altra parte a cui dire qualcosa.
+// ------------------------------------------------------------
+
+// Stessa idea di ultimoEsitoRaccontato qui sopra: si ricorda l'ultimo
+// gesto gia' mostrato per `quando`, non per contenuto — altrimenti due
+// pollici in su di fila (uno per parte, o lo stesso rimandato dopo il
+// tempo d'attesa) sembrerebbero un solo gesto mai arrivato la seconda
+// volta.
+let ultimoGestoMostrato = null;
+
+// La faccina che sale da un ancoraggio (il mio avatar quando la mando
+// io, il profilo dell'avversario quando arriva da lui). Un elemento
+// nuovo ogni volta, tolto da solo a fine animazione: due gesti mandati
+// in fretta non si devono accavallare nello stesso nodo.
+function creaGestoVolante(simbolo, selettoreAncora) {
+  const ancora = document.querySelector(selettoreAncora);
+  if (!ancora) return;
+  const r = ancora.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'gesto-volante';
+  el.textContent = simbolo;
+  el.style.left = (r.left + r.width / 2) + 'px';
+  el.style.top = (r.top + r.height / 2) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2300);
+}
+
+// Un gesto arrivato dall'ascolta() qui sotto: se e' nuovo (per `quando`)
+// e non e' il mio proprio rimbalzato indietro, sale dal profilo di chi
+// l'ha mandato.
+function mostraGestoArrivato(gesto) {
+  if (!gesto || typeof gesto.quando !== 'number') return;
+  if (gesto.quando === ultimoGestoMostrato) return;
+  ultimoGestoMostrato = gesto.quando;
+  if (gesto.giocatore === RETE.io) return;   // il mio, mostrato gia' quando l'ho mandato
+  creaGestoVolante(gesto.simbolo, '#oppProfilo');
+}
+
+// Manda un gesto al server. Ottimista sulla propria faccina (sale
+// subito, non si aspetta la risposta): un ritardo di rete non deve
+// far sembrare che il tocco non sia andato a segno.
+async function mandaGesto(simbolo) {
+  chiudiGesti();
+  creaGestoVolante(simbolo, '#myAvatarBasso');
+  try {
+    const risposta = await fetch('/api/gesto', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codice: RETE.codice, segreto: RETE.segreto, simbolo })
+    });
+    const r = await risposta.json();
+    // "Aspetta un momento" (troppo presto) non e' un errore da segnalare
+    // con un avviso vero e proprio: e' gia' chiaro dal fatto che la
+    // faccina non è appena partita una seconda volta. Un tavolo
+    // inesistente o un gesto non valido invece si', anche se capita di
+    // rado (segreto scaduto, per esempio).
+    if (!r.ok && r.motivo && !/aspetta/i.test(r.motivo)) avviso(r.motivo);
+  } catch (e) { /* la faccina l'ho gia' mostrata: se la rete manca, pazienza */ }
+}
+
+function chiudiGesti() {
+  const scelta = document.getElementById('gestiScelta');
+  if (scelta) scelta.classList.remove('aperto');
+}
+
+// Un tocco sul profilo dell'avversario apre le sei faccine, proprio
+// sotto di lui. Solo in rete: contro il bot #oppProfilo non diventa mai
+// "gesti-disponibili" (vedi avvia(), piu' in basso) e questo listener
+// non fa niente di visibile.
+function agganciaGesti() {
+  const profilo = document.getElementById('oppProfilo');
+  const scelta = document.getElementById('gestiScelta');
+  if (!profilo || !scelta) return;
+  profilo.classList.add('gesti-disponibili');
+
+  profilo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (scelta.classList.contains('aperto')) { chiudiGesti(); return; }
+    // posizionata qui e non in CSS: dipende da dove sta il profilo,
+    // che cambia con la larghezza dello schermo.
+    const r = profilo.getBoundingClientRect();
+    scelta.style.top = (r.bottom + 6) + 'px';
+    scelta.style.left = Math.max(6, r.left) + 'px';
+    scelta.classList.add('aperto');
+  });
+  scelta.querySelectorAll('button[data-simbolo]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      mandaGesto(btn.dataset.simbolo);
+    });
+  });
+  // un tocco fuori dalle faccine le richiude, come ogni menu a tendina
+  document.addEventListener('click', (e) => {
+    if (!scelta.contains(e.target) && e.target !== profilo) chiudiGesti();
+  });
+}
+
 async function eseguiInRete(azione) {
   let r;
   try {
@@ -3715,6 +3819,10 @@ async function ascolta() {
     if (!laPaginaCEAncora()) return;                 // la pagina se n'è andata mentre aspettavo
     if (!r.ok) { avviso(r.motivo || 'Il tavolo non c\'è più.'); return; }
     guardaSeCEAncora(r);
+    // Un gesto da solo fa salire la versione ma NON e' una mossa: va
+    // controllato PRIMA del "continue" qui sotto, che altrimenti lo
+    // ignorerebbe silenziosamente ogni volta che nient'altro e' cambiato.
+    mostraGestoArrivato(r.ultimoGesto);
     if (r.versione === RETE.versione) continue;      // solo il tempo scaduto dell'attesa
     const esito = r.ultimoEsito;
     const eraMioTurno = S ? S.currentPlayerIndex === 0 : false;
@@ -5649,6 +5757,7 @@ function avviaTutorialTavolo() {
     }
     accettaVista(r);
     agganciaPannello();
+    agganciaGesti();
     setInterval(aggiornaOrologiTurno, 250);
     window.addEventListener('resize', () => disegna());
     const nome = RETE.nomi[RETE.io === 0 ? 1 : 0];

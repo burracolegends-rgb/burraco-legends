@@ -488,6 +488,15 @@ const server = http.createServer(async (req, res) => {
       return rispondi(res, 200, r);           // "mossa rifiutata" non è un errore di rete
     }
 
+    // Una faccina, non una mossa: si manda in qualunque momento, anche
+    // fuori dal proprio turno (server/stanze.js: gesto()).
+    if (via === '/api/gesto' && req.method === 'POST') {
+      const corpo = await leggiCorpo(req);
+      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      const r = stanze.gesto(corpo.codice, corpo.segreto, corpo.simbolo);
+      return rispondi(res, r.ok ? 200 : 400, r);
+    }
+
     // Un tentativo al giorno, sempre contro lo stesso mazzo per tutti
     // (vedi server/missioni.js). Se oggi l'hai già giocata, torna il
     // risultato di allora invece di un tavolo nuovo.

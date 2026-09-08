@@ -355,6 +355,7 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
       codice: stanza.codice,
       versione: stanza.versione,
       ultimoEsito: stanza.ultimoEsito,
+      ultimoGesto: stanza.ultimoGesto || null,
       avversarioVistoSecondiFa: daQuantoNonSiVede(stanza, altro),
       inAttesaDelSecondo: !stanza.posti[1],
       nomi: [stanza.posti[0] ? stanza.posti[0].nome : null,
@@ -393,6 +394,40 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
     const scadenza = setTimeout(rispondi, ATTESA_MASSIMA_MS);
     if (scadenza.unref) scadenza.unref();
     stanza.inAttesa.push(rispondi);
+  }
+
+  // ----------------------------------------------------------
+  // I SEI GESTI
+  //
+  // Non sono una mossa: si possono mandare in qualunque momento, anche
+  // fuori dal proprio turno — è una faccina, non un'azione di gioco, e
+  // farla aspettare il proprio turno la renderebbe inutile la metà delle
+  // volte (si vorrebbe reagire proprio a quello che ha appena fatto
+  // l'altro). Per questo vive fuori da applica()/muovi(): non tocca la
+  // partita, tocca solo la conversazione intorno.
+  //
+  // Sei simboli fissi, decisi qui — mai un testo arrivato dal client:
+  // un campo libero fra sconosciuti e' un problema che non vogliamo.
+  // ----------------------------------------------------------
+  const SIMBOLI_GESTO = ['👋', '👍', '😂', '😮', '🤔', '😢'];
+  const GESTO_ATTESA_MS = 2000;   // non piu' di uno ogni due secondi a testa
+
+  function gesto(codice, segreto, simbolo) {
+    const stanza = stanze.get(String(codice || '').toUpperCase().trim());
+    if (!stanza) return { ok: false, motivo: 'Tavolo inesistente.' };
+    const io = chiSei(stanza, segreto);
+    if (io < 0) return { ok: false, motivo: 'Non risulti seduto a questo tavolo.' };
+    if (!SIMBOLI_GESTO.includes(simbolo)) return { ok: false, motivo: 'Questo gesto non esiste.' };
+
+    const adesso = orologio();
+    if (!stanza.ultimoGestoDi) stanza.ultimoGestoDi = [0, 0];
+    if (adesso - stanza.ultimoGestoDi[io] < GESTO_ATTESA_MS) {
+      return { ok: false, motivo: 'Aspetta un momento prima di mandarne un altro.' };
+    }
+    stanza.ultimoGestoDi[io] = adesso;
+    stanza.ultimoGesto = { giocatore: io, simbolo, quando: adesso };
+    cambiata(stanza);
+    return { ok: true };
   }
 
   // ----------------------------------------------------------
@@ -568,7 +603,7 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
   }
 
   return {
-    apri, entra, siediti, apriControBot, guarda, muovi, battito, registroDi,
+    apri, entra, siediti, apriControBot, guarda, muovi, gesto, battito, registroDi,
     quante: () => stanze.size,
     stanza: (codice) => stanze.get(String(codice || '').toUpperCase().trim()) || null
   };
