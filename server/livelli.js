@@ -21,10 +21,29 @@
 // lato è registrato e l'altro no, il lato registrato aggiorna comunque
 // il proprio livello — contro un rating neutro (RATING_INIZIALE) per
 // l'avversario ospite, che non ne ha uno vero da usare.
+//
+// IL K-FATTORE NON È SEMPRE LO STESSO (stessa idea di Chess.com e
+// Lichess). Tutti partono da RATING_INIZIALE, che è un numero a caso,
+// non il livello vero di nessuno: le primissime partite devono
+// spostare parecchio, per arrivare in fretta vicino a dove si merita
+// davvero di stare. Dopo, lo stesso spostamento grosso farebbe ballare
+// un rating che ha già trovato il suo posto per un risultato isolato
+// (una serie fortunata, un avversario disconnesso). Si guarda quante
+// partite ha già in archivio chi sta per aggiornarsi (kFattoreDi, più
+// sotto): sotto PARTITE_ASSESTAMENTO usa K_FATTORE_INIZIALE, il resto
+// del tempo K_FATTORE — e i due lati di una stessa partita possono
+// benissimo usare un K diverso l'uno dall'altro, se uno dei due è alla
+// sua quinta partita e l'altro alla centesima.
 // ============================================================
 
 export const RATING_INIZIALE = 1000;
-const K_FATTORE = 32;
+export const K_FATTORE_INIZIALE = 40;
+export const K_FATTORE = 16;
+export const PARTITE_ASSESTAMENTO = 10;
+
+export function kFattoreDi(partiteGiaFatte) {
+  return partiteGiaFatte < PARTITE_ASSESTAMENTO ? K_FATTORE_INIZIALE : K_FATTORE;
+}
 
 // Il "Livello" mostrato in home.html non è il rating grezzo (un neofita
 // a "Livello 1000" suonerebbe come un veterano): è lo stesso numero,
@@ -104,7 +123,8 @@ export function creaLivelli({ archivio, stanze, eRegistrato, orologio = Date.now
       const altro = io === 0 ? 1 : 0;
       const ratingAvversario = registrati[altro] ? prima[altro].rating : RATING_INIZIALE;
       const punteggio = vincitore === null ? 0.5 : (vincitore === io ? 1 : 0);
-      const nuovoRating = Math.round(prima[io].rating + K_FATTORE * (punteggio - atteso(prima[io].rating, ratingAvversario)));
+      const k = kFattoreDi(prima[io].partite);
+      const nuovoRating = Math.round(prima[io].rating + k * (punteggio - atteso(prima[io].rating, ratingAvversario)));
       const aggiornato = {
         rating: nuovoRating,
         partite: prima[io].partite + 1,

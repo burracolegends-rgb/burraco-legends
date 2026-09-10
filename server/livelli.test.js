@@ -14,7 +14,8 @@ process.env.NON_AVVIARE = '1';
 process.env.STUDIO_SECONDI = '0';
 
 const { server, stanze } = await import('./server.js');
-import { creaLivelli, livelloDaRating, RATING_INIZIALE } from './livelli.js';
+import { creaLivelli, livelloDaRating, RATING_INIZIALE,
+         K_FATTORE_INIZIALE, K_FATTORE, PARTITE_ASSESTAMENTO, kFattoreDi } from './livelli.js';
 import { archivioInMemoria } from './archivio.js';
 
 let ko = 0;
@@ -82,11 +83,12 @@ console.log('--- SOLO "SFIDA UNO SCONOSCIUTO" TOCCA IL LIVELLO ---');
   check('chi vince sale sopra il rating di partenza',
     dopoB.rating > RATING_INIZIALE, JSON.stringify(dopoB));
   // Con due rating di partenza uguali (1000 contro 1000) l'atteso è 0.5
-  // per entrambi: K=32 sposta il perdente a 1000+32*(0-0.5)=984 e il
-  // vincitore a 1000+32*(1-0.5)=1016 — simmetrico perché i rating di
-  // partenza erano identici.
-  check('la matematica è quella giusta (K=32, atteso 0.5 contro pari livello)',
-    dopoA.rating === 984 && dopoB.rating === 1016,
+  // per entrambi. Prima partita per tutti e due: K_FATTORE_INIZIALE
+  // (40, sotto PARTITE_ASSESTAMENTO), non il K a regime — sposta il
+  // perdente a 1000+40*(0-0.5)=980 e il vincitore a 1000+40*(1-0.5)=1020.
+  check('la prima partita di ciascuno usa il K iniziale, più alto (assestamento veloce)',
+    dopoA.rating === 1000 + K_FATTORE_INIZIALE * (0 - 0.5) &&
+    dopoB.rating === 1000 + K_FATTORE_INIZIALE * (1 - 0.5),
     'A=' + dopoA.rating + ' B=' + dopoB.rating);
   check('la partita conta anche nelle statistiche (partite/sconfitte/vittorie)',
     dopoA.partite === 1 && dopoA.sconfitte === 1 && dopoB.partite === 1 && dopoB.vittorie === 1);
@@ -132,6 +134,37 @@ console.log('\n--- UNA PARTITA SI CONTA UNA VOLTA SOLA ---');
     dopoDueVolte.rating === dopoUnaVolta.rating,
     dopoUnaVolta.rating + ' vs ' + dopoDueVolte.rating);
 }
+
+// ============================================================
+console.log('\n--- IL K-FATTORE CAMBIA DOPO LE PRIME PARTITE ---');
+{
+  check('sotto la soglia di assestamento si usa il K iniziale, più alto',
+    kFattoreDi(0) === K_FATTORE_INIZIALE && kFattoreDi(PARTITE_ASSESTAMENTO - 1) === K_FATTORE_INIZIALE);
+  check('dalla soglia in poi si usa il K a regime, più basso',
+    kFattoreDi(PARTITE_ASSESTAMENTO) === K_FATTORE && kFattoreDi(PARTITE_ASSESTAMENTO + 50) === K_FATTORE);
+
+  // Furio gioca (e perde) PARTITE_ASSESTAMENTO partite ranked di fila:
+  // da qui in avanti ogni sua partita deve muovere il rating con lo
+  // stesso passo più piccolo di un giocatore esperto, non con quello
+  // di un debuttante.
+  const gFurio = await registrato('Furio');
+  for (let i = 0; i < PARTITE_ASSESTAMENTO; i++) {
+    const { a } = await sediliInsieme(gFurio, gettoneFinto());
+    await abbandona(a.codice, a.segreto);
+  }
+  const primaDellaDecima = await livelloDi(gFurio);
+  check('dopo PARTITE_ASSESTAMENTO partite, ne ha registrate esattamente tante',
+    primaDellaDecima.partite === PARTITE_ASSESTAMENTO, JSON.stringify(primaDellaDecima));
+
+  const { a: undicesima } = await sediliInsieme(gFurio, gettoneFinto());
+  await abbandona(undicesima.codice, undicesima.segreto);   // perde ancora
+  const dopoLUndicesima = await livelloDi(gFurio);
+  const spostamentoAtteso = Math.round(K_FATTORE * (0 - atteso(primaDellaDecima.rating, RATING_INIZIALE)));
+  check('l\'undicesima partita si muove del passo piccolo (K a regime), non di quello iniziale',
+    dopoLUndicesima.rating === primaDellaDecima.rating + spostamentoAtteso,
+    'atteso ' + (primaDellaDecima.rating + spostamentoAtteso) + ', ottenuto ' + dopoLUndicesima.rating);
+}
+function atteso(ratingMio, ratingSuo) { return 1 / (1 + Math.pow(10, (ratingSuo - ratingMio) / 400)); }
 
 // ============================================================
 console.log('\n--- IN ISOLAMENTO: LA FORMULA ---');

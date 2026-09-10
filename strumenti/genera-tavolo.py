@@ -801,6 +801,28 @@ BATTLE_CSS = r'''
       pointer-events: none;
     }
 
+    /* GLI ALTRI PANNI, CON LO STESSO TRATTAMENTO DEL LEGNO — non più il
+       feltro a righe diagonali ereditato da Burraco Pulito (arrivato
+       qui insieme al resto del foglio di stile copiato da game.html):
+       accanto al tavolo di legno vero, sopra, quel feltro sembrava un
+       gioco diverso. "Segnalato: sono bruttissimi quelli ereditati
+       dall'altro gioco, sostituiamoli con qualcosa di serio."
+       Stessa idea del legno: un'immagine illustrata vera, centrata, a
+       coprire. Il colore sotto e' il ripiego finche' l'immagine non
+       c'e' — vedi immagini/decorazioni/tavolo-blu.webp,
+       tavolo-circolo.webp, tavolo-bordeaux.webp (i prompt per generarle
+       sono nella conversazione, non ancora file veri nel repository:
+       finche' mancano si vede solo il colore di ripiego, non un errore). */
+    body.tavolo-blu {
+      background: url('immagini/decorazioni/tavolo-blu.webp') center / cover no-repeat, #0d1e33 !important;
+    }
+    body.tavolo-circolo {
+      background: url('immagini/decorazioni/tavolo-circolo.webp') center / cover no-repeat, #0c2417 !important;
+    }
+    body.tavolo-bordeaux {
+      background: url('immagini/decorazioni/tavolo-bordeaux.webp') center / cover no-repeat, #2b0e12 !important;
+    }
+
     /* Erano una fascia verde quasi piena (0.92 di opacita') sopra le
        carte — poi ridotte a trasparenti ma con uno sfocato (blur)
        residuo, che ammorbidiva comunque quello che c'era dietro.

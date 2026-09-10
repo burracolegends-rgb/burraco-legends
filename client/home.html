@@ -86,7 +86,10 @@
   }
   .cornice-avatar svg { width: 100%; height: 100%; }
   .profilo .nick { font-weight: 700; font-size: 0.92rem; letter-spacing: 0.2px; }
+  .riga-livello { display: flex; align-items: center; gap: 4px; }
   .profilo .liv { font-size: 0.68rem; color: var(--oro); letter-spacing: 0.6px; text-transform: uppercase; }
+  .icona-rango { width: 20px; height: 19px; flex: 0 0 auto; display: inline-flex; }
+  .icona-rango svg { width: 100%; height: 100%; }
   .xp { width: 104px; height: 6px; border-radius: 4px; background: rgba(0,0,0,0.6); overflow: hidden; margin-top: 4px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
   .xp i { display: block; height: 100%; width: 62%; border-radius: 4px;
           background: linear-gradient(90deg, var(--oro-scuro), var(--oro), var(--oro-chiaro));
@@ -638,7 +641,10 @@
     </div>
     <div>
       <div class="nick">Pietro</div>
-      <div class="liv" id="livelloNumero">Livello 15</div>
+      <div class="riga-livello">
+        <span class="icona-rango" id="iconaRango"></span>
+        <span class="liv" id="livelloNumero">Livello 15</span>
+      </div>
       <div class="xp"><i></i></div>
     </div>
   </a>
@@ -2034,6 +2040,46 @@ $('rivediTutorial').addEventListener('click', () => {
 // stagione (uguale per tutti, cambia da una stagione all'altra), ed
 // eventuali premi appena sbloccati da segnalare.
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// LO SCUDO DEL RANGO — trenta livelli sono troppi per trenta icone
+// diverse (differenze minime fra livelli vicini, illeggibili su
+// un'icona di 15px): si raggruppano in cinque fasce, sei livelli
+// ciascuna, ognuna col suo materiale — lo stesso linguaggio della
+// cornice-avatar qui sopra (un gradiente verticale chiaro→scuro), non
+// un terzo stile diverso. I puntini sotto lo scudo contano la fascia
+// (1 per il Bronzo, 5 per il Diamante): dicono "quanta strada resta"
+// a colpo d'occhio, non solo il nome.
+// ------------------------------------------------------------
+const RANGHI = [
+  { nome: 'Bronzo',   max: 6,  chiaro: '#d8a26b', scuro: '#6b3f1d' },
+  { nome: 'Argento',  max: 12, chiaro: '#eef2f6', scuro: '#8b97a3' },
+  { nome: 'Oro',      max: 18, chiaro: '#fff0c2', scuro: '#9a6f21' },
+  { nome: 'Platino',  max: 24, chiaro: '#d9fff2', scuro: '#3f8f82' },
+  { nome: 'Diamante', max: 30, chiaro: '#eaf6ff', scuro: '#3a6fb0' }
+];
+function svgRango(livello) {
+  const trovato = RANGHI.findIndex((r) => livello <= r.max);
+  const indice = trovato === -1 ? RANGHI.length - 1 : trovato;
+  const rango = RANGHI[indice];
+  const gid = 'gradRango' + indice;
+  // Un numero (I-V) inciso al centro, non cinque puntini: a 20px di
+  // larghezza cinque pallini distinti sarebbero solo un bordo sfocato,
+  // il colore del materiale già dice la fascia ma non l'ordine —
+  // segnalato provando l'icona vera a schermo, non solo guardandola
+  // nel codice.
+  const numeroRomano = ['I', 'II', 'III', 'IV', 'V'][indice] || String(indice + 1);
+  return '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="' + rango.chiaro + '"/><stop offset="100%" stop-color="' + rango.scuro + '"/>' +
+    '</linearGradient></defs>' +
+    '<path d="M16 1 L28 5.5 L28 14 C28 22 22.5 27 16 30 C9.5 27 4 22 4 14 L4 5.5 Z" ' +
+      'fill="url(#' + gid + ')" stroke="rgba(0,0,0,0.45)" stroke-width="1.2"/>' +
+    '<path d="M16 5 L24 8.2 L24 14 C24 19.6 21 23 16 25.6" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>' +
+    '<text x="16" y="20.5" text-anchor="middle" font-family="Georgia, serif" font-size="12" font-weight="700" ' +
+      'fill="rgba(0,0,0,0.55)">' + numeroRomano + '</text>' +
+  '</svg>';
+}
+
 const NOMI_SKIN_TAVOLO = { blu: 'Blu notte', circolo: 'Verde da circolo', bordeaux: 'Bordeaux' };
 
 function descriviPremioStagione(premio) {
@@ -2123,6 +2169,7 @@ $('stagioneToast').addEventListener('click', () => { $('stagioneToast').classLis
   const suoLivello = await SCORTA.livello();
   if (suoLivello && suoLivello.ok) {
     $('livelloNumero').textContent = 'Livello ' + suoLivello.livello;
+    $('iconaRango').innerHTML = svgRango(suoLivello.livello);
   }
 
   // Il pass stagionale: stessa logica, non blocca il resto della
