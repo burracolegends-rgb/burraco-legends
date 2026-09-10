@@ -63,7 +63,11 @@ function creaPonteServer() {
     // chi gioca "Sfida uno sconosciuto". Si può leggere anche da
     // ospiti — vedono semplicemente il rating di partenza, che è la
     // stessa cosa onesta di "non hai ancora un livello vero".
-    livello: () => chiedi('/api/livello', {})
+    livello: () => chiedi('/api/livello', {}),
+    // Il pass stagionale (server/stagione.js): chiamarla vale anche
+    // come "sei entrato oggi" e consegna i premi dei livelli appena
+    // raggiunti — non serve nessuna azione a parte, basta leggerla.
+    stagione: () => chiedi('/api/stagione', {})
   };
 }
 
@@ -150,6 +154,13 @@ function creaPonteBrowser() {
     async livello() {
       return { ok: true, diProva: true, rating: 1000, livello: 15,
                partite: 0, vittorie: 0, sconfitte: 0, pareggi: 0 };
+    },
+    // Senza server non esiste nessuna stagione vera: nessuna tabella
+    // premi da mostrare, nessun punto da accumulare.
+    async stagione() {
+      return { ok: true, diProva: true, registrato: false, numero: 0, giorniRimasti: 0,
+               punti: 0, livello: 1, livelloMax: 30, puntiPerLivello: 100,
+               tabella: {}, premiAppenaSbloccati: [] };
     }
   };
 }

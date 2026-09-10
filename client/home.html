@@ -168,6 +168,72 @@
     box-shadow: none; animation: none;
   }
 
+  /* ---------- IL PASS STAGIONALE ----------
+     Stessa cornice del riquadro premio: una barra che si riempie invece
+     di sette caselle, perché qui i traguardi sono trenta, non sette —
+     disegnarli tutti come caselle sarebbe illeggibile su un telefono. */
+  .stagione {
+    flex: 0 0 auto; width: 100%; max-width: 780px; margin: 0 auto;
+    padding: 11px 14px 13px; display: flex; flex-direction: column; gap: 9px;
+  }
+  .stagione .riga-titolo { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .stagione h2 {
+    margin: 0; font-family: Georgia, serif; font-size: 0.92rem;
+    letter-spacing: 2.2px; text-transform: uppercase; color: var(--oro);
+  }
+  .stagione .stato { font-size: 0.74rem; color: var(--tenue); flex: 1; }
+  .stagione .stato b { color: var(--pergamena); }
+  .barra-stagione {
+    height: 11px; border-radius: 6px; background: rgba(0,0,0,0.45);
+    overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.7);
+  }
+  .barra-stagione i {
+    display: block; height: 100%; border-radius: 6px;
+    background: linear-gradient(90deg, var(--oro-scuro), var(--oro), var(--oro-chiaro));
+    box-shadow: 0 0 8px rgba(232,196,106,0.6); transition: width 0.5s ease;
+  }
+  .stagione .sotto-riga { display: flex; justify-content: space-between; align-items: center; }
+  .stagione .sotto-riga b { color: var(--pergamena); font-variant-numeric: tabular-nums; }
+  .stagione .vedi-premi {
+    background: none; border: none; color: var(--oro); font-size: 0.78rem;
+    font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit;
+  }
+
+  /* la lista dei premi, dentro lo stesso velo/pannello delle Impostazioni:
+     stesso linguaggio visivo, non un terzo stile diverso */
+  .riga-premio-stagione {
+    display: flex; align-items: center; gap: 10px; padding: 8px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.85rem;
+  }
+  .riga-premio-stagione:last-child { border-bottom: none; }
+  .riga-premio-stagione .liv-num {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px;
+    display: grid; place-items: center; font-weight: 800; font-size: 0.8rem;
+    background: rgba(0,0,0,0.35); color: var(--tenue); border: 1px solid rgba(255,255,255,0.12);
+  }
+  .riga-premio-stagione .cosa { flex: 1; color: var(--tenue); }
+  .riga-premio-stagione.preso .liv-num {
+    background: rgba(30,66,48,0.6); border-color: rgba(88,196,138,0.5); color: #8fe6b4;
+  }
+  .riga-premio-stagione.preso .cosa { color: var(--pergamena); }
+  .riga-premio-stagione.attuale .liv-num {
+    background: linear-gradient(180deg, #ffe9ae, var(--oro)); color: #2a1c08; border-color: var(--oro);
+  }
+
+  /* un piccolo avviso che sale da sotto quando un livello si sblocca —
+     stesso posto e stile dell'avviso "pagina di prova" (strumenti/ponte.py),
+     mai attivi insieme perché uno sparisce col vero server */
+  .stagione-toast {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(20px);
+    z-index: 550; max-width: min(420px, 92vw); padding: 12px 18px; border-radius: 12px;
+    background: linear-gradient(168deg, rgba(74,53,32,0.97), rgba(28,19,12,0.98));
+    border: 1px solid var(--oro); box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    font-size: 0.82rem; color: var(--pergamena); opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .stagione-toast.mostra { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .stagione-toast b { color: var(--oro); }
+
   /* ---------- IL POPUP DI BENVENUTO ----------
      Appena entri, il premio te lo devi vedere arrivare: se resta un
      bottone in mezzo alla pagina, dopo tre giorni non lo guardi più.
@@ -304,6 +370,8 @@
   .bottone-imp:hover { border-color: var(--oro); }
   .bottone-imp.scelto { border-color: var(--oro); background: rgba(232,196,106,0.14); color: #f3e6c4; }
   .bottone-imp.chiudi { background: transparent; font-weight: 600; }
+  .bottone-imp.bloccato { opacity: 0.5; cursor: default; font-size: 0.78rem; }
+  .bottone-imp.bloccato:hover { border-color: rgba(255,255,255,0.16); }
 
   .etichetta-moneta {
     font-size: 0.6rem; letter-spacing: 1px; text-transform: uppercase;
@@ -672,6 +740,15 @@
     </div>
 
     <div class="riga-imp">
+      <span class="etichetta">Panno del tavolo</span>
+      <div class="scelte-stile" id="scelteTavolo"></div>
+      <p class="spiega-imp">
+        Verde chiaro è sempre disponibile. Gli altri si sbloccano salendo di
+        livello nel pass stagionale.
+      </p>
+    </div>
+
+    <div class="riga-imp">
       <span class="etichetta">Il tour guidato</span>
       <button class="bottone-imp" id="rivediTutorial">Rivedi il tutorial</button>
       <p class="spiega-imp">
@@ -695,6 +772,38 @@
   <div class="scala" id="scala"></div>
   <button class="ritira" id="ritira">Ritira</button>
 </div>
+
+<!-- ============ IL PASS STAGIONALE ============
+     Punti per aver giocato (qualunque partita che il server vede
+     finire davvero: con un amico, con uno sconosciuto, la Missione del
+     giorno — non "Gioca contro il PC" in locale, che il server non può
+     verificare) e per essere entrati oggi. Trenta livelli, due
+     settimane a stagione — vedi server/stagione.js. -->
+<div class="stagione riquadro" id="stagionePannello">
+  <div class="riga-titolo">
+    <h2 id="stagioneTitolo">Pass stagionale</h2>
+    <span class="stato" id="stagioneGiorni"></span>
+  </div>
+  <div class="barra-stagione"><i id="stagioneRiempimento"></i></div>
+  <div class="sotto-riga">
+    <span id="stagioneTesto">Livello 1 / 30</span>
+    <button type="button" class="vedi-premi" id="stagioneVediPremi">Vedi tutti i premi</button>
+  </div>
+</div>
+
+<!-- ============ I PREMI DEL PASS STAGIONALE ============
+     Stesso velo/pannello delle Impostazioni: stesso linguaggio visivo,
+     non un terzo stile diverso. -->
+<div class="velo-impostazioni" id="veloStagione">
+  <div class="pannello-impostazioni">
+    <h2>I premi della stagione</h2>
+    <div id="listaPremiStagione"></div>
+    <div class="riga-imp">
+      <button class="bottone-imp chiudi" id="chiudiStagione">Chiudi</button>
+    </div>
+  </div>
+</div>
+<div class="stagione-toast" id="stagioneToast"></div>
 
 <!-- ============ MODALITÀ ============
      Erano cinque riquadri, e tre di loro erano la stessa domanda fatta
@@ -1398,7 +1507,11 @@ function creaPonteServer() {
     // chi gioca "Sfida uno sconosciuto". Si può leggere anche da
     // ospiti — vedono semplicemente il rating di partenza, che è la
     // stessa cosa onesta di "non hai ancora un livello vero".
-    livello: () => chiedi('/api/livello', {})
+    livello: () => chiedi('/api/livello', {}),
+    // Il pass stagionale (server/stagione.js): chiamarla vale anche
+    // come "sei entrato oggi" e consegna i premi dei livelli appena
+    // raggiunti — non serve nessuna azione a parte, basta leggerla.
+    stagione: () => chiedi('/api/stagione', {})
   };
 }
 
@@ -1485,6 +1598,13 @@ function creaPonteBrowser() {
     async livello() {
       return { ok: true, diProva: true, rating: 1000, livello: 15,
                partite: 0, vittorie: 0, sconfitte: 0, pareggi: 0 };
+    },
+    // Senza server non esiste nessuna stagione vera: nessuna tabella
+    // premi da mostrare, nessun punto da accumulare.
+    async stagione() {
+      return { ok: true, diProva: true, registrato: false, numero: 0, giorniRimasti: 0,
+               punti: 0, livello: 1, livelloMax: 30, puntiPerLivello: 100,
+               tabella: {}, premiAppenaSbloccati: [] };
     }
   };
 }
@@ -1837,9 +1957,60 @@ function aggiornaBottoniLingua() {
 }
 costruisciScelteLingua();
 
+// ------------------------------------------------------------
+// IL PANNO DEL TAVOLO — CSS già scritte (arrivate da Burraco Pulito),
+// mai collegate a un'interfaccia prima d'ora: i livelli del pass
+// stagionale (server/stagione.js) le sbloccano, questa scelta decide
+// quale usare al tavolo. A che livello si sblocca ognuna è scritto
+// anche nella tabella premi vera; qui è ripetuto solo per il testo del
+// lucchetto, non è la fonte che decide se è sbloccata o no — quella è
+// sempre mio.skinTavoloSbloccate, letto dal server.
+// ------------------------------------------------------------
+const CHIAVE_SKIN_TAVOLO = 'bb_skin_tavolo';
+const SKIN_TAVOLO = [
+  { valore: '', nome: 'Verde chiaro', sempreSbloccata: true },
+  { valore: 'blu', nome: 'Blu notte', livelloHint: 10 },
+  { valore: 'circolo', nome: 'Verde da circolo', livelloHint: 20 },
+  { valore: 'bordeaux', nome: 'Bordeaux', livelloHint: 30 }
+];
+function skinTavoloAttuale() {
+  try { return localStorage.getItem(CHIAVE_SKIN_TAVOLO) || ''; } catch (e) { return ''; }
+}
+function costruisciScelteTavolo() {
+  const el = $('scelteTavolo');
+  el.innerHTML = '';
+  const sbloccate = (mio && mio.skinTavoloSbloccate) || [];
+  for (const s of SKIN_TAVOLO) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.skin = s.valore;
+    const disponibile = s.sempreSbloccata || sbloccate.includes(s.valore);
+    if (disponibile) {
+      b.className = 'bottone-imp';
+      b.textContent = s.nome;
+      b.addEventListener('click', () => {
+        try { localStorage.setItem(CHIAVE_SKIN_TAVOLO, s.valore); } catch (e) {}
+        aggiornaBottoniTavolo();
+      });
+    } else {
+      b.className = 'bottone-imp bloccato';
+      b.disabled = true;
+      b.textContent = '🔒 ' + s.nome + ' (livello ' + s.livelloHint + ')';
+    }
+    el.appendChild(b);
+  }
+  aggiornaBottoniTavolo();
+}
+function aggiornaBottoniTavolo() {
+  const attuale = skinTavoloAttuale();
+  $('scelteTavolo').querySelectorAll('button:not(.bloccato)').forEach((b) => {
+    b.classList.toggle('scelto', b.dataset.skin === attuale);
+  });
+}
+
 $('apriImpostazioni').addEventListener('click', () => {
   aggiornaBottoniSuoni();
   aggiornaBottoniLingua();
+  costruisciScelteTavolo();
   $('veloImpostazioni').classList.add('aperto');
 });
 $('chiudiImpostazioni').addEventListener('click', () => {
@@ -1856,6 +2027,75 @@ $('suoniNo').addEventListener('click', () => {
 $('rivediTutorial').addEventListener('click', () => {
   location.href = 'home.html?tutorial=1';
 });
+
+// ------------------------------------------------------------
+// IL PASS STAGIONALE — vedi server/stagione.js. `dati` è la risposta di
+// SCORTA.stagione(): punti, livello, la tabella dei premi di questa
+// stagione (uguale per tutti, cambia da una stagione all'altra), ed
+// eventuali premi appena sbloccati da segnalare.
+// ------------------------------------------------------------
+const NOMI_SKIN_TAVOLO = { blu: 'Blu notte', circolo: 'Verde da circolo', bordeaux: 'Bordeaux' };
+
+function descriviPremioStagione(premio) {
+  if (premio.tipo === 'sharkini') return conNome(premio.quanto);
+  if (premio.tipo === 'pacchetto') {
+    const cosa = premio.cartaTipo === 'magia'
+      ? (premio.carte === 1 ? 'Carta Magica' : 'Carte Magiche')
+      : (premio.carte === 1 ? 'eroe' : 'eroi');
+    return premio.carte + ' ' + cosa;
+  }
+  if (premio.tipo === 'skin-tavolo') return 'Panno del tavolo: ' + (premio.nome || NOMI_SKIN_TAVOLO[premio.skin] || premio.skin);
+  return '';
+}
+
+function disegnaStagione(dati) {
+  if (!dati || !dati.ok) return;
+  $('stagioneTitolo').textContent = 'Pass stagionale · Stagione ' + dati.numero;
+  $('stagioneGiorni').innerHTML = dati.giorniRimasti <= 0
+    ? 'ultimo giorno'
+    : '<b>' + dati.giorniRimasti + '</b> giorni rimasti';
+
+  // Quanto manca al prossimo livello: i punti "dentro" al livello
+  // attuale, sul totale che ne serve per uno. A livello massimo la
+  // barra resta piena — non c'è un prossimo livello da inseguire.
+  const alMassimo = dati.livello >= dati.livelloMax;
+  const percento = alMassimo ? 100 : ((dati.punti % dati.puntiPerLivello) / dati.puntiPerLivello) * 100;
+  $('stagioneRiempimento').style.width = percento + '%';
+  $('stagioneTesto').textContent = 'Livello ' + dati.livello + ' / ' + dati.livelloMax +
+    (dati.registrato ? '' : ' — registrati per cominciare a guadagnare punti');
+
+  const lista = $('listaPremiStagione');
+  lista.innerHTML = '';
+  for (let l = 2; l <= dati.livelloMax; l++) {
+    const premio = dati.tabella[l];
+    if (!premio) continue;
+    const riga = document.createElement('div');
+    riga.className = 'riga-premio-stagione' +
+      (l <= dati.livello ? ' preso' : '') + (l === dati.livello + 1 ? ' attuale' : '');
+    riga.innerHTML = '<span class="liv-num">' + l + '</span><span class="cosa">' + descriviPremioStagione(premio) + '</span>';
+    lista.appendChild(riga);
+  }
+
+  if (dati.premiAppenaSbloccati && dati.premiAppenaSbloccati.length) {
+    const testi = dati.premiAppenaSbloccati.map((p) => 'Livello ' + p.livello + ': ' + descriviPremioStagione(p.premio));
+    mostraStagioneToast(
+      '<b>' + (testi.length === 1 ? 'Nuovo premio sbloccato!' : 'Nuovi premi sbloccati!') + '</b><br>' + testi.join('<br>')
+    );
+  }
+}
+
+let stagioneToastTimeout = null;
+function mostraStagioneToast(html) {
+  const el = $('stagioneToast');
+  el.innerHTML = html;
+  el.classList.add('mostra');
+  if (stagioneToastTimeout) clearTimeout(stagioneToastTimeout);
+  stagioneToastTimeout = setTimeout(() => el.classList.remove('mostra'), 6000);
+}
+
+$('stagioneVediPremi').addEventListener('click', () => { $('veloStagione').classList.add('aperto'); });
+$('chiudiStagione').addEventListener('click', () => { $('veloStagione').classList.remove('aperto'); });
+$('stagioneToast').addEventListener('click', () => { $('stagioneToast').classList.remove('mostra'); });
 
 (async function avvia() {
   const r = await SCORTA.io();
@@ -1884,6 +2124,12 @@ $('rivediTutorial').addEventListener('click', () => {
   if (suoLivello && suoLivello.ok) {
     $('livelloNumero').textContent = 'Livello ' + suoLivello.livello;
   }
+
+  // Il pass stagionale: stessa logica, non blocca il resto della
+  // pagina. Questa stessa chiamata accredita anche il punto di accesso
+  // giornaliero e consegna i premi di eventuali livelli raggiunti nel
+  // frattempo (giocando prima di tornare in home).
+  disegnaStagione(await SCORTA.stagione());
 })();
 
 window.__prova = {

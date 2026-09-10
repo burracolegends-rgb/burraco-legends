@@ -1920,6 +1920,19 @@ SCRIPT = r'''
 // Modalità "hotseat": si gioca a turni alternati sullo stesso schermo.
 // Non c'è ancora rete né IA per l'avversario.
 // ============================================================
+// IL PANNO DEL TAVOLO — le classi CSS (.tavolo-blu/.tavolo-circolo/
+// .tavolo-bordeaux) arrivano da Burraco Pulito, copiate insieme al
+// resto del foglio di stile; senza aggiungere questa riga sarebbero
+// rimaste inerti per sempre. La scelta la fa home.html (Impostazioni,
+// sbloccata dal pass stagionale: server/stagione.js) e la lascia qui,
+// nello stesso bb_skin_tavolo che le Impostazioni scrivono — non si
+// ricontrolla lato server se è DAVVERO sbloccata: è solo un colore del
+// tavolo, non un premio che vale qualcosa da difendere.
+try {
+  const skin = localStorage.getItem('bb_skin_tavolo');
+  if (skin) document.body.classList.add('tavolo-' + skin);
+} catch (e) {}
+
 const SEMI = ['♥', '♦', '♣', '♠'];
 const SUIT_CLASS = { '♥': 'cuori', '♦': 'quadri', '♣': 'fiori', '♠': 'picche' };
 // Squadra predefinita, usata quando non c'e' (o non e' valido) un mazzo

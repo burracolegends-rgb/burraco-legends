@@ -65,7 +65,11 @@ function giocatoreNuovo(nome, quando, bonusBenvenuto, codaBenvenuto) {
     contatorePity: 0,              // carte aperte dall'ultima garanzia
     pacchettiAperti: 0,
     carteAperte: 0,
-    ricariche: []                  // storico: servirà quando i soldi saranno veri
+    ricariche: [],                 // storico: servirà quando i soldi saranno veri
+    // I panni del tavolo sbloccati come premio (vedi server/stagione.js).
+    // 'verde', quello predefinito, non compare mai qui: è sempre
+    // disponibile per tutti, non è un premio da sbloccare.
+    skinTavoloSbloccate: []
   };
 }
 
@@ -136,6 +140,10 @@ export function creaAnagrafe({
           trovato.serie = { ...trovato.serie, saldo: trovato.serie.saldo + bonusBenvenuto };
           trovato.codaBenvenuto = [...codaBenvenuto];
         }
+        // CHI C'ERA GIÀ PRIMA DELLE SKIN DEL TAVOLO (server/stagione.js):
+        // nessuna da aggiungere, solo il campo da far esistere — altrimenti
+        // sbloccaSkinTavolo troverebbe undefined invece di un array.
+        if (!trovato.skinTavoloSbloccate) trovato.skinTavoloSbloccate = [];
         await archivio.scrivi(chiaveDi(gettone), trovato);
         return { ok: true, gettone, nuovo: false, giocatore: trovato };
       }
@@ -179,7 +187,8 @@ export function creaAnagrafe({
         giaRitiratoOggi: stato.giaRitiratoOggi
       },
       pacchettiAperti: g.pacchettiAperti,
-      carteAperte: g.carteAperte
+      carteAperte: g.carteAperte,
+      skinTavoloSbloccate: g.skinTavoloSbloccate || []
     };
   }
 
@@ -468,8 +477,40 @@ export function creaAnagrafe({
     return { ok: true, carte, pityScattato, ...vetrina(g, orologio()) };
   }
 
+  // ----------------------------------------------------------
+  // SHARKINI REGALATI, NON PAGATI — stessa idea di regalaPacchetto, ma
+  // per la valuta: serve ai premi che il gioco stesso assegna (oggi: i
+  // livelli del pass stagionale, server/stagione.js), dove non c'è
+  // nessun acquisto da controllare, solo un saldo da far crescere.
+  // ----------------------------------------------------------
+  async function regalaSharkini(gettone, quanto) {
+    const g = await carica(gettone);
+    if (!g) return { ok: false, motivo: 'Non ti conosco.' };
+    g.serie = { ...g.serie, saldo: g.serie.saldo + quanto };
+    await salva(gettone, g);
+    return { ok: true, saldo: g.serie.saldo };
+  }
+
+  // ----------------------------------------------------------
+  // UNA SKIN DEL TAVOLO SBLOCCATA — un premio del pass stagionale che
+  // non si consuma: resta per sempre nell'account, come una carta. Non
+  // fa niente se è già sbloccata (un premio non si dà due volte, ma
+  // richiederlo di nuovo non è un errore: sarebbe strano bloccare chi
+  // ha già la skin invece di limitarsi a non ripeterla).
+  // ----------------------------------------------------------
+  async function sbloccaSkinTavolo(gettone, skin) {
+    const g = await carica(gettone);
+    if (!g) return { ok: false, motivo: 'Non ti conosco.' };
+    if (!g.skinTavoloSbloccate) g.skinTavoloSbloccate = [];
+    if (!g.skinTavoloSbloccate.includes(skin)) {
+      g.skinTavoloSbloccate = [...g.skinTavoloSbloccate, skin];
+      await salva(gettone, g);
+    }
+    return { ok: true, skinTavoloSbloccate: g.skinTavoloSbloccate };
+  }
+
   return { entra, stato, ritiraIlPremio, compraPacchetto, ricarica, quanti, vetrina, carica,
-           possiedeTutte, consumaCarta, regalaPacchetto };
+           possiedeTutte, consumaCarta, regalaPacchetto, regalaSharkini, sbloccaSkinTavolo };
 }
 
 export { OFFERTE, RICARICHE };

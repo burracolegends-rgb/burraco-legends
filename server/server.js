@@ -30,6 +30,7 @@ import os from 'node:os';
 import { creaRegistroStanze } from './stanze.js';
 import { creaMissioni } from './missioni.js';
 import { creaLivelli, livelloDaRating } from './livelli.js';
+import { creaStagione } from './stagione.js';
 
 // ------------------------------------------------------------
 // UN ERRORE IMPREVISTO NON DEVE SPEGNERE IL SERVER PER TUTTI.
@@ -334,6 +335,12 @@ const missioni = creaMissioni({ archivio, stanze, anagrafe, catalogo: Object.val
 // consegnare.
 const livelli = creaLivelli({ archivio, stanze, eRegistrato });
 
+// Il pass stagionale vive sopra le stanze (per sapere quando qualunque
+// partita finisce, non solo quelle da classifica), sopra l'anagrafe
+// (per consegnare sharkini, pacchetti e skin del tavolo) e sopra
+// eRegistrato (per decidere chi accumula punti che restano).
+const stagione = creaStagione({ archivio, stanze, anagrafe, eRegistrato });
+
 // ------------------------------------------------------------
 // IL NOME CON CUI TI SIEDI AL TAVOLO — SENZA CHIEDERLO
 //
@@ -498,6 +505,11 @@ const server = http.createServer(async (req, res) => {
       // livello ranked di chi era registrato si aggiorna qui.
       livelli.registraSeFinita(corpo.codice).catch((e) =>
         console.error('[livelli] non sono riuscito ad aggiornare il rating:', e && e.message));
+      // Il pass stagionale (server/stagione.js): a differenza del
+      // livello ranked, QUALUNQUE partita conta, non solo quelle da
+      // classifica — anche contro il bot, anche con un amico.
+      stagione.registraPartitaFinita(corpo.codice).catch((e) =>
+        console.error('[stagione] non sono riuscito a registrare i punti:', e && e.message));
       return rispondi(res, 200, r);           // "mossa rifiutata" non è un errore di rete
     }
 
@@ -681,6 +693,16 @@ const server = http.createServer(async (req, res) => {
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const mio = await livelli.livelloDi(corpo.gettone);
       return rispondi(res, 200, { ok: true, ...mio, livello: livelloDaRating(mio.rating) });
+    }
+
+    // Il pass stagionale (server/stagione.js). Chiamarla vale come
+    // "sei entrato oggi" (il punto di accesso giornaliero si accredita
+    // qui dentro) e consegna subito i premi di ogni livello raggiunto
+    // nel frattempo e non ancora ritirato.
+    if (via === '/api/stagione' && req.method === 'POST') {
+      const corpo = await leggiCorpo(req);
+      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      return rispondi(res, 200, await stagione.progressoDi(corpo.gettone));
     }
 
     if (via === '/api/carte' && req.method === 'GET') {

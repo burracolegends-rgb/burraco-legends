@@ -167,6 +167,9 @@ export function creaRegistroStanze({ orologio = Date.now, squadre = null,
       mazzo: null,     // niente mazzo: la squadra del bot e' quella predefinita, sempre la stessa
       gettone: null, bot: true
     };
+    // Segnata per server/stagione.js: la Missione del giorno da' anche il
+    // suo bonus di punti stagione, oltre a quelli di ogni partita giocata.
+    stanza.eMissione = true;
     avviaPartita(stanza);
     return r;
   }
