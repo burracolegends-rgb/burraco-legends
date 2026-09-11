@@ -43,8 +43,8 @@
     color: var(--pergamena);
     background: var(--notte);
     display: flex; flex-direction: column;
-    padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
-    gap: 10px;
+    padding: max(10px, env(safe-area-inset-top)) 16px max(10px, env(safe-area-inset-bottom));
+    gap: 8px;
   }
 
   /* ---------- FONDALE: sala del castello all'alba ---------- */
@@ -129,7 +129,7 @@
      giorno se lo vede dire, invece di scoprirlo dal numero più basso. */
   .premio {
     flex: 0 0 auto; width: 100%; max-width: 780px; margin: 0 auto;
-    padding: 11px 14px 13px; display: flex; flex-direction: column; gap: 9px;
+    padding: 9px 14px 10px; display: flex; flex-direction: column; gap: 7px;
     background:
       linear-gradient(168deg, rgba(15,10,7,0.20), rgba(15,10,7,0.38)),
       url('immagini/decorazioni/pannello-premio.webp') center / cover no-repeat;
@@ -186,7 +186,7 @@
      disegnarli tutti come caselle sarebbe illeggibile su un telefono. */
   .stagione {
     flex: 0 0 auto; width: 100%; max-width: 780px; margin: 0 auto;
-    padding: 11px 14px 13px; display: flex; flex-direction: column; gap: 9px;
+    padding: 9px 14px 10px; display: flex; flex-direction: column; gap: 7px;
   }
   .stagione .riga-titolo { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .stagione h2 {
@@ -200,11 +200,11 @@
      tutto il resto: a chi apre la home la prima cosa da vedere è "a che
      punto sono", non da cercarla in mezzo ad altro testo. */
   .stagione-livello-grande {
-    font-family: Georgia, serif; font-size: 1.3rem; font-weight: 700; color: var(--oro-chiaro);
+    font-family: Georgia, serif; font-size: 1.12rem; font-weight: 700; color: var(--oro-chiaro);
   }
-  .stagione-livello-grande span { font-size: 0.85rem; font-weight: 600; color: var(--tenue); }
+  .stagione-livello-grande span { font-size: 0.8rem; font-weight: 600; color: var(--tenue); }
   .barra-stagione {
-    height: 11px; border-radius: 6px; background: rgba(0,0,0,0.45);
+    height: 9px; border-radius: 6px; background: rgba(0,0,0,0.45);
     overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.7);
   }
   .barra-stagione i {
@@ -463,10 +463,10 @@
      due fonti principali di sharkini. */
   .pubblicita-pillola {
     display: none; align-items: center; justify-content: center; gap: 9px;
-    width: 100%; max-width: 780px; margin: 0 auto; padding: 10px 14px;
+    width: 100%; max-width: 780px; margin: 0 auto; padding: 7px 14px;
     border-radius: 12px; border: 1px solid var(--oro-scuro);
     background: rgba(58,41,24,0.55); color: var(--oro-chiaro);
-    font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    font-family: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer;
   }
   .pubblicita-pillola.attiva { display: flex; }
   .pubblicita-pillola:hover { border-color: var(--oro); background: rgba(58,41,24,0.8); }
@@ -526,11 +526,11 @@
      e il motto sotto erano solo decorazione in più, ed erano la parte
      più facile da sacrificare per riguadagnare altezza. */
   .insegna { text-align: center; padding: 0; flex: 0 0 auto; }
-  .insegna .stemma { height: 32px; width: auto; display: block; margin: 0 auto 2px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6)); }
-  @media (max-height: 560px) { .insegna .stemma { height: 26px; } }
+  .insegna .stemma { height: 26px; width: auto; display: block; margin: 0 auto 2px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6)); }
+  @media (max-height: 560px) { .insegna .stemma { height: 22px; } }
   .insegna h1 {
     margin: 0; font-family: Georgia, 'Times New Roman', serif;
-    font-size: clamp(1.5rem, 4.2vw, 2.2rem); font-weight: 700;
+    font-size: clamp(1.35rem, 3.8vw, 2rem); font-weight: 700;
     letter-spacing: clamp(2px, 0.9vw, 7px); line-height: 1;
     background: linear-gradient(180deg, #fff6d8 0%, var(--oro) 42%, var(--oro-scuro) 72%, #ffe9ae 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -553,7 +553,7 @@
      con "le scritte sono tagliate". Ora ogni riquadro tiene SEMPRE la
      sua altezza vera; se la pagina non ci sta più tutta in un solo
      schermo, si scorre (vedi overflow-y sul body), non si schiaccia. */
-  .modalita { flex: 0 0 auto; display: flex; flex-direction: column; gap: clamp(9px, 1.7vh, 15px); max-width: 660px; width: 100%; margin: 0 auto; }
+  .modalita { flex: 0 0 auto; display: flex; flex-direction: column; gap: clamp(7px, 1.4vh, 13px); max-width: 660px; width: 100%; margin: 0 auto; }
 
   .modo {
     position: relative; display: flex; align-items: stretch; gap: 0;
@@ -590,7 +590,7 @@
   .modo .scena::after { content: ''; position: absolute; inset: 0;
     background: linear-gradient(90deg, transparent 55%, rgba(24,16,10,0.96) 100%); }
 
-  .modo .testo { flex: 1; padding: clamp(11px, 1.9vh, 17px) 16px; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; }
+  .modo .testo { flex: 1; padding: clamp(9px, 1.6vh, 15px) 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; }
   .modo .titolo {
     font-family: Georgia, serif; font-size: clamp(1.05rem, 2.7vw, 1.4rem); font-weight: 700;
     letter-spacing: 1.6px; color: var(--oro-chiaro); text-shadow: 0 2px 5px rgba(0,0,0,0.8);
@@ -613,7 +613,7 @@
 
   /* ---------- NAVIGAZIONE IN BASSO ---------- */
   .navigazione {
-    display: flex; justify-content: center; gap: 4px; padding: 7px;
+    display: flex; justify-content: center; gap: 4px; padding: 5px;
     max-width: 660px; width: 100%; margin: 0 auto; flex: 0 0 auto;
   }
   .voce {
@@ -652,11 +652,11 @@
      si legge. Nessun elemento sparisce: cambiano le proporzioni.
      ============================================================ */
   @media (max-width: 430px) {
-    body { padding-left: 11px; padding-right: 11px; gap: 12px; }
+    body { padding-left: 11px; padding-right: 11px; gap: 8px; }
 
     /* la scenetta resta, ma non si prende piu' un terzo della riga */
     .modo .scena { width: 58px; }
-    .modo .testo { padding: 9px 6px 9px 10px; gap: 2px; }
+    .modo .testo { padding: 7px 6px 7px 10px; gap: 2px; }
     /* Il titolo deve stare in UNA riga. Il piu' lungo e' "ACQUISTA
        PACCHETTI": misurato, a queste dimensioni chiede ~172px e ne ha
        181 — margine voluto, perche' un titolo che va a capo in mezzo a
@@ -673,20 +673,20 @@
     /* PREMIO DEL GIORNO: titolo sopra, stato sotto. Affiancati, su
        questa larghezza, il testo dello stato si spezzava in tre righe
        strette accanto al titolo e sembrava buttato li'. */
-    .premio { padding: 10px 11px 12px; gap: 7px; }
+    .premio { padding: 8px 11px 9px; gap: 5px; }
     .premio .riga-titolo { flex-direction: column; align-items: flex-start; gap: 2px; }
     .premio h2 { font-size: 0.84rem; letter-spacing: 1.4px; }
     .premio .stato { flex: none; font-size: 0.7rem; line-height: 1.35; }
     /* otto caselle su 280px: si stringono i margini, non il numero */
     .scala .fila-giorni { gap: 3px; }
-    .giorno { padding: 5px 1px 4px; border-radius: 7px; }
+    .giorno { padding: 4px 1px 3px; border-radius: 7px; }
     .giorno .n { font-size: 0.5rem; letter-spacing: 0.2px; }
     .giorno .q { font-size: 0.72rem; }
     .giorno.oggi .q { font-size: 0.84rem; }
     .scala-nota { font-size: 0.6rem; }
 
     /* la barra in basso: sei voci in 300px, le etichette vanno strette */
-    .voce { font-size: 0.55rem; letter-spacing: 0.2px; padding: 7px 2px; gap: 3px; }
+    .voce { font-size: 0.55rem; letter-spacing: 0.2px; padding: 5px 2px; gap: 3px; }
     .voce svg { width: 20px; height: 20px; }
     .voce img.icona-nav { width: 28px; height: 28px; }
 
@@ -878,8 +878,8 @@
       <span class="etichetta">Panno del tavolo</span>
       <div class="scelte-stile" id="scelteTavolo"></div>
       <p class="spiega-imp">
-        Verde chiaro è sempre disponibile. Gli altri si sbloccano salendo di
-        livello nel pass stagionale.
+        Verde chiaro è sempre disponibile. Gli altri si sbloccano avanzando
+        nel pass stagionale.
       </p>
     </div>
 
@@ -919,10 +919,10 @@
     <h2 id="stagioneTitolo">Pass stagionale</h2>
     <span class="stato" id="stagioneGiorni"></span>
   </div>
-  <div class="stagione-livello-grande" id="stagioneLivelloGrande">Livello 1 <span>/ 30</span></div>
+  <div class="stagione-livello-grande" id="stagioneLivelloGrande">Tappa 1 <span>/ 30</span></div>
   <div class="barra-stagione"><i id="stagioneRiempimento"></i></div>
   <div class="sotto-riga">
-    <span id="stagioneTesto">0 / 100 punti per il prossimo livello</span>
+    <span id="stagioneTesto">0 / 100 punti per la prossima tappa</span>
     <button type="button" class="vedi-premi" id="stagioneVediPremi">Vedi tutti i premi</button>
   </div>
 </div>
@@ -947,7 +947,7 @@
       <li><b>5 al giorno</b> per essere entrato, anche senza giocare</li>
     </ul>
     <p class="spiega-stagione">
-      Ogni 100 punti sali di livello. Solo chi è <b>registrato</b> accumula punti.
+      Ogni 100 punti avanzi di una tappa. Solo chi è <b>registrato</b> accumula punti.
       Ogni stagione dura <b>14 giorni</b>: poi si azzera da sola e ne comincia una
       nuova, con la sua tabella di premi.
     </p>
@@ -2298,24 +2298,29 @@ function disegnaStagione(dati) {
     ? 'ultimo giorno'
     : '<b>' + dati.giorniRimasti + '</b> giorni rimasti';
 
-  $('stagioneLivelloGrande').innerHTML = 'Livello ' + dati.livello + ' <span>/ ' + dati.livelloMax + '</span>';
+  // "Tappa", non "Livello" — il livello ranked (in alto, accanto al
+  // nome) usa già quella parola per una cosa completamente diversa
+  // (l'ELO di server/livelli.js). Due "Livello" nella stessa pagina,
+  // uno per il pass e uno per il rating, si confondevano facilmente:
+  // segnalato dall'utente stesso, "si potrebbe fare confusione".
+  $('stagioneLivelloGrande').innerHTML = 'Tappa ' + dati.livello + ' <span>/ ' + dati.livelloMax + '</span>';
 
-  // Quanto manca al prossimo livello: i punti "dentro" al livello
-  // attuale, sul totale che ne serve per uno. A livello massimo la
-  // barra resta piena — non c'è un prossimo livello da inseguire.
+  // Quanto manca alla prossima tappa: i punti "dentro" alla tappa
+  // attuale, sul totale che ne serve per una. All'ultima tappa la
+  // barra resta piena — non c'è una prossima tappa da inseguire.
   const alMassimo = dati.livello >= dati.livelloMax;
   const puntiNelLivello = dati.punti % dati.puntiPerLivello;
   const percento = alMassimo ? 100 : (puntiNelLivello / dati.puntiPerLivello) * 100;
   $('stagioneRiempimento').style.width = percento + '%';
 
   if (!dati.registrato) {
-    $('stagioneTesto').textContent = 'Registrati per cominciare a guadagnare punti';
+    $('stagioneTesto').textContent = 'Solo utenti registrati';
   } else if (alMassimo) {
-    $('stagioneTesto').textContent = 'Livello massimo raggiunto per questa stagione';
+    $('stagioneTesto').textContent = 'Ultima tappa raggiunta per questa stagione';
   } else {
     const mancano = dati.puntiPerLivello - puntiNelLivello;
     $('stagioneTesto').textContent = puntiNelLivello + ' / ' + dati.puntiPerLivello + ' punti — ' +
-      'ancora ' + mancano + ' per il livello ' + (dati.livello + 1);
+      'ancora ' + mancano + ' per la tappa ' + (dati.livello + 1);
   }
 
   const lista = $('listaPremiStagione');
@@ -2331,7 +2336,7 @@ function disegnaStagione(dati) {
   }
 
   if (dati.premiAppenaSbloccati && dati.premiAppenaSbloccati.length) {
-    const testi = dati.premiAppenaSbloccati.map((p) => 'Livello ' + p.livello + ': ' + descriviPremioStagione(p.premio));
+    const testi = dati.premiAppenaSbloccati.map((p) => 'Tappa ' + p.livello + ': ' + descriviPremioStagione(p.premio));
     mostraStagioneToast(
       '<b>' + (testi.length === 1 ? 'Nuovo premio sbloccato!' : 'Nuovi premi sbloccati!') + '</b><br>' + testi.join('<br>')
     );
