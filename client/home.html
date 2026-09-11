@@ -444,6 +444,52 @@
   .ripresa .testo small { display: block; font-size: 0.74rem; color: #9dc9b0; margin-top: 2px; }
   .ripresa .freccia { color: #b6ffd4; font-size: 1.3rem; }
 
+  /* ---------- GUARDA UNA PUBBLICITÀ ----------
+     Una sola riga, non un riquadro come premio/stagione: è un extra
+     piccolo (max 3 al giorno), non merita lo stesso peso visivo delle
+     due fonti principali di sharkini. */
+  .pubblicita-pillola {
+    display: none; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; max-width: 780px; margin: 0 auto; padding: 10px 14px;
+    border-radius: 12px; border: 1px solid var(--oro-scuro);
+    background: rgba(58,41,24,0.55); color: var(--oro-chiaro);
+    font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  }
+  .pubblicita-pillola.attiva { display: flex; }
+  .pubblicita-pillola:hover { border-color: var(--oro); background: rgba(58,41,24,0.8); }
+  .icona-pubblicita {
+    display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--oro); color: #2a1c08; font-size: 0.6rem; flex: 0 0 auto;
+  }
+
+  /* il "video" segnaposto: un velo scuro, un conto alla rovescia, poi
+     l'esito — stesso linguaggio delle Impostazioni (velo+pannello),
+     non un terzo stile diverso */
+  .velo-pubblicita {
+    position: fixed; inset: 0; z-index: 520; display: none;
+    align-items: center; justify-content: center; padding: 18px;
+    background: rgba(6,4,10,0.94);
+  }
+  .velo-pubblicita.aperto { display: flex; }
+  .pannello-pubblicita {
+    width: min(340px, 100%); text-align: center; padding: 28px 22px;
+    border-radius: 16px; border: 1px solid var(--oro-scuro);
+    background: linear-gradient(168deg, rgba(52,38,22,0.97), rgba(20,14,8,0.98));
+    box-shadow: 0 18px 50px rgba(0,0,0,0.8);
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .etichetta-segnaposto {
+    font-size: 0.62rem; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--testo-tenue); border: 1px dashed rgba(255,255,255,0.25);
+    border-radius: 20px; padding: 3px 12px;
+  }
+  .cerchio-conto {
+    width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center;
+    font-family: Georgia, serif; font-size: 1.8rem; font-weight: 700; color: var(--oro-chiaro);
+    border: 3px solid var(--oro); box-shadow: 0 0 20px rgba(232,196,106,0.35);
+  }
+  #pubblicitaMessaggio { margin: 0; font-size: 0.88rem; color: var(--pergamena); line-height: 1.5; }
+
   /* le monete che volano dal premio al borsellino */
   .volo {
     position: fixed; z-index: 40; pointer-events: none; width: 22px; height: 22px;
@@ -739,6 +785,28 @@
   </span>
   <span class="freccia">›</span>
 </a>
+
+<!-- ============ GUARDA UNA PUBBLICITÀ ============
+     Segnaposto finché non c'è un vero SDK pubblicitario (vedi
+     server/pubblicita.js): il meccanismo — tetto giornaliero, importo,
+     accredito — è già quello vero, cambia solo cosa succede al centro
+     dello schermo mentre "guardi". Nascosto del tutto se non si è
+     registrati o se il tetto di oggi è già finito. -->
+<button type="button" class="pubblicita-pillola" id="pubblicitaPillola">
+  <span class="icona-pubblicita">▶</span>
+  <span id="pubblicitaPillolaTesto">Guarda una pubblicità · +100 sharkini</span>
+</button>
+
+<!-- Il "video" — un segnaposto onesto, non un vero annuncio: vedi il
+     commento sopra e in server/pubblicita.js. -->
+<div class="velo-pubblicita" id="veloPubblicita">
+  <div class="pannello-pubblicita" id="pannelloPubblicita">
+    <div class="etichetta-segnaposto">Pubblicità (segnaposto)</div>
+    <div class="cerchio-conto" id="cerchioConto">5</div>
+    <p id="pubblicitaMessaggio">Aspetta qualche secondo...</p>
+    <button type="button" class="bottone-imp" id="chiudiPubblicita" disabled>Chiudi</button>
+  </div>
+</div>
 
 <!-- ============ IL BENVENUTO ============ -->
 <div class="festa" id="festa">
@@ -1579,7 +1647,12 @@ function creaPonteServer() {
     // Il pass stagionale (server/stagione.js): chiamarla vale anche
     // come "sei entrato oggi" e consegna i premi dei livelli appena
     // raggiunti — non serve nessuna azione a parte, basta leggerla.
-    stagione: () => chiedi('/api/stagione', {})
+    stagione: () => chiedi('/api/stagione', {}),
+    // Guarda una pubblicità, guadagna sharkini (server/pubblicita.js —
+    // segnaposto finché non c'è un vero SDK pubblicitario). /stato non
+    // ha effetti collaterali, /guarda accredita davvero.
+    pubblicitaStato: () => chiedi('/api/pubblicita/stato', {}),
+    pubblicitaGuarda: () => chiedi('/api/pubblicita/guarda', {})
   };
 }
 
@@ -1673,6 +1746,14 @@ function creaPonteBrowser() {
       return { ok: true, diProva: true, registrato: false, numero: 0, giorniRimasti: 0,
                punti: 0, livello: 1, livelloMax: 30, puntiPerLivello: 100,
                tabella: {}, premiAppenaSbloccati: [] };
+    },
+    // Senza server non ci sono account veri: niente pubblicità da
+    // guardare, come per il resto dei conti di questo ponte.
+    async pubblicitaStato() {
+      return { ok: true, diProva: true, registrato: false, visteOggi: 0, visteMassime: 3, sharkiniPerVista: 100 };
+    },
+    async pubblicitaGuarda() {
+      return { ok: false, diProva: true, serveRegistrazione: true, motivo: 'Serve un account registrato — e un server vero.' };
     }
   };
 }
@@ -2216,6 +2297,57 @@ $('stagioneVediPremi').addEventListener('click', () => { $('veloStagione').class
 $('chiudiStagione').addEventListener('click', () => { $('veloStagione').classList.remove('aperto'); });
 $('stagioneToast').addEventListener('click', () => { $('stagioneToast').classList.remove('mostra'); });
 
+// ------------------------------------------------------------
+// GUARDA UNA PUBBLICITÀ — vedi server/pubblicita.js. La pillola si
+// mostra solo a chi è registrato e ha ancora viste oggi: un ospite, o
+// chi ha già esaurito il tetto, non vede nemmeno il pulsante — non c'è
+// niente da offrire, meglio non mostrare un invito che porta solo a un
+// rifiuto.
+// ------------------------------------------------------------
+function disegnaPubblicita(dati) {
+  const pillola = $('pubblicitaPillola');
+  if (!dati || !dati.ok || !dati.registrato || dati.visteOggi >= dati.visteMassime) {
+    pillola.classList.remove('attiva');
+    return;
+  }
+  pillola.classList.add('attiva');
+  const restano = dati.visteMassime - dati.visteOggi;
+  $('pubblicitaPillolaTesto').textContent =
+    'Guarda una pubblicità · +' + dati.sharkiniPerVista + ' sharkini (' + restano + ' oggi)';
+}
+
+const DURATA_PUBBLICITA_SEGNAPOSTO_S = 5;   // il finto "video": vedi server/pubblicita.js
+let contoPubblicitaTimer = null;
+
+$('pubblicitaPillola').addEventListener('click', () => {
+  clearInterval(contoPubblicitaTimer);
+  $('pubblicitaMessaggio').textContent = 'Aspetta qualche secondo...';
+  $('cerchioConto').textContent = DURATA_PUBBLICITA_SEGNAPOSTO_S;
+  $('chiudiPubblicita').disabled = true;
+  $('chiudiPubblicita').textContent = 'Chiudi';
+  $('veloPubblicita').classList.add('aperto');
+
+  let restanti = DURATA_PUBBLICITA_SEGNAPOSTO_S;
+  contoPubblicitaTimer = setInterval(async () => {
+    restanti--;
+    if (restanti > 0) { $('cerchioConto').textContent = restanti; return; }
+    clearInterval(contoPubblicitaTimer);
+    $('cerchioConto').textContent = '✓';
+
+    const r = await SCORTA.pubblicitaGuarda();
+    if (r && r.ok) {
+      mio = { ...mio, saldo: mio.saldo + r.accreditati };
+      mostraSaldo(true);
+      $('pubblicitaMessaggio').textContent = 'Hai guadagnato ' + r.accreditati + ' sharkini!';
+      disegnaPubblicita({ ok: true, registrato: true, visteOggi: r.visteOggi, visteMassime: r.visteMassime, sharkiniPerVista: r.accreditati });
+    } else {
+      $('pubblicitaMessaggio').textContent = (r && r.motivo) || 'Qualcosa è andato storto: riprova più tardi.';
+    }
+    $('chiudiPubblicita').disabled = false;
+  }, 1000);
+});
+$('chiudiPubblicita').addEventListener('click', () => { $('veloPubblicita').classList.remove('aperto'); });
+
 (async function avvia() {
   const r = await SCORTA.io();
   if (r && r.ok) mio = r;
@@ -2250,6 +2382,10 @@ $('stagioneToast').addEventListener('click', () => { $('stagioneToast').classLis
   // giornaliero e consegna i premi di eventuali livelli raggiunti nel
   // frattempo (giocando prima di tornare in home).
   disegnaStagione(await SCORTA.stagione());
+
+  // Guarda una pubblicità: solo lettura, nessun accredito finché non
+  // si tocca davvero la pillola.
+  disegnaPubblicita(await SCORTA.pubblicitaStato());
 })();
 
 window.__prova = {

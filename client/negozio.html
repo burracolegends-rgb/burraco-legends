@@ -833,7 +833,12 @@ function creaPonteServer() {
     // Il pass stagionale (server/stagione.js): chiamarla vale anche
     // come "sei entrato oggi" e consegna i premi dei livelli appena
     // raggiunti — non serve nessuna azione a parte, basta leggerla.
-    stagione: () => chiedi('/api/stagione', {})
+    stagione: () => chiedi('/api/stagione', {}),
+    // Guarda una pubblicità, guadagna sharkini (server/pubblicita.js —
+    // segnaposto finché non c'è un vero SDK pubblicitario). /stato non
+    // ha effetti collaterali, /guarda accredita davvero.
+    pubblicitaStato: () => chiedi('/api/pubblicita/stato', {}),
+    pubblicitaGuarda: () => chiedi('/api/pubblicita/guarda', {})
   };
 }
 
@@ -927,6 +932,14 @@ function creaPonteBrowser() {
       return { ok: true, diProva: true, registrato: false, numero: 0, giorniRimasti: 0,
                punti: 0, livello: 1, livelloMax: 30, puntiPerLivello: 100,
                tabella: {}, premiAppenaSbloccati: [] };
+    },
+    // Senza server non ci sono account veri: niente pubblicità da
+    // guardare, come per il resto dei conti di questo ponte.
+    async pubblicitaStato() {
+      return { ok: true, diProva: true, registrato: false, visteOggi: 0, visteMassime: 3, sharkiniPerVista: 100 };
+    },
+    async pubblicitaGuarda() {
+      return { ok: false, diProva: true, serveRegistrazione: true, motivo: 'Serve un account registrato — e un server vero.' };
     }
   };
 }
