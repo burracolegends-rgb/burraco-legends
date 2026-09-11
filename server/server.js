@@ -31,7 +31,6 @@ import { creaRegistroStanze } from './stanze.js';
 import { creaMissioni } from './missioni.js';
 import { creaLivelli, livelloDaRating } from './livelli.js';
 import { creaStagione } from './stagione.js';
-import { creaPubblicita } from './pubblicita.js';
 
 // ------------------------------------------------------------
 // UN ERRORE IMPREVISTO NON DEVE SPEGNERE IL SERVER PER TUTTI.
@@ -341,11 +340,6 @@ const livelli = creaLivelli({ archivio, stanze, eRegistrato });
 // (per consegnare sharkini, pacchetti e skin del tavolo) e sopra
 // eRegistrato (per decidere chi accumula punti che restano).
 const stagione = creaStagione({ archivio, stanze, anagrafe, eRegistrato });
-
-// Guarda una pubblicità, guadagna sharkini (server/pubblicita.js) —
-// SEGNAPOSTO finché non c'è un vero account pubblicitario collegato a
-// un'app pubblicata: vedi il commento in cima a quel file.
-const pubblicita = creaPubblicita({ archivio, anagrafe, eRegistrato });
 
 // ------------------------------------------------------------
 // IL NOME CON CUI TI SIEDI AL TAVOLO — SENZA CHIEDERLO
@@ -709,23 +703,6 @@ const server = http.createServer(async (req, res) => {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       return rispondi(res, 200, await stagione.progressoDi(corpo.gettone));
-    }
-
-    // Guarda una pubblicità, guadagna sharkini (server/pubblicita.js —
-    // segnaposto finché non c'è un vero SDK pubblicitario). /stato non
-    // ha effetti collaterali (serve solo a sapere quante ne restano
-    // oggi); /guarda accredita davvero, una volta chiamata dal client
-    // dopo che il video (vero o segnaposto) è arrivato in fondo.
-    if (via === '/api/pubblicita/stato' && req.method === 'POST') {
-      const corpo = await leggiCorpo(req);
-      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
-      return rispondi(res, 200, await pubblicita.stato(corpo.gettone));
-    }
-    if (via === '/api/pubblicita/guarda' && req.method === 'POST') {
-      const corpo = await leggiCorpo(req);
-      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
-      const r = await pubblicita.guarda(corpo.gettone);
-      return rispondi(res, r.ok ? 200 : 400, r);
     }
 
     if (via === '/api/carte' && req.method === 'GET') {
