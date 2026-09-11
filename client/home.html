@@ -2133,19 +2133,23 @@ costruisciScelteLingua();
 
 // ------------------------------------------------------------
 // IL PANNO DEL TAVOLO — CSS già scritte (arrivate da Burraco Pulito),
-// mai collegate a un'interfaccia prima d'ora: i livelli del pass
-// stagionale (server/stagione.js) le sbloccano, questa scelta decide
-// quale usare al tavolo. A che livello si sblocca ognuna è scritto
-// anche nella tabella premi vera; qui è ripetuto solo per il testo del
-// lucchetto, non è la fonte che decide se è sbloccata o no — quella è
-// sempre mio.skinTavoloSbloccate, letto dal server.
+// mai collegate a un'interfaccia prima d'ora: il pass stagionale
+// (server/stagione.js) le sblocca, questa scelta decide quale usare al
+// tavolo. UNA skin per stagione, all'ultima tappa (30): Blu notte nella
+// Stagione 1, Verde da circolo nella 2, Bordeaux nella 3 — vedi
+// PREMI_STAGIONE_1 e la nota "una skin a stagione" li' sopra. Qui sotto
+// "stagioneHint" è ripetuto solo per il testo del lucchetto (numeri di
+// LIVELLO, non di stagione, sarebbero fuorvianti: si arriva tutti e tre
+// alla stessa tappa 30, cambia solo la stagione) — non è la fonte che
+// decide se è sbloccata o no, quella è sempre mio.skinTavoloSbloccate,
+// letto dal server.
 // ------------------------------------------------------------
 const CHIAVE_SKIN_TAVOLO = 'bb_skin_tavolo';
 const SKIN_TAVOLO = [
   { valore: '', nome: 'Verde chiaro', sempreSbloccata: true },
-  { valore: 'blu', nome: 'Blu notte', livelloHint: 10 },
-  { valore: 'circolo', nome: 'Verde da circolo', livelloHint: 20 },
-  { valore: 'bordeaux', nome: 'Bordeaux', livelloHint: 30 }
+  { valore: 'blu', nome: 'Blu notte', stagioneHint: 1 },
+  { valore: 'circolo', nome: 'Verde da circolo', stagioneHint: 2 },
+  { valore: 'bordeaux', nome: 'Bordeaux', stagioneHint: 3 }
 ];
 function skinTavoloAttuale() {
   try { return localStorage.getItem(CHIAVE_SKIN_TAVOLO) || ''; } catch (e) { return ''; }
@@ -2168,7 +2172,7 @@ function costruisciScelteTavolo() {
     } else {
       b.className = 'bottone-imp bloccato';
       b.disabled = true;
-      b.textContent = '🔒 ' + s.nome + ' (livello ' + s.livelloHint + ')';
+      b.textContent = '🔒 ' + s.nome + ' (Stagione ' + s.stagioneHint + ', tappa 30)';
     }
     el.appendChild(b);
   }

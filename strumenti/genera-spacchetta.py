@@ -281,15 +281,15 @@ PAGINA = r'''<!DOCTYPE html>
     overflow: hidden; box-sizing: border-box;
   }
 
-  /* dorso */
+  /* dorso — stessa immagine del dorso vero al tavolo (tavolo.html):
+     prima era un pattern a righe con quattro semi (♥♦♣♠) rimasto da
+     Burraco Pulito, che non c'entra con eroi e Carte Magiche e non
+     assomigliava nemmeno al dorso che poi si vede giocando. */
   .dorso {
     border: 0.45vh solid var(--oro-scuro);
-    background:
-      repeating-linear-gradient(45deg, #2c2140 0 1.2vh, #241a35 1.2vh 2.4vh),
-      #241a35;
+    background: url('immagini/decorazioni/dorso-carta.webp') center/cover no-repeat, #241a35;
     box-shadow: inset 0 0 6vh rgba(0,0,0,0.75);
   }
-  .dorso .marchio { width: 40%; opacity: 0.9; }
 
   /* fronte */
   /* Il fronte non si disegna piu' da se': lo riempie la carta
@@ -457,15 +457,7 @@ __CSS_CARTA__
     <div class="scena-carta" id="scena">
       <div class="carta3d" id="carta3d">
         <div class="faccia-interna">
-          <div class="faccia dorso">
-            <svg class="marchio" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#e8c46a" stroke-width="2.4" opacity="0.7"/>
-              <text x="50" y="40" font-size="20" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">♥</text>
-              <text x="50" y="76" font-size="20" text-anchor="middle" fill="#ff6b81" font-family="Georgia, serif">♦</text>
-              <text x="28" y="60" font-size="20" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">♣</text>
-              <text x="72" y="60" font-size="20" text-anchor="middle" fill="#e8e6f0" font-family="Georgia, serif">♠</text>
-            </svg>
-          </div>
+          <div class="faccia dorso"></div>
           <div class="faccia fronte" id="fronte"></div>
         </div>
       </div>

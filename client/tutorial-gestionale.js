@@ -461,7 +461,10 @@
       '<button class="bb-tut-btn" id="bbTutIndietroEmergenzaAspetta">Torna al negozio</button>';
     document.body.appendChild(pannelloEmergenzaAspetta);
     document.getElementById('bbTutIndietroEmergenzaAspetta').addEventListener('click', function () {
-      location.href = 'negozio.html';
+      // replace(), non href=: vedi il commento su avanza()/bottoneAvanti
+      // piu' in basso — un salto del tour non deve restare raggiungibile
+      // col tasto indietro del telefono.
+      location.replace('negozio.html');
     });
   }
 
@@ -657,7 +660,16 @@
     var bottoneAvanti = document.getElementById('bbTutAvanti');
     if (bottoneAvanti) {
       bottoneAvanti.addEventListener('click', function () {
-        if (def.bottone) { pulisciPassoPrecedente(); scrivi(CHIAVE_PASSO, String(passo + 1)); location.href = def.bottone.vai; }
+        // location.replace(), non location.href=: ogni passo del tour che
+        // cambia pagina (home -> negozio -> spacchetta -> ...) altrimenti
+        // resta impilato nella cronologia del browser. Segnalato dal vivo:
+        // premendo "indietro" col telefono MOLTO più tardi, magari mentre
+        // si guarda tutt'altro (i premi della stagione), si finiva
+        // catapultati dentro una di queste tappe del tour invece che
+        // tornare alla pagina precedente vera. replace() sostituisce la
+        // tappa nella cronologia invece di aggiungerne una: il tour non
+        // lascia più tracce da poter "riaprire" per sbaglio.
+        if (def.bottone) { pulisciPassoPrecedente(); scrivi(CHIAVE_PASSO, String(passo + 1)); location.replace(def.bottone.vai); }
         else avanza(def);
       });
     }
