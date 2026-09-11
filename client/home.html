@@ -384,6 +384,19 @@
     margin: 0; font-family: Georgia, serif; font-size: 1.05rem;
     letter-spacing: 2.4px; text-transform: uppercase; color: var(--oro);
   }
+  /* IL TASTO INDIETRO DEL TELEFONO CHIUDEVA IL VELO SCORRENDO PER TUTTA
+     LA LISTA DEI PREMI PER TROVARE "CHIUDI" IN FONDO — segnalato: "chiudi
+     sta solo in basso, serve anche uno in alto". Ogni pannello ne ha ora
+     due: questo in alto, sempre a portata appena si apre, più quello in
+     fondo di sempre (utile a chi è già arrivato in fondo alla lista). */
+  .riga-titolo-velo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .chiudi-alto {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 0.9rem; line-height: 1;
+    background: rgba(0,0,0,0.35); color: var(--testo-tenue);
+    border: 1px solid rgba(255,255,255,0.15); cursor: pointer; font-family: inherit;
+  }
+  .chiudi-alto:hover { border-color: var(--oro); color: var(--oro); }
   .riga-imp { display: flex; flex-direction: column; gap: 9px; }
   .riga-imp .etichetta {
     font-size: 0.74rem; letter-spacing: 1.3px; text-transform: uppercase; color: var(--testo-tenue);
@@ -835,7 +848,10 @@
 <!-- ============ IMPOSTAZIONI ============ -->
 <div class="velo-impostazioni" id="veloImpostazioni">
   <div class="pannello-impostazioni">
-    <h2>Impostazioni</h2>
+    <div class="riga-titolo-velo">
+      <h2>Impostazioni</h2>
+      <button type="button" class="chiudi-alto" id="chiudiImpostazioniAlto" aria-label="Chiudi">✕</button>
+    </div>
 
     <div class="riga-imp">
       <span class="etichetta">Suoni</span>
@@ -916,7 +932,10 @@
      non un terzo stile diverso. -->
 <div class="velo-impostazioni" id="veloStagione">
   <div class="pannello-impostazioni">
-    <h2>Il pass stagionale</h2>
+    <div class="riga-titolo-velo">
+      <h2>Il pass stagionale</h2>
+      <button type="button" class="chiudi-alto" id="chiudiStagioneAlto" aria-label="Chiudi">✕</button>
+    </div>
     <p class="spiega-stagione">
       Guadagni punti giocando partite <b>vere</b> — con un amico, "Sfida uno sconosciuto",
       o la Missione del giorno — non contano le partite contro il PC in locale.
@@ -2162,15 +2181,44 @@ function aggiornaBottoniTavolo() {
   });
 }
 
+// ------------------------------------------------------------
+// CHIUDERE UN VELO COL TASTO INDIETRO DEL TELEFONO — segnalato: "se
+// premo indietro va su pagine random". Aprire un pannello (Impostazioni,
+// i premi della stagione, la pubblicità) non toccava la cronologia di
+// navigazione: il tasto indietro del telefono continuava a scorrere le
+// pagine visitate PRIMA di aprirlo, non chiudeva il velo che si vedeva
+// sopra — come farebbe invece qualunque popup di un'app vera.
+//
+// apriVelo() aggiunge uno stato finto alla cronologia; il tasto
+// indietro del telefono e il bottone "Chiudi" finiscono per fare la
+// STESSA cosa (consumare quello stato), cosi' il velo si chiude in
+// entrambi i casi e non si lascia mai la pagina per sbaglio. Un solo
+// contatore basta: qui non si aprono mai due veli insieme.
+// ------------------------------------------------------------
+let veliAperti = 0;
+function apriVelo(elVelo) {
+  elVelo.classList.add('aperto');
+  veliAperti++;
+  history.pushState({ bbVeloAperto: true }, '');
+}
+function chiudiVelo() {
+  if (veliAperti > 0) history.back();   // fa scattare popstate, che chiude davvero
+}
+window.addEventListener('popstate', () => {
+  if (veliAperti <= 0) return;
+  veliAperti--;
+  document.querySelectorAll('.velo-impostazioni.aperto, .velo-pubblicita.aperto')
+    .forEach((el) => el.classList.remove('aperto'));
+});
+
 $('apriImpostazioni').addEventListener('click', () => {
   aggiornaBottoniSuoni();
   aggiornaBottoniLingua();
   costruisciScelteTavolo();
-  $('veloImpostazioni').classList.add('aperto');
+  apriVelo($('veloImpostazioni'));
 });
-$('chiudiImpostazioni').addEventListener('click', () => {
-  $('veloImpostazioni').classList.remove('aperto');
-});
+$('chiudiImpostazioni').addEventListener('click', chiudiVelo);
+$('chiudiImpostazioniAlto').addEventListener('click', chiudiVelo);
 $('suoniSi').addEventListener('click', () => {
   try { localStorage.setItem('bb_suoni', 'si'); } catch (e) {}
   aggiornaBottoniSuoni();
@@ -2299,8 +2347,9 @@ function mostraStagioneToast(html) {
   stagioneToastTimeout = setTimeout(() => el.classList.remove('mostra'), 6000);
 }
 
-$('stagioneVediPremi').addEventListener('click', () => { $('veloStagione').classList.add('aperto'); });
-$('chiudiStagione').addEventListener('click', () => { $('veloStagione').classList.remove('aperto'); });
+$('stagioneVediPremi').addEventListener('click', () => apriVelo($('veloStagione')));
+$('chiudiStagione').addEventListener('click', chiudiVelo);
+$('chiudiStagioneAlto').addEventListener('click', chiudiVelo);
 $('stagioneToast').addEventListener('click', () => { $('stagioneToast').classList.remove('mostra'); });
 
 // ------------------------------------------------------------
@@ -2331,7 +2380,7 @@ $('pubblicitaPillola').addEventListener('click', () => {
   $('cerchioConto').textContent = DURATA_PUBBLICITA_SEGNAPOSTO_S;
   $('chiudiPubblicita').disabled = true;
   $('chiudiPubblicita').textContent = 'Chiudi';
-  $('veloPubblicita').classList.add('aperto');
+  apriVelo($('veloPubblicita'));
 
   let restanti = DURATA_PUBBLICITA_SEGNAPOSTO_S;
   contoPubblicitaTimer = setInterval(async () => {
@@ -2352,7 +2401,7 @@ $('pubblicitaPillola').addEventListener('click', () => {
     $('chiudiPubblicita').disabled = false;
   }, 1000);
 });
-$('chiudiPubblicita').addEventListener('click', () => { $('veloPubblicita').classList.remove('aperto'); });
+$('chiudiPubblicita').addEventListener('click', chiudiVelo);
 
 (async function avvia() {
   const r = await SCORTA.io();
