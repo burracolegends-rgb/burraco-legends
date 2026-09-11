@@ -29,7 +29,16 @@
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
-    margin: 0; overflow: hidden;
+    margin: 0;
+    /* ERA overflow:hidden, pensato per una home che stava sempre tutta
+       in un solo schermo. Da quando c'è anche il pass stagionale (in
+       più rispetto a quando questa regola fu scritta) non è più detto:
+       su uno schermo basso il contenuto può superare l'altezza vera
+       del telefono. Prima la differenza la mangiava .modalita,
+       schiacciando le voci di GIOCA sotto la loro altezza leggibile —
+       ora si scorre, come qualunque altra pagina: nessuna scritta
+       tagliata, nel peggiore dei casi un dito in più per vedere tutto. */
+    overflow-y: auto; overflow-x: hidden;
     font-family: 'Segoe UI', system-ui, sans-serif;
     color: var(--pergamena);
     background: var(--notte);
@@ -431,26 +440,44 @@
   }
   .ingranaggio svg { width: 21px; height: 21px; color: var(--oro); }
 
-  /* ---------- TITOLO ---------- */
-  .insegna { text-align: center; padding: 2px 0 0; flex: 0 0 auto; }
-  .insegna .stemma { height: 52px; width: auto; display: block; margin: 0 auto 2px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6)); }
-  @media (max-height: 560px) { .insegna .stemma { height: 38px; } }
+  /* ---------- TITOLO ----------
+     Più stretto di prima apposta: la home porta ormai anche il pass
+     stagionale, in più rispetto a quando questo blocco fu disegnato la
+     prima volta — a parità di schermo restava sempre meno posto per le
+     voci di "GIOCA" qui sotto, che si schiacciavano fino a tagliare il
+     loro stesso testo (segnalato: "le scritte sono tagliate"). Lo
+     stemma e la scritta bastano da soli a farsi riconoscere: il fregio
+     e il motto sotto erano solo decorazione in più, ed erano la parte
+     più facile da sacrificare per riguadagnare altezza. */
+  .insegna { text-align: center; padding: 0; flex: 0 0 auto; }
+  .insegna .stemma { height: 32px; width: auto; display: block; margin: 0 auto 2px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6)); }
+  @media (max-height: 560px) { .insegna .stemma { height: 26px; } }
   .insegna h1 {
     margin: 0; font-family: Georgia, 'Times New Roman', serif;
-    font-size: clamp(1.9rem, 5.2vw, 3rem); font-weight: 700;
+    font-size: clamp(1.5rem, 4.2vw, 2.2rem); font-weight: 700;
     letter-spacing: clamp(2px, 0.9vw, 7px); line-height: 1;
     background: linear-gradient(180deg, #fff6d8 0%, var(--oro) 42%, var(--oro-scuro) 72%, #ffe9ae 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
     filter: drop-shadow(0 2px 0 rgba(0,0,0,0.75)) drop-shadow(0 0 22px rgba(232,196,106,0.45));
   }
-  .fregio { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 7px; }
-  .fregio .filo { height: 1px; width: clamp(40px, 16vw, 150px);
-                  background: linear-gradient(90deg, transparent, var(--oro), transparent); }
-  .fregio svg { width: 15px; height: 15px; color: var(--oro); }
-  .insegna .motto { margin-top: 6px; font-size: 0.76rem; color: var(--testo-tenue); letter-spacing: 1.4px; }
+  /* Il fregio (la piccola riga decorativa con la stella) e il motto
+     sotto il titolo non compaiono più: erano le due righe meno
+     necessarie di tutta la pagina — lo stemma e la scritta bastano a
+     farsi riconoscere — e insieme valevano più di 30px, che ora vanno
+     alle voci di GIOCA qui sotto. */
+  .fregio, .insegna .motto { display: none; }
 
-  /* ---------- MODALITÀ ---------- */
-  .modalita { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: clamp(9px, 1.7vh, 15px); max-width: 660px; width: 100%; margin: 0 auto; min-height: 0; }
+  /* ---------- MODALITÀ ----------
+     ERA flex:1 + min-height:0: si allargava per riempire lo spazio
+     avanzato, ma quando lo spazio avanzato era POCO (arrivato il pass
+     stagionale, sopra, la pagina aveva più cose da stare in un solo
+     schermo) flex-shrink faceva l'opposto: STRINGEVA ogni riquadro
+     sotto la sua altezza naturale, e con l'overflow:hidden del
+     riquadro (più sotto) il testo interno finiva tagliato — segnalato
+     con "le scritte sono tagliate". Ora ogni riquadro tiene SEMPRE la
+     sua altezza vera; se la pagina non ci sta più tutta in un solo
+     schermo, si scorre (vedi overflow-y sul body), non si schiaccia. */
+  .modalita { flex: 0 0 auto; display: flex; flex-direction: column; gap: clamp(9px, 1.7vh, 15px); max-width: 660px; width: 100%; margin: 0 auto; }
 
   .modo {
     position: relative; display: flex; align-items: stretch; gap: 0;
@@ -530,8 +557,9 @@
     background: linear-gradient(90deg, transparent, var(--oro), transparent);
   }
 
+  /* .insegna .motto e .fregio erano qui: ora sono spenti sempre (vedi
+     più sopra), non solo sotto i 560px di altezza. */
   @media (max-height: 560px) {
-    .insegna .motto, .fregio { display: none; }
     .modo .sotto { display: none; }
   }
 
