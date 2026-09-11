@@ -1841,6 +1841,10 @@ function disegna() {
 
   const stt = $('stato-serie'), bottone = $('ritira');
   stt.className = 'stato';
+  // Il bottone torna sempre visibile qui: solo il ramo "già ritirato
+  // oggi", più sotto, lo nasconde — negli altri casi c'è sempre
+  // qualcosa da poter ancora ritirare.
+  bottone.style.display = '';
 
   // UN OSPITE VEDE QUESTO INVECE DEL PREMIO, DAL SECONDO GIORNO IN POI
   // — il server rifiuterebbe comunque (giocatori.js: ritiraIlPremio),
@@ -1855,10 +1859,12 @@ function disegna() {
   }
 
   if (stato.giaRitiratoOggi) {
-    stt.innerHTML = 'Ritirato. Sei al giorno <b>' + stato.giorno + '</b> di fila — ' +
-      'torna domani per non perdere la serie.';
-    bottone.disabled = true;
-    bottone.textContent = 'Già ritirato oggi';
+    // Prima c'era anche un bottone disabilitato sotto, con lo stesso
+    // messaggio ripetuto ("Già ritirato oggi") — spazio speso due
+    // volte per dire la stessa cosa. Tolto: quando non c'è più niente
+    // da ritirare, il bottone non serve a nessuno scopo nemmeno visivo.
+    stt.innerHTML = 'Già ritirato oggi · giorno <b>' + stato.giorno + '</b> di fila';
+    bottone.style.display = 'none';
   } else if (stato.serieRotta) {
     stt.className = 'stato rotta';
     stt.innerHTML = 'Hai saltato un giorno: la serie riparte da <b>' + conNome(100) + '</b>.';
