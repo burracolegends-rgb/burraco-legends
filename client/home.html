@@ -195,6 +195,14 @@
   }
   .stagione .stato { font-size: 0.74rem; color: var(--tenue); flex: 1; }
   .stagione .stato b { color: var(--pergamena); }
+  /* IL LIVELLO, GRANDE E DA SOLO — prima stava schiacciato nella riga
+     sotto la barra insieme al link "Vedi tutti i premi", piccolo come
+     tutto il resto: a chi apre la home la prima cosa da vedere è "a che
+     punto sono", non da cercarla in mezzo ad altro testo. */
+  .stagione-livello-grande {
+    font-family: Georgia, serif; font-size: 1.3rem; font-weight: 700; color: var(--oro-chiaro);
+  }
+  .stagione-livello-grande span { font-size: 0.85rem; font-weight: 600; color: var(--tenue); }
   .barra-stagione {
     height: 11px; border-radius: 6px; background: rgba(0,0,0,0.45);
     overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.7);
@@ -210,6 +218,15 @@
     background: none; border: none; color: var(--oro); font-size: 0.78rem;
     font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit;
   }
+
+  /* la spiegazione di come funziona, sopra la lista dei premi */
+  .spiega-stagione { margin: 0; font-size: 0.8rem; color: var(--testo-tenue); line-height: 1.55; }
+  .spiega-stagione b { color: var(--pergamena); }
+  .regole-stagione {
+    margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--testo-tenue);
+    line-height: 1.7; display: flex; flex-direction: column; gap: 2px;
+  }
+  .regole-stagione b { color: var(--oro-chiaro); }
 
   /* la lista dei premi, dentro lo stesso velo/pannello delle Impostazioni:
      stesso linguaggio visivo, non un terzo stile diverso */
@@ -818,9 +835,10 @@
     <h2 id="stagioneTitolo">Pass stagionale</h2>
     <span class="stato" id="stagioneGiorni"></span>
   </div>
+  <div class="stagione-livello-grande" id="stagioneLivelloGrande">Livello 1 <span>/ 30</span></div>
   <div class="barra-stagione"><i id="stagioneRiempimento"></i></div>
   <div class="sotto-riga">
-    <span id="stagioneTesto">Livello 1 / 30</span>
+    <span id="stagioneTesto">0 / 100 punti per il prossimo livello</span>
     <button type="button" class="vedi-premi" id="stagioneVediPremi">Vedi tutti i premi</button>
   </div>
 </div>
@@ -830,7 +848,23 @@
      non un terzo stile diverso. -->
 <div class="velo-impostazioni" id="veloStagione">
   <div class="pannello-impostazioni">
-    <h2>I premi della stagione</h2>
+    <h2>Il pass stagionale</h2>
+    <p class="spiega-stagione">
+      Guadagni punti giocando partite <b>vere</b> — con un amico, "Sfida uno sconosciuto",
+      o la Missione del giorno — non contano le partite contro il PC in locale, che il
+      server non vede mai finire.
+    </p>
+    <ul class="regole-stagione">
+      <li><b>+10 punti</b> per ogni partita finita, vinta o persa</li>
+      <li><b>+15 in più</b> se la vinci</li>
+      <li><b>+20 in più</b> se è la Missione del giorno</li>
+      <li><b>+5 al giorno</b> per essere entrato, anche senza giocare</li>
+    </ul>
+    <p class="spiega-stagione">
+      Ogni 100 punti sali di livello. Solo chi è <b>registrato</b> accumula punti che
+      restano — da ospite vedi comunque i premi, ma resti sempre a punti zero.
+    </p>
+    <h2>I premi di questa stagione</h2>
     <div id="listaPremiStagione"></div>
     <div class="riga-imp">
       <button class="bottone-imp chiudi" id="chiudiStagione">Chiudi</button>
@@ -2129,14 +2163,25 @@ function disegnaStagione(dati) {
     ? 'ultimo giorno'
     : '<b>' + dati.giorniRimasti + '</b> giorni rimasti';
 
+  $('stagioneLivelloGrande').innerHTML = 'Livello ' + dati.livello + ' <span>/ ' + dati.livelloMax + '</span>';
+
   // Quanto manca al prossimo livello: i punti "dentro" al livello
   // attuale, sul totale che ne serve per uno. A livello massimo la
   // barra resta piena — non c'è un prossimo livello da inseguire.
   const alMassimo = dati.livello >= dati.livelloMax;
-  const percento = alMassimo ? 100 : ((dati.punti % dati.puntiPerLivello) / dati.puntiPerLivello) * 100;
+  const puntiNelLivello = dati.punti % dati.puntiPerLivello;
+  const percento = alMassimo ? 100 : (puntiNelLivello / dati.puntiPerLivello) * 100;
   $('stagioneRiempimento').style.width = percento + '%';
-  $('stagioneTesto').textContent = 'Livello ' + dati.livello + ' / ' + dati.livelloMax +
-    (dati.registrato ? '' : ' — registrati per cominciare a guadagnare punti');
+
+  if (!dati.registrato) {
+    $('stagioneTesto').textContent = 'Registrati per cominciare a guadagnare punti';
+  } else if (alMassimo) {
+    $('stagioneTesto').textContent = 'Livello massimo raggiunto per questa stagione';
+  } else {
+    const mancano = dati.puntiPerLivello - puntiNelLivello;
+    $('stagioneTesto').textContent = puntiNelLivello + ' / ' + dati.puntiPerLivello + ' punti — ' +
+      'ancora ' + mancano + ' per il livello ' + (dati.livello + 1);
+  }
 
   const lista = $('listaPremiStagione');
   lista.innerHTML = '';

@@ -195,11 +195,12 @@ console.log('\n--- IN ISOLAMENTO: LIVELLI, PREMI, RIPIEGO SULLA TABELLA ---');
   check('richiedendo di nuovo lo stesso progresso, nessun premio si ripete',
     rSecondaVolta.premiAppenaSbloccati.length === 0);
 
-  // Livello 10 = skin del tavolo, non sharkini o pacchetto.
-  await archivioFinto.scrivi('stagione:1:' + nuovo.gettone, { punti: 900, livelloRiscosso: 9, ultimoAccessoGiorno: null });
+  // Livello 30 (l'ultimo) = la skin del tavolo, non sharkini o pacchetto —
+  // il traguardo più duro della stagione, non uno intermedio.
+  await archivioFinto.scrivi('stagione:1:' + nuovo.gettone, { punti: 2900, livelloRiscosso: 29, ultimoAccessoGiorno: null });
   await stagioneFinta.progressoDi(nuovo.gettone);
   const conSkin = await anagrafeFinta.stato(nuovo.gettone);
-  check('il livello 10 sblocca davvero la skin "blu" sull\'account',
+  check('il livello 30 sblocca davvero la skin "blu" sull\'account',
     conSkin.skinTavoloSbloccate.includes('blu'), JSON.stringify(conSkin.skinTavoloSbloccate));
 
   check('il livello non supera mai il totale (30), qualunque sia il punteggio',

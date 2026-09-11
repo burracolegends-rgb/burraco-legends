@@ -61,11 +61,26 @@ export const PUNTI_MISSIONE_BONUS = 20;   // in più, solo per le partite della 
 // ------------------------------------------------------------
 // LA TABELLA DELLA STAGIONE 1
 //
-// Le skin del tavolo (tavolo-blu, tavolo-circolo, tavolo-bordeaux) sono
-// CSS già scritte — arrivate da Burraco Pulito insieme al resto del
-// foglio di stile — mai collegate a nessuna interfaccia: qui diventano
-// i tre traguardi principali del pass (10/20/30), il resto sono
-// sharkini e pacchetti a scalare.
+// Rivista dopo aver fatto i conti veri (vedi la discussione che ha
+// portato a questi numeri): un primo abbozzo dava ~10.400 sharkini,
+// 23 carte eroe e 14 Carte Magiche E tutte e tre le skin nella stessa
+// stagione — troppo, su ogni fronte:
+//   - 10.400 sharkini erano quasi un terzo del bonus di benvenuto
+//     (36.000) regalati gratis in due settimane, e sommati al valore
+//     delle carte (prezzi veri del negozio) il totale superava il
+//     bonus di benvenuto stesso — un giocatore che completa il pass
+//     avrebbe avuto poco motivo per comprare pacchetti veri.
+//   - Dare tutte e tre le skin subito le svaluta: diventano "quelle
+//     che tutti hanno dal primo mese" invece di un vero traguardo.
+//
+// QUI: ~2.510 sharkini in tutta la stagione (meno di quello che dà da
+// solo il premio giornaliero nello stesso periodo), 5 carte in tutto
+// (una singola carta ogni 5 livelli, non pacchetti multipli), UNA sola
+// skin — "Blu notte", al livello 30, il traguardo più duro. "Verde da
+// circolo" e "Bordeaux" sono le skin delle stagioni 2 e 3: un motivo
+// vero per continuare a giocare stagione dopo stagione, non solo per
+// due settimane. (Cosa succede dalla stagione 4 in poi, quando le tre
+// skin sono già state tutte assegnate, è ancora da decidere.)
 //
 // UNA STAGIONE NON DEFINITA RIUSA L'ULTIMA TABELLA SCRITTA (vedi
 // tabellaPremi più sotto): il sistema non si rompe mai in attesa che
@@ -73,35 +88,35 @@ export const PUNTI_MISSIONE_BONUS = 20;   // in più, solo per le partite della 
 // ripete finché non se ne aggiunge una nuova.
 // ------------------------------------------------------------
 const PREMI_STAGIONE_1 = {
-  2:  { tipo: 'sharkini', quanto: 300 },
-  3:  { tipo: 'pacchetto', carte: 1, cartaTipo: 'eroe' },
-  4:  { tipo: 'sharkini', quanto: 300 },
-  5:  { tipo: 'pacchetto', carte: 1, cartaTipo: 'magia' },
-  6:  { tipo: 'sharkini', quanto: 400 },
-  7:  { tipo: 'pacchetto', carte: 3, cartaTipo: 'eroe' },
-  8:  { tipo: 'sharkini', quanto: 400 },
-  9:  { tipo: 'sharkini', quanto: 500 },
-  10: { tipo: 'skin-tavolo', skin: 'blu', nome: 'Blu notte' },
-  11: { tipo: 'pacchetto', carte: 1, cartaTipo: 'eroe' },
-  12: { tipo: 'sharkini', quanto: 500 },
-  13: { tipo: 'pacchetto', carte: 1, cartaTipo: 'magia' },
-  14: { tipo: 'sharkini', quanto: 600 },
-  15: { tipo: 'pacchetto', carte: 5, cartaTipo: 'eroe' },
-  16: { tipo: 'sharkini', quanto: 600 },
-  17: { tipo: 'pacchetto', carte: 3, cartaTipo: 'magia' },
-  18: { tipo: 'sharkini', quanto: 700 },
-  19: { tipo: 'sharkini', quanto: 700 },
-  20: { tipo: 'skin-tavolo', skin: 'circolo', nome: 'Verde da circolo' },
-  21: { tipo: 'pacchetto', carte: 3, cartaTipo: 'eroe' },
-  22: { tipo: 'sharkini', quanto: 800 },
-  23: { tipo: 'pacchetto', carte: 1, cartaTipo: 'magia' },
-  24: { tipo: 'sharkini', quanto: 800 },
-  25: { tipo: 'pacchetto', carte: 10, cartaTipo: 'eroe' },
-  26: { tipo: 'sharkini', quanto: 900 },
-  27: { tipo: 'pacchetto', carte: 3, cartaTipo: 'magia' },
-  28: { tipo: 'sharkini', quanto: 900 },
-  29: { tipo: 'pacchetto', carte: 5, cartaTipo: 'magia' },
-  30: { tipo: 'skin-tavolo', skin: 'bordeaux', nome: 'Bordeaux', extra: { tipo: 'sharkini', quanto: 2000 } }
+  2:  { tipo: 'sharkini', quanto: 50 },
+  3:  { tipo: 'sharkini', quanto: 50 },
+  4:  { tipo: 'sharkini', quanto: 60 },
+  5:  { tipo: 'pacchetto', carte: 1, cartaTipo: 'eroe' },
+  6:  { tipo: 'sharkini', quanto: 60 },
+  7:  { tipo: 'sharkini', quanto: 70 },
+  8:  { tipo: 'sharkini', quanto: 70 },
+  9:  { tipo: 'sharkini', quanto: 80 },
+  10: { tipo: 'pacchetto', carte: 1, cartaTipo: 'magia' },
+  11: { tipo: 'sharkini', quanto: 80 },
+  12: { tipo: 'sharkini', quanto: 90 },
+  13: { tipo: 'sharkini', quanto: 90 },
+  14: { tipo: 'sharkini', quanto: 100 },
+  15: { tipo: 'pacchetto', carte: 1, cartaTipo: 'eroe' },
+  16: { tipo: 'sharkini', quanto: 100 },
+  17: { tipo: 'sharkini', quanto: 110 },
+  18: { tipo: 'sharkini', quanto: 110 },
+  19: { tipo: 'sharkini', quanto: 120 },
+  20: { tipo: 'pacchetto', carte: 1, cartaTipo: 'magia' },
+  21: { tipo: 'sharkini', quanto: 120 },
+  22: { tipo: 'sharkini', quanto: 130 },
+  23: { tipo: 'sharkini', quanto: 130 },
+  24: { tipo: 'sharkini', quanto: 140 },
+  25: { tipo: 'pacchetto', carte: 1, cartaTipo: 'eroe' },
+  26: { tipo: 'sharkini', quanto: 140 },
+  27: { tipo: 'sharkini', quanto: 150 },
+  28: { tipo: 'sharkini', quanto: 150 },
+  29: { tipo: 'sharkini', quanto: 160 },
+  30: { tipo: 'skin-tavolo', skin: 'blu', nome: 'Blu notte', extra: { tipo: 'sharkini', quanto: 150 } }
 };
 
 const STAGIONI = { 1: PREMI_STAGIONE_1 };
