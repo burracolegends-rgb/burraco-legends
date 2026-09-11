@@ -937,7 +937,7 @@
       <button type="button" class="chiudi-alto" id="chiudiStagioneAlto" aria-label="Chiudi">✕</button>
     </div>
     <p class="spiega-stagione">
-      Guadagni punti giocando partite <b>vere</b> — con un amico, "Sfida uno sconosciuto",
+      Guadagni punti giocando partite <b>vere</b> — con un amico, una Partita random,
       o la Missione del giorno — non contano le partite contro il PC in locale.
     </p>
     <ul class="regole-stagione">
@@ -2170,9 +2170,15 @@ function costruisciScelteTavolo() {
         aggiornaBottoniTavolo();
       });
     } else {
+      // Solo il nome: A CHE stagione si sblocca lo spiega già la frase
+      // sotto ("Gli altri si sbloccano avanzando nel pass stagionale")
+      // e la tabella premi vera in "Vedi tutti i premi" — ripeterlo
+      // anche qui, bottone per bottone, era rumore in più in un pannello
+      // che deve restare semplice, non un secondo posto dove spiegare
+      // come funziona il pass stagionale.
       b.className = 'bottone-imp bloccato';
       b.disabled = true;
-      b.textContent = '🔒 ' + s.nome + ' (Stagione ' + s.stagioneHint + ', tappa 30)';
+      b.textContent = '🔒 ' + s.nome;
     }
     el.appendChild(b);
   }
