@@ -320,12 +320,19 @@
     // cerca per dire "sta lampeggiando". Ora pulsa anche lui, insieme
     // al bordo: piu' stretto e piu' debole, poi piu' largo e piu'
     // acceso — un respiro vero, non solo un cambio di tinta.
-    '.bb-tut-alone { position: relative; outline: 3px solid #e8c46a; ' +
+    //
+    // ANCORA TROPPO DEBOLE — segnalato di nuovo, stavolta da chi ha fatto
+    // provare l'app a chi non aveva mai visto il burraco: "qualche volta
+    // non si capisce cosa devo premere". Un respiro lento (1.6s) restava
+    // comunque acceso al minimo. Ora e' un vero acceso/spento, piu'
+    // veloce (1.1s): al minimo il bagliore quasi sparisce, al massimo e'
+    // molto piu' forte — lampeggia, non respira.
+    '.bb-tut-alone { position: relative; outline: 3px solid rgba(232,196,106,.5); ' +
       'outline-offset: 3px; border-radius: 10px; ' +
-      'animation: bbTutPulsa 1.6s ease-in-out infinite !important; }' +
+      'animation: bbTutPulsa 1.1s ease-in-out infinite !important; }' +
     '@keyframes bbTutPulsa { ' +
-      '0%,100% { outline-color: #e8c46a; box-shadow: 0 0 14px rgba(232,196,106,0.6); } ' +
-      '50% { outline-color: #fff3cf; box-shadow: 0 0 34px rgba(255,243,207,1); } }' +
+      '0%,100% { outline-color: rgba(232,196,106,.25); box-shadow: 0 0 6px 2px rgba(232,196,106,0.15); } ' +
+      '20%,55% { outline-color: #fff8dd; box-shadow: 0 0 40px 12px rgba(255,243,207,0.95); } }' +
     // POINTER-EVENTS: NONE sul riquadro — segnalato da chi ci ha sbattuto
     // contro davvero: nella schermata del riepilogo il bottone vero
     // "torna al negozio" finisce proprio sotto questo pannello (fisso in

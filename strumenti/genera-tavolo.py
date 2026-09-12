@@ -5396,6 +5396,10 @@ const TUTORIAL_PASSI = [
            'valore formano un <b>tris</b>. Toccale tutte e tre, poi tocca lo <b>spazio a sinistra</b> ' +
            'per calarle — e guarda cosa succede alla vita dell\'avversario.',
     illumina: '#myMelds',
+    // libero: '#handBox' — le carte da calare si scelgono PRIMA, in mano,
+    // e solo dopo si tocca lo spazio dei giochi: senza questa zona
+    // libera lo scudo bloccherebbe proprio il primo gesto richiesto.
+    libero: '#handBox',
     azione: () => !!tutMeldConValore(11),
     aiuto: 'Il J di picche, il J di cuori e il J di quadri. Toccali uno alla volta: si alzano. Poi tocca lo spazio a sinistra.' },
 
@@ -5403,6 +5407,7 @@ const TUTORIAL_PASSI = [
     testo: 'L\'altro modo di raggruppare e\' la <b>scala</b>: tre o piu\' carte <b>consecutive dello ' +
            'stesso seme</b>. Hai il <b>4, 5 e 6 di fiori</b>: toccali e calali nello stesso spazio.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => !!tutMeldScala(),
     aiuto: 'Il 4, il 5 e il 6 di fiori (♣). Tutti e tre dello stesso seme, in fila.' },
 
@@ -5411,6 +5416,7 @@ const TUTORIAL_PASSI = [
            'ancora il <b>7 di fiori</b>: toccalo, poi tocca la <b>scala</b> per allungarla — e ogni ' +
            'carta in piu\' fa piu\' danno.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => tutCarteNellaScala() >= 4,
     aiuto: 'Tocca il 7 di fiori, poi la scala 4-5-6 che hai appena calato.' },
 
@@ -5427,6 +5433,7 @@ const TUTORIAL_PASSI = [
     testo: 'Ogni turno si chiude <b>scartando una carta</b>. Sempre, senza eccezioni.<br><br>' +
            'Butta il <b>Re di quadri</b>: toccalo, poi tocca il monte degli scarti.',
     illumina: '#palScarti',
+    libero: '#handBox',
     azione: () => S && S.scarti && S.scarti.length >= 2,
     aiuto: 'Tocca prima il Re di quadri, poi il mazzetto degli scarti accanto al MAZZO.' },
 
@@ -5447,6 +5454,7 @@ const TUTORIAL_PASSI = [
   { passo: 13, titolo: 'Costruiamo un burraco',
     testo: 'Hai pescato l\'<b>8 di fiori</b>. Attaccalo alla scala: diventa 4-5-6-7-8.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => tutCarteNellaScala() >= 5,
     aiuto: 'Tocca l\'8 di fiori, poi la scala di fiori sul tavolo.' },
 
@@ -5454,6 +5462,7 @@ const TUTORIAL_PASSI = [
     testo: 'Chiudi il turno scartando una carta che non ti serve — il <b>10 di cuori</b> va bene. ' +
            'Poi guarda cosa butta l\'avversario.',
     illumina: '#palScarti',
+    libero: '#handBox',
     azione: () => S && S.currentPlayerIndex === 0 && !S.players[0].hasDrawnThisTurn && S.scarti.length >= 3,
     aiuto: 'Tocca il 10 di cuori, poi il monte degli scarti. Poi aspetta il computer.' },
 
@@ -5469,6 +5478,7 @@ const TUTORIAL_PASSI = [
     testo: 'Ora attacca alla scala il <b>9 di fiori</b> e la <b>pinella</b>: la pinella fara\' da 10.<br><br>' +
            'Sette carte. Burraco.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => tutCarteNellaScala() >= 7,
     aiuto: 'Tocca il 9 di fiori e il 2 di cuori insieme, poi la scala di fiori.' },
   { passo: 16, titolo: 'Il burraco e\' servito',
@@ -5494,6 +5504,11 @@ const TUTORIAL_PASSI = [
   { passo: 19, titolo: 'Usa l\'abilita\' di un eroe',
     testo: 'Tocca il tuo eroe di <b>Fiori</b>, poi premi <b>USA ABILITA\'</b> nella scheda che si apre.',
     illumina: '.bcard[data-seme="♣"][data-lato="mio"]',
+    // libero: '#veloCarta' — il tocco sull'eroe apre la scheda a tutto
+    // schermo con dentro il bottone USA ABILITA': quella scheda non e'
+    // un discendente della carta illuminata nel DOM, quindi senza questa
+    // zona libera lo scudo bloccherebbe proprio il bottone da premere.
+    libero: '#veloCarta',
     onEntra: () => { tutorialPvAvvPrimaAbilita = tutPvTotaliAvv(); },
     azione: () => bersaglioAttivo === '♣',
     aiuto: 'Tocca la carta del tuo eroe di Fiori, poi il bottone dorato nella scheda che si apre.' },
@@ -5514,6 +5529,7 @@ const TUTORIAL_PASSI = [
     testo: 'Accanto ai tuoi eroi trovi anche le <b>Carte Magiche</b>: non costano punti magia, ma ' +
            'ogni copia si usa <b>una sola volta</b>. Tocca la tua carta <b>Sorpresa</b>, poi <b>USA</b>.',
     illumina: '#battleGiocatore .bcard.magica[data-tipo="sorpresa"]',
+    libero: '#veloCarta',
     azione: () => magie && magie[0] && (magie[0].consumate || []).length > 0,
     // Niente `aiuto` qui apposta: la carta e' gia' illuminata (il
     // bagliore dorato la indica), un'altra riga di testo che si accende
@@ -5559,6 +5575,7 @@ let tutorialTimerSblocco = null;
 let tutorialIndicePasso = 0;
 let tutorialUltimoIndiceMostrato = -1;
 let tutorialPannelloEl = null;
+let tutorialListenerClicAttuale = null;   // lo scudo del passo mostrato adesso, vedi tutorialInstallaScudo()
 
 function tutorialCostruisciPannello() {
   const stile = document.createElement('style');
@@ -5603,13 +5620,31 @@ function tutorialCostruisciPannello() {
     '#tutorialPannello .principale.sblocco{display:block;width:100%;margin-top:9px;}',
     '#tutorialPannello .aiuto{margin-top:7px;font-size:10.5px;color:#ffcc00;opacity:0;transition:opacity .5s;}',
     '#tutorialPannello .aiuto.visibile{opacity:.9;}',
-    '@keyframes tutorialTavoloAlone{0%,100%{box-shadow:0 0 0 2px rgba(255,204,0,.30),0 0 12px 3px rgba(255,204,0,.18);}',
-    '  50%{box-shadow:0 0 0 3px rgba(255,204,0,.95),0 0 26px 8px rgba(255,204,0,.50);}}',
-    '.tutorial-tavolo-alone{animation:tutorialTavoloAlone 1.9s ease-in-out infinite;border-radius:10px;position:relative;z-index:20;}',
+    // ERA UN RESPIRO LENTO (1.9s, mai davvero spento: anche al minimo
+    // restava un bagliore visibile) — segnalato da chi ci ha fatto
+    // giocare qualcuno che non conosceva il burraco: "qualche volta non
+    // si capisce cosa devo premere". Ora e' un vero acceso/spento: al
+    // minimo il bagliore quasi sparisce, al massimo e' molto piu' forte
+    // di prima, e il ciclo e' piu' corto (1.1s) — lampeggia, non respira.
+    '@keyframes tutorialTavoloAlone{0%,100%{outline-color:rgba(255,204,0,.20);',
+    '  box-shadow:0 0 0 2px rgba(255,204,0,.12),0 0 6px 2px rgba(255,204,0,.08);}',
+    '  20%,55%{outline-color:#fff8dd;',
+    '  box-shadow:0 0 0 4px rgba(255,243,207,1),0 0 40px 14px rgba(255,204,0,.92);}}',
+    '.tutorial-tavolo-alone{animation:tutorialTavoloAlone 1.1s ease-in-out infinite;border-radius:10px;position:relative;z-index:20;',
+    '  outline:3px solid rgba(255,204,0,.5);outline-offset:3px;}',
     '#myMelds.tutorial-tavolo-alone{background:rgba(255,204,0,.10);outline:2px dashed rgba(255,204,0,.5);outline-offset:-4px;}',
     '#myMatchTimer.tutorial-tavolo-alone,#oppMatchTimer.tutorial-tavolo-alone,',
     '#myAvatarBasso.tutorial-tavolo-alone,#magiaGiocatore.tutorial-tavolo-alone{',
-    '  background:rgba(255,204,0,.22)!important;outline:2px solid #ffcc00;outline-offset:2px;}'
+    '  background:rgba(255,204,0,.22)!important;outline:2px solid #ffcc00;outline-offset:2px;}',
+    // LO SCUDO: si blocca ogni tocco fuori dalla zona consentita con un
+    // solo ascoltatore in cattura su document (stesso principio gia'
+    // provato in tutorial-gestionale.js: niente riquadro sopra la
+    // pagina, quello si e' rivelato fragile — un antenato con una sua
+    // animazione puo' intrappolare sotto di se' anche un elemento con
+    // z-index altissimo). Il pannello scuote la testa per dire "sono io
+    // quello da guardare" invece di restare muto.
+    '.tutorial-tavolo-scuoti{animation:tutorialTavoloScuoti 0.32s ease-in-out;}',
+    '@keyframes tutorialTavoloScuoti{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}'
   ].join('\n');
   document.head.appendChild(stile);
 
@@ -5642,6 +5677,50 @@ function tutorialIllumina(selettore, onEsito) {
     tutorialRiprovaAlone = setTimeout(prova, 400);
   };
   prova();
+}
+
+function tutorialRimuoviScudo() {
+  if (tutorialListenerClicAttuale) {
+    document.removeEventListener('click', tutorialListenerClicAttuale, true);
+    tutorialListenerClicAttuale = null;
+  }
+}
+
+// LO SCUDO — segnalato dal vivo: chi non conosce il burraco, al passo
+// "pesca dal mazzo", ha toccato invece "raccogli gli scarti" (l'altra
+// scelta possibile a inizio turno, spiegata due righe sopra nello stesso
+// testo). Il tutorial e' uno stato TUTTO scriptato (vedi la nota in cima
+// al file su tutorial-v1.js): una carta pescata dal posto sbagliato, o
+// un mucchio raccolto quando non doveva esserlo, manda fuori copione
+// ogni passo successivo — proprio il "non riusciva piu' ad andare
+// avanti, l'otto di fiori non e' piu' venuto" segnalato per davvero.
+//
+// Un passo con `azione` (serve un gesto preciso, non solo leggere) ora
+// blocca ogni tocco che non sia: dentro il pannello (i suoi bottoni si
+// gestiscono da soli), dentro l'elemento illuminato (def.illumina — con
+// closest(), non solo l'unico elemento gia' trovato: ".bcard.mirabile"
+// al passo 20 puo' valere per piu' di un personaggio), o dentro una zona
+// esplicitamente libera (def.libero — serve ai passi che chiedono di
+// scegliere le carte in mano PRIMA di toccare il tavolo, o che aprono la
+// scheda #veloCarta con un bottone USA dentro). Un passo senza `azione`
+// (solo informativo: "premi Avanti quando hai capito") non installa
+// nessuno scudo — non c'e' nessun gesto da proteggere.
+function tutorialInstallaScudo(def) {
+  tutorialRimuoviScudo();
+  if (!def.azione) return;
+  tutorialListenerClicAttuale = function (e) {
+    if (tutorialPannelloEl && tutorialPannelloEl.contains(e.target)) return;
+    if (def.illumina && e.target.closest && e.target.closest(def.illumina)) return;
+    if (def.libero && e.target.closest && e.target.closest(def.libero)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (tutorialPannelloEl) {
+      tutorialPannelloEl.classList.remove('tutorial-tavolo-scuoti');
+      void tutorialPannelloEl.offsetWidth; // fa ripartire l'animazione da capo
+      tutorialPannelloEl.classList.add('tutorial-tavolo-scuoti');
+    }
+  };
+  document.addEventListener('click', tutorialListenerClicAttuale, true);
 }
 
 // LA VIA D'USCITA, QUANDO SERVE DAVVERO.
@@ -5681,6 +5760,7 @@ function tutorialMostraPasso() {
   clearInterval(tutorialGuardia); tutorialGuardia = null;
   clearTimeout(tutorialTimerAiuto);
   clearTimeout(tutorialTimerSblocco);
+  tutorialRimuoviScudo();
 
   if (!tutorialPannelloEl) tutorialPannelloEl = tutorialCostruisciPannello();
   const totale = TUTORIAL_PASSI[TUTORIAL_PASSI.length - 1].passo || TUTORIAL_PASSI.length;
@@ -5714,6 +5794,8 @@ function tutorialMostraPasso() {
   const bottoneAvanti = document.getElementById('tutAvanti');
   if (bottoneAvanti) bottoneAvanti.addEventListener('click', () => tutorialAvanti());
 
+  tutorialInstallaScudo(def);
+
   if (def.azione) {
     if (def.aiuto) {
       tutorialTimerAiuto = setTimeout(() => {
@@ -5744,6 +5826,7 @@ function tutorialAvanti() {
 }
 
 function tutorialFinisci() {
+  tutorialRimuoviScudo();
   if (tutorialElementoIlluminato) { tutorialElementoIlluminato.classList.remove('tutorial-tavolo-alone'); tutorialElementoIlluminato = null; }
   if (tutorialPannelloEl) { tutorialPannelloEl.remove(); tutorialPannelloEl = null; }
   try {
