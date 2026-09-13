@@ -5152,10 +5152,13 @@ $('veloCarta').addEventListener('click', (e) => {
 //    Abbandona): un indietro le chiude, come qualunque pannello — non
 //    conta come un tentativo di abbandonare, e' solo "richiudi quello
 //    che hai aperto".
-// 2) Il tutorial e' in corso: non c'e' nessun motivo valido per uscire
-//    da li' con l'indietro (e' gia' protetto dallo scudo sui tocchi
-//    sbagliati, vedi tutorialInstallaScudo) — l'indietro non fa nulla,
-//    il pannello scuote la testa per dire "sono ancora qui".
+// 2) Il tutorial e' in corso: un indietro solo non basta (e' gia'
+//    protetto dallo scudo sui tocchi sbagliati, vedi
+//    tutorialInstallaScudo) — il pannello scuote la testa e un avviso
+//    chiede di premere di nuovo. Un SECONDO indietro entro tre secondi
+//    esce davvero dal tutorial e torna alla scelta della modalita'
+//    (gioca.html) — non si segna come completato, cosi' chi rientra
+//    in una partita locale se lo ritrova da capo.
 // 3) Una partita vera e' in corso: l'indietro vale come un tocco sul
 //    bottone Abbandona — stessa conferma in due tempi, stesso "sicuro"
 //    condiviso (provaAbbandonare, qui sopra): un indietro solo non
@@ -5169,6 +5172,8 @@ $('veloCarta').addEventListener('click', (e) => {
 // proteggere (partita gia' finita, per esempio) l'indietro non viene
 // toccato: si lascia fare al browser, si esce per davvero.
 // ------------------------------------------------------------
+let tutorialUscitaSicura = false;
+let tutorialUscitaTimer = null;
 history.pushState({ bbRadice: true }, '');
 window.addEventListener('popstate', () => {
   if ($('veloImpostazioni').classList.contains('aperto')) {
@@ -5177,6 +5182,14 @@ window.addEventListener('popstate', () => {
   }
   if (document.body.classList.contains('modalita-tutorial')) {
     history.pushState({ bbRadice: true }, '');
+    if (tutorialUscitaSicura) {
+      location.href = 'gioca.html';
+      return;
+    }
+    tutorialUscitaSicura = true;
+    clearTimeout(tutorialUscitaTimer);
+    tutorialUscitaTimer = setTimeout(() => { tutorialUscitaSicura = false; }, 3000);
+    avviso('Premi di nuovo INDIETRO per uscire dal tutorial');
     if (typeof tutorialPannelloEl !== 'undefined' && tutorialPannelloEl) {
       tutorialPannelloEl.classList.remove('tutorial-tavolo-scuoti');
       void tutorialPannelloEl.offsetWidth; // fa ripartire l'animazione da capo
