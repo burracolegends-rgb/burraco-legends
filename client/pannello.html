@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<!-- Qui il pizzico per ingrandire NON si toglie, al contrario del
+     tavolo e dell'apertura pacchetti: questa è una pagina di numeri e
+     di tabelle, e su un telefono avvicinare una riga serve davvero. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Burraco Legends — Pannello</title>
+<meta name="theme-color" content="#0d0a13">
+<style>
+  /* ============================================================
+     IL PANNELLO DI CHI MANDA AVANTI IL GIOCO
+     Stessa famiglia di colori del gioco, ma il mestiere è un altro:
+     qui non si gioca, si guarda e si decide. Quindi niente scenografia
+     — numeri leggibili, righe fitte, e i colori spesi solo dove
+     vogliono dire qualcosa (verde: a posto; rosso: fermato).
+     ============================================================ */
+  :root {
+    --oro: #e8c46a; --oro-chiaro: #fff0c2; --oro-scuro: #9a6f21;
+    --pergamena: #f2e6cc; --tenue: #b7a686; --notte: #0d0a13;
+    --carta: rgba(30,22,14,0.92);
+    --bordo: rgba(154,111,33,0.55);
+    --ok: #58c48a; --allarme: #f0736b; --attenzione: #e8b44a;
+  }
+  * { box-sizing: border-box; }
+  /* SERVE DAVVERO, non è pignoleria: i due fogli di questa pagina
+     (l'ingresso e il pannello) si accendono e si spengono con
+     l'attributo `hidden`, ma `.foglio` dichiara `display:flex` — e una
+     regola scritta qui batte il `display:none` che il browser dà da sé
+     a `hidden`. Senza questa riga il riquadro della password resta a
+     schermo sopra al pannello anche dopo essere entrati (visto
+     succedere, non immaginato). */
+  [hidden] { display: none !important; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(42,29,61,0.6) 0%, transparent 60%),
+      var(--notte);
+    padding: max(12px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .foglio { width: 100%; max-width: 980px; display: flex; flex-direction: column; gap: 14px; }
+
+  h1 {
+    font-family: Georgia, serif; font-size: 1.15rem; margin: 0;
+    letter-spacing: 1px; color: var(--oro-chiaro);
+  }
+  h2 {
+    margin: 0 0 12px; font-family: Georgia, serif; font-size: 0.82rem;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--oro);
+  }
+  .riquadro {
+    border-radius: 14px; padding: 15px 16px;
+    border: 1px solid var(--bordo); background: var(--carta);
+  }
+
+  /* ---------- la barra in alto ---------- */
+  .cima { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .cima .chi { font-size: 0.78rem; color: var(--tenue); margin-left: auto; }
+  .cima .chi b { color: var(--pergamena); }
+
+  button {
+    font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    border-radius: 10px; padding: 9px 15px; border: 1px solid var(--bordo);
+    background: rgba(255,224,160,0.08); color: var(--pergamena);
+  }
+  button:hover { background: rgba(255,224,160,0.16); }
+  button:focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; }
+  button.principale {
+    border-color: var(--oro); color: #2a1c08;
+    background: linear-gradient(180deg, #ffe9ae, var(--oro) 55%, #b98d2c);
+  }
+  button.pericolo { border-color: rgba(240,115,107,0.6); color: #ffc9c4; }
+  button:disabled { opacity: 0.45; cursor: default; }
+
+  input, select, textarea {
+    font-family: inherit; font-size: 0.88rem; width: 100%;
+    border-radius: 10px; padding: 10px 12px;
+    border: 1px solid var(--bordo); background: rgba(0,0,0,0.35); color: var(--pergamena);
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--oro); outline-offset: 1px; }
+  label { display: block; font-size: 0.74rem; color: var(--tenue); margin-bottom: 5px; letter-spacing: 0.4px; }
+
+  /* ---------- l'ingresso ---------- */
+  #ingresso { max-width: 420px; margin: 8vh auto 0; display: flex; flex-direction: column; gap: 13px; }
+  #ingresso .spiega { margin: 0; font-size: 0.78rem; color: var(--tenue); line-height: 1.6; }
+  .errore {
+    display: none; font-size: 0.8rem; color: #ffb3bf; line-height: 1.5;
+    border: 1px solid rgba(240,115,107,0.5); border-radius: 11px;
+    padding: 10px 13px; background: rgba(120,30,30,0.25);
+  }
+  .errore.mostra { display: block; }
+
+  /* ---------- i numeri ---------- */
+  .numeri { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 13px; }
+  .n1 { display: flex; flex-direction: column; gap: 2px; }
+  .n1 .v {
+    font-size: 1.45rem; font-weight: 800; color: var(--oro-chiaro);
+    font-variant-numeric: tabular-nums; line-height: 1.15;
+  }
+  .n1 .e { font-size: 0.72rem; color: var(--tenue); letter-spacing: 0.3px; }
+  .nota {
+    margin: 12px 0 0; font-size: 0.73rem; color: #8a7e68; line-height: 1.6;
+    border-top: 1px solid rgba(154,111,33,0.25); padding-top: 10px;
+  }
+  .nota b { color: var(--attenzione); font-weight: 700; }
+
+  /* ---------- la tabella ---------- */
+  .cerca-riga { display: flex; gap: 9px; margin-bottom: 12px; }
+  .cerca-riga input { flex: 1; }
+  .scorre { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 9px 10px; white-space: nowrap; }
+  th {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--tenue); font-weight: 700; border-bottom: 1px solid var(--bordo);
+  }
+  tbody tr { border-bottom: 1px solid rgba(154,111,33,0.18); }
+  tbody tr:hover { background: rgba(255,224,160,0.05); }
+  td.numero { font-variant-numeric: tabular-nums; text-align: right; }
+  td .id { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 0.74rem; color: #8a7e68; }
+  .chip {
+    display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px;
+    border-radius: 999px; padding: 2px 9px; border: 1px solid currentColor;
+  }
+  .chip.ospite { color: var(--tenue); }
+  .chip.registrato { color: var(--ok); }
+  .chip.fermato { color: var(--allarme); }
+  .vuoto { padding: 22px 4px; text-align: center; color: var(--tenue); font-size: 0.85rem; }
+
+  /* ---------- il registro ---------- */
+  .voci { display: flex; flex-direction: column; gap: 9px; font-size: 0.8rem; }
+  .voce { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+  .voce .quando { color: #8a7e68; font-size: 0.72rem; font-variant-numeric: tabular-nums; min-width: 112px; }
+  .voce .chi { color: var(--oro); }
+  .voce .cosa { color: var(--pergamena); }
+
+  /* ---------- la finestra per sospendere ---------- */
+  .velo {
+    display: none; position: fixed; inset: 0; z-index: 20;
+    background: rgba(0,0,0,0.75); padding: 18px;
+    align-items: center; justify-content: center;
+  }
+  .velo.aperto { display: flex; }
+  .finestra {
+    width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 13px;
+    border-radius: 15px; padding: 18px; border: 1px solid var(--bordo);
+    background: linear-gradient(168deg, rgba(74,53,32,0.96), rgba(24,17,11,0.98));
+  }
+  .finestra .a-chi { font-size: 0.82rem; color: var(--tenue); }
+  .finestra .a-chi b { color: var(--oro-chiaro); }
+  .bottoni { display: flex; gap: 9px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     L'INGRESSO
+     ============================================================ -->
+<div class="foglio" id="ingresso">
+  <div class="riquadro">
+    <h2>Pannello riservato</h2>
+    <p class="spiega">
+      Serve essere già entrati nel proprio account di gioco su questo dispositivo,
+      e conoscere la password del pannello — che è un'altra cosa dalla password
+      dell'account.
+    </p>
+    <div style="margin-top:14px">
+      <label for="parola">Password del pannello</label>
+      <input type="password" id="parola" autocomplete="current-password">
+    </div>
+    <div class="bottoni" style="margin-top:13px">
+      <button class="principale" id="btEntra">Entra</button>
+    </div>
+    <div class="errore" id="erroreIngresso"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     IL PANNELLO
+     ============================================================ -->
+<div class="foglio" id="pannello" hidden>
+
+  <div class="cima">
+    <h1>Pannello</h1>
+    <button id="btAggiorna">Aggiorna</button>
+    <button id="btEsci">Esci</button>
+    <div class="chi">Sei entrato come <b id="mioNome">—</b></div>
+  </div>
+
+  <div class="riquadro">
+    <h2>Chi gioca</h2>
+    <div class="numeri">
+      <div class="n1"><span class="v" id="nGiocatori">—</span><span class="e">giocatori in tutto</span></div>
+      <div class="n1"><span class="v" id="nRegistrati">—</span><span class="e">con account</span></div>
+      <div class="n1"><span class="v" id="nOspiti">—</span><span class="e">ospiti</span></div>
+      <div class="n1"><span class="v" id="nOggi">—</span><span class="e">entrati oggi</span></div>
+      <div class="n1"><span class="v" id="n7">—</span><span class="e">negli ultimi 7 giorni</span></div>
+      <div class="n1"><span class="v" id="nNuoviOggi">—</span><span class="e">nuovi oggi</span></div>
+      <div class="n1"><span class="v" id="nTavoli">—</span><span class="e">tavoli aperti adesso</span></div>
+      <div class="n1"><span class="v" id="nSospesi">—</span><span class="e">sospesi</span></div>
+    </div>
+    <p class="nota" id="notaMagazzino"></p>
+  </div>
+
+  <div class="riquadro">
+    <h2>Sharkini e acquisti</h2>
+    <div class="numeri">
+      <div class="n1"><span class="v" id="nSaldi">—</span><span class="e">sharkini in circolazione</span></div>
+      <div class="n1"><span class="v" id="nPacchetti">—</span><span class="e">pacchetti aperti</span></div>
+      <div class="n1"><span class="v" id="nCarte">—</span><span class="e">carte scoperte</span></div>
+      <div class="n1"><span class="v" id="nRicariche">—</span><span class="e">ricariche</span></div>
+      <div class="n1"><span class="v" id="nEuro">—</span><span class="e">euro corrispondenti</span></div>
+    </div>
+    <p class="nota" id="notaRicariche"></p>
+  </div>
+
+  <div class="riquadro">
+    <h2>I giocatori</h2>
+    <div class="cerca-riga">
+      <input type="search" id="cerca" placeholder="Cerca per nome, email o identificativo">
+      <button id="btCerca">Cerca</button>
+    </div>
+    <div class="scorre">
+      <table>
+        <thead>
+          <tr>
+            <th>Giocatore</th><th>Stato</th><th>Ultima visita</th>
+            <th class="numero">Sharkini</th><th class="numero">Pacchetti</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="righe"></tbody>
+      </table>
+    </div>
+    <div class="vuoto" id="nessuno" hidden>Nessun giocatore trovato.</div>
+  </div>
+
+  <div class="riquadro">
+    <h2>Cosa abbiamo fatto</h2>
+    <div class="voci" id="registro"></div>
+  </div>
+</div>
+
+<!-- la finestra per sospendere -->
+<div class="velo" id="velo">
+  <div class="finestra">
+    <h2 style="margin:0">Sospendi</h2>
+    <div class="a-chi" id="aChi"></div>
+    <div>
+      <label for="durata">Per quanto</label>
+      <select id="durata">
+        <option value="1">1 giorno</option>
+        <option value="3">3 giorni</option>
+        <option value="7" selected>7 giorni</option>
+        <option value="30">30 giorni</option>
+        <option value="">Senza scadenza</option>
+      </select>
+    </div>
+    <div>
+      <label for="motivo">Perché (lo leggerà anche lui)</label>
+      <input type="text" id="motivo" maxlength="200" placeholder="Es. nome offensivo">
+    </div>
+    <div class="errore" id="erroreSospendi"></div>
+    <div class="bottoni">
+      <button id="btAnnulla">Annulla</button>
+      <button class="pericolo" id="btConferma">Sospendi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ------------------------------------------------------------
+// LA SESSIONE STA IN sessionStorage, NON IN UN COOKIE.
+// Due motivi, tutti e due seri. Un cookie il browser lo allega da solo
+// a ogni richiesta, comprese quelle che parte da un'altra pagina di
+// internet: è il modo classico in cui si fa fare a un amministratore,
+// senza che se ne accorga, una cosa che non voleva fare. E
+// sessionStorage muore quando si chiude la scheda — un pannello di
+// amministrazione lasciato aperto per sempre su un telefono che gira
+// per casa non è una buona idea.
+// ------------------------------------------------------------
+const CHIAVE_SESSIONE = 'bb_pannello';
+const CHIAVE_CHI = 'bb_pannello_chi';
+const sessione = {
+  leggi() { try { return sessionStorage.getItem(CHIAVE_SESSIONE); } catch (e) { return null; } },
+  // Anche l'email di chi è entrato, perché rientrando nella scheda la
+  // sessione vale ancora ma nessuno ha più detto chi siamo: senza,
+  // l'intestazione direbbe "sei entrato come —", che è il genere di
+  // dettaglio sciatto che fa dubitare del resto.
+  chi() { try { return sessionStorage.getItem(CHIAVE_CHI) || '—'; } catch (e) { return '—'; } },
+  scrivi(v, email) {
+    try {
+      sessionStorage.setItem(CHIAVE_SESSIONE, v);
+      if (email) sessionStorage.setItem(CHIAVE_CHI, email);
+    } catch (e) {}
+  },
+  butta() {
+    try { sessionStorage.removeItem(CHIAVE_SESSIONE); sessionStorage.removeItem(CHIAVE_CHI); } catch (e) {}
+  }
+};
+const mioGettone = () => { try { return localStorage.getItem('bb_gettone'); } catch (e) { return null; } };
+
+async function chiedi(via, corpo) {
+  try {
+    const r = await fetch(via, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo || {})
+    });
+    return { stato: r.status, corpo: await r.json().catch(() => null) };
+  } catch (e) {
+    return { stato: 0, corpo: null };
+  }
+}
+
+// Una richiesta del pannello: allega la sessione e, se è scaduta,
+// riporta all'ingresso invece di lasciare la pagina con dei numeri
+// vecchi che sembrano ancora buoni.
+async function chiediDentro(via, corpo) {
+  const r = await chiedi(via, { ...(corpo || {}), sessione: sessione.leggi() });
+  if (r.stato === 401) { esci('La sessione è scaduta: rientra.'); return null; }
+  return r;
+}
+
+function mostraErrore(dove, testo) {
+  const el = $(dove);
+  el.textContent = testo;
+  el.classList.toggle('mostra', !!testo);
+}
+
+// ------------------------------------------------------------
+// ENTRARE E USCIRE
+// ------------------------------------------------------------
+async function entra() {
+  const password = $('parola').value;
+  if (!password) return mostraErrore('erroreIngresso', 'Scrivi la password del pannello.');
+  const gettone = mioGettone();
+  if (!gettone) {
+    return mostraErrore('erroreIngresso',
+      'Su questo dispositivo non risulta nessun account di gioco: apri prima la home ed entra col tuo account.');
+  }
+
+  $('btEntra').disabled = true;
+  const r = await chiedi('/api/admin/entra', { gettone, password });
+  $('btEntra').disabled = false;
+
+  if (r.stato === 404) {
+    // Il pannello non è acceso su questo server: senza le due variabili
+    // d'ambiente le sue rotte non esistono proprio (vedi
+    // server/amministrazione.js). Vale la pena dirlo per esteso: chi è
+    // arrivato fin qui è chi lo sta installando.
+    return mostraErrore('erroreIngresso',
+      'Su questo server il pannello non è attivo. Vanno impostate le variabili d\'ambiente ADMIN_EMAIL e ADMIN_PASSWORD.');
+  }
+  if (!r.corpo || !r.corpo.ok) {
+    $('parola').value = '';
+    return mostraErrore('erroreIngresso', (r.corpo && r.corpo.motivo) || 'Non sono riuscito a chiederlo al server.');
+  }
+
+  sessione.scrivi(r.corpo.sessione, r.corpo.email);
+  $('parola').value = '';
+  mostraErrore('erroreIngresso', '');
+  apri();
+}
+
+function apri() {
+  $('mioNome').textContent = sessione.chi();
+  $('ingresso').hidden = true;
+  $('pannello').hidden = false;
+  aggiornaTutto();
+}
+
+async function esci(perche) {
+  const s = sessione.leggi();
+  if (s) chiedi('/api/admin/esci', { sessione: s });
+  sessione.butta();
+  $('pannello').hidden = true;
+  $('ingresso').hidden = false;
+  mostraErrore('erroreIngresso', perche || '');
+}
+
+// ------------------------------------------------------------
+// I NUMERI
+// ------------------------------------------------------------
+const num = (n) => (Number(n) || 0).toLocaleString('it-IT');
+
+function quando(ms) {
+  if (!ms) return '—';
+  const passati = Date.now() - ms;
+  if (passati < 60000) return 'adesso';
+  if (passati < 3600000) return Math.floor(passati / 60000) + ' min fa';
+  if (passati < 86400000) return Math.floor(passati / 3600000) + ' ore fa';
+  const giorni = Math.floor(passati / 86400000);
+  if (giorni < 30) return giorni + ' giorni fa';
+  return new Date(ms).toLocaleDateString('it-IT');
+}
+
+async function aggiornaNumeri() {
+  const r = await chiediDentro('/api/admin/sommario');
+  if (!r || !r.corpo || !r.corpo.ok) return;
+  const s = r.corpo;
+
+  $('nGiocatori').textContent = num(s.giocatori);
+  $('nRegistrati').textContent = num(s.registrati);
+  $('nOspiti').textContent = num(s.ospiti);
+  $('nOggi').textContent = num(s.attiviOggi);
+  $('n7').textContent = num(s.attivi7Giorni);
+  $('nNuoviOggi').textContent = num(s.nuoviOggi);
+  $('nTavoli').textContent = num(s.tavoliApertiOra);
+  $('nSospesi').textContent = num(s.sospesi);
+
+  $('nSaldi').textContent = num(s.sharkiniInGiro);
+  $('nPacchetti').textContent = num(s.pacchettiAperti);
+  $('nCarte').textContent = num(s.carteAperte);
+  $('nRicariche').textContent = num(s.ricariche);
+  $('nEuro').textContent = '€ ' + (Number(s.ricaricheEuro) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // DUE AVVERTENZE CHE NON VANNO LASCIATE CAPIRE DAI NUMERI.
+  // La prima: finché i dati stanno su un disco che si azzera, questi
+  // numeri sono "da stamattina", non "da sempre" — e un pannello che
+  // non lo dicesse sarebbe peggio che inutile, sarebbe bugiardo.
+  const suDiscoVero = /^\/dati|postgres|redis/i.test(s.magazzino || '');
+  $('notaMagazzino').innerHTML = suDiscoVero
+    ? 'Dati in ' + s.magazzino + '.'
+    : '<b>Attenzione:</b> i dati stanno in un magazzino che riparte da zero a ogni pubblicazione del sito ' +
+      '(' + s.magazzino + '). Questi numeri valgono dall\'ultimo riavvio del server, non da sempre.';
+
+  // La seconda: nessuno ha ancora pagato niente per davvero.
+  $('notaRicariche').innerHTML = s.ricaricheDiProva
+    ? '<b>Attenzione:</b> non c\'è ancora nessun sistema di pagamento collegato. Le ricariche qui sopra ' +
+      'sono volte in cui qualcuno ha premuto "compra", non soldi incassati.'
+    : num(s.ricaricheVerificate) + ' ricariche su ' + num(s.ricariche) + ' hanno una ricevuta verificata.';
+}
+
+// ------------------------------------------------------------
+// L'ELENCO
+// ------------------------------------------------------------
+function testo(s) {
+  // I nomi li scrivono i giocatori: vanno messi a schermo come testo,
+  // mai come pezzi di pagina. Il server già toglie < > & " ' quando li
+  // riceve, ma questa pagina non deve dipendere da quello: è l'ultima
+  // riga di difesa, e sta dove i dati vengono mostrati.
+  const d = document.createElement('span');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function aggiornaElenco() {
+  const r = await chiediDentro('/api/admin/giocatori', { cerca: $('cerca').value, quanti: 100 });
+  if (!r || !r.corpo || !r.corpo.ok) return;
+  const righe = r.corpo.giocatori || [];
+
+  $('nessuno').hidden = righe.length > 0;
+  $('righe').innerHTML = righe.map((g) => {
+    const fermo = g.sospensione;
+    const stato = fermo
+      ? '<span class="chip fermato">sospeso</span>'
+      : (g.registrato ? '<span class="chip registrato">account</span>' : '<span class="chip ospite">ospite</span>');
+    const nome = g.nome ? testo(g.nome) : '<span style="color:var(--tenue)">senza nome</span>';
+    const sotto = g.email ? testo(g.email) : g.id;
+    const bottone = fermo
+      ? '<button data-riattiva="' + g.id + '">Riattiva</button>'
+      : '<button class="pericolo" data-sospendi="' + g.id + '">Sospendi</button>';
+    return '<tr>' +
+      '<td>' + nome + '<br><span class="id">' + sotto + '</span></td>' +
+      '<td>' + stato + '</td>' +
+      '<td>' + quando(g.ultimaVisita) + '</td>' +
+      '<td class="numero">' + num(g.saldo) + '</td>' +
+      '<td class="numero">' + num(g.pacchettiAperti) + '</td>' +
+      '<td>' + bottone + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function aggiornaRegistro() {
+  const r = await chiediDentro('/api/admin/registro', { quante: 30 });
+  if (!r || !r.corpo || !r.corpo.ok) return;
+  const voci = r.corpo.voci || [];
+  $('registro').innerHTML = voci.length === 0
+    ? '<div class="vuoto">Ancora niente da raccontare.</div>'
+    : voci.map((v) => '<div class="voce">' +
+        '<span class="quando">' + new Date(v.quando).toLocaleString('it-IT') + '</span>' +
+        '<span class="chi">' + testo(v.chi || '?') + '</span>' +
+        '<span class="cosa">' + testo(v.dettaglio || v.azione) +
+        (v.bersaglio ? ' <span class="id">(' + testo(v.bersaglio) + ')</span>' : '') +
+        '</span></div>').join('');
+}
+
+async function aggiornaTutto() {
+  await aggiornaNumeri();
+  await aggiornaElenco();
+  await aggiornaRegistro();
+}
+
+// ------------------------------------------------------------
+// SOSPENDERE
+// ------------------------------------------------------------
+let idDaFermare = null;
+
+$('righe').addEventListener('click', async (e) => {
+  const sospendi = e.target.closest('[data-sospendi]');
+  if (sospendi) {
+    idDaFermare = sospendi.dataset.sospendi;
+    const riga = sospendi.closest('tr');
+    $('aChi').innerHTML = 'Stai per fermare <b>' + riga.querySelector('td').innerHTML + '</b>';
+    $('motivo').value = '';
+    mostraErrore('erroreSospendi', '');
+    $('velo').classList.add('aperto');
+    $('motivo').focus();
+    return;
+  }
+  const riattiva = e.target.closest('[data-riattiva]');
+  if (riattiva) {
+    riattiva.disabled = true;
+    await chiediDentro('/api/admin/riattiva', { id: riattiva.dataset.riattiva });
+    await aggiornaTutto();
+  }
+});
+
+$('btConferma').addEventListener('click', async () => {
+  const motivo = $('motivo').value.trim();
+  if (!motivo) return mostraErrore('erroreSospendi', 'Scrivi perché: fra un mese servirà a te.');
+  const scelta = $('durata').value;
+  $('btConferma').disabled = true;
+  const r = await chiediDentro('/api/admin/sospendi', {
+    id: idDaFermare, giorni: scelta === '' ? null : Number(scelta), motivo
+  });
+  $('btConferma').disabled = false;
+  if (!r) return;
+  if (!r.corpo || !r.corpo.ok) return mostraErrore('erroreSospendi', (r.corpo && r.corpo.motivo) || 'Non è andata.');
+  $('velo').classList.remove('aperto');
+  await aggiornaTutto();
+});
+
+$('btAnnulla').addEventListener('click', () => $('velo').classList.remove('aperto'));
+$('velo').addEventListener('click', (e) => { if (e.target === $('velo')) $('velo').classList.remove('aperto'); });
+
+$('btEntra').addEventListener('click', entra);
+$('parola').addEventListener('keydown', (e) => { if (e.key === 'Enter') entra(); });
+$('btAggiorna').addEventListener('click', aggiornaTutto);
+$('btEsci').addEventListener('click', () => esci(''));
+$('btCerca').addEventListener('click', aggiornaElenco);
+$('cerca').addEventListener('keydown', (e) => { if (e.key === 'Enter') aggiornaElenco(); });
+
+// Rientrando nella stessa scheda la sessione può essere ancora buona:
+// si prova a usarla invece di richiedere la password per niente. Se non
+// vale più, chiediDentro riporta all'ingresso da solo.
+(async function avvia() {
+  if (!sessione.leggi()) return;
+  const r = await chiediDentro('/api/admin/sommario');
+  if (r && r.corpo && r.corpo.ok) apri();
+})();
+</script>
+</body>
+</html>

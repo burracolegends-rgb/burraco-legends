@@ -32,6 +32,7 @@ import { creaMissioni } from './missioni.js';
 import { creaLivelli, livelloDaRating } from './livelli.js';
 import { creaStagione } from './stagione.js';
 import { creaPubblicita } from './pubblicita.js';
+import { creaAmministrazione } from './amministrazione.js';
 
 // ------------------------------------------------------------
 // UN ERRORE IMPREVISTO NON DEVE SPEGNERE IL SERVER PER TUTTI.
@@ -353,6 +354,18 @@ const stagione = creaStagione({ archivio, stanze, anagrafe, eRegistrato });
 // un'app pubblicata: vedi il commento in cima a quel file.
 const pubblicita = creaPubblicita({ archivio, anagrafe, eRegistrato });
 
+// Il pannello di chi manda avanti il gioco (server/amministrazione.js).
+// Le credenziali arrivano SOLO dalle variabili d'ambiente, mai dal
+// magazzino: il perché è scritto per esteso in cima a quel file. Se non
+// ci sono, il pannello resta spento e le sue rotte rispondono come se
+// non esistessero.
+const pannello = creaAmministrazione({
+  archivio, anagrafe,
+  emailAmmesse: process.env.ADMIN_EMAIL || '',
+  password: process.env.ADMIN_PASSWORD || '',
+  tavoliAperti: () => stanze.quante()
+});
+
 // ------------------------------------------------------------
 // IL NOME CON CUI TI SIEDI AL TAVOLO — SENZA CHIEDERLO
 //
@@ -465,6 +478,8 @@ const server = http.createServer(async (req, res) => {
     if (via === '/api/apri' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      const fermo = await pannello.bloccato(corpo.gettone);
+      if (fermo) return rispondi(res, 403, fermo);
       // il mazzo si controlla PRIMA di sedersi: dentro la stanza deve
       // entrare solo roba che quel giocatore possiede davvero
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
@@ -475,6 +490,8 @@ const server = http.createServer(async (req, res) => {
     if (via === '/api/entra' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      const fermo = await pannello.bloccato(corpo.gettone);
+      if (fermo) return rispondi(res, 403, fermo);
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
       const r = stanze.entra(corpo.codice, await nomeDiAccount(corpo.gettone), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 404, r);
@@ -486,6 +503,13 @@ const server = http.createServer(async (req, res) => {
     if (via === '/api/siediti' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      // SOSPESO VUOL DIRE FUORI DAI TAVOLI CON GLI ALTRI, non fuori dal
+      // gioco: chi è fermato può continuare a giocare contro il computer
+      // e a guardare le sue carte. La sospensione serve a proteggere chi
+      // gioca online da chi rovina le partite, non a togliere a qualcuno
+      // quello che ha comprato.
+      const fermo = await pannello.bloccato(corpo.gettone);
+      if (fermo) return rispondi(res, 403, fermo);
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
       const r = stanze.siediti(await nomeDiAccount(corpo.gettone), chiChiama(req), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 429, r);
@@ -540,6 +564,10 @@ const server = http.createServer(async (req, res) => {
     if (via === '/api/missione/inizia' && req.method === 'POST') {
       const corpo = await leggiCorpo(req);
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+      // La Missione ha una classifica pubblica, con i nomi in vista: chi
+      // è sospeso non ci compare.
+      const fermo = await pannello.bloccato(corpo.gettone);
+      if (fermo) return rispondi(res, 403, fermo);
       const mazzo = await mazzoDaGiocare(corpo.gettone, corpo.mazzo);
       const r = await missioni.inizia(chiChiama(req), mazzo, corpo.gettone);
       return rispondi(res, r.ok ? 200 : 400, r);
@@ -693,7 +721,16 @@ const server = http.createServer(async (req, res) => {
       if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
       const social = await accessi.comeSeiEntrato(corpo.gettone);
       const conto = await conti.comeSeiRegistrato(corpo.gettone);
-      return rispondi(res, 200, { ...social, ...conto });
+      // Il profilo usa questo per decidere se mostrare la voce
+      // "Amministrazione". Saperlo non apre niente: per entrare nel
+      // pannello serve comunque la sua password, che sta in un altro
+      // posto (vedi server/amministrazione.js).
+      const amministratore = await pannello.eAmministratore(corpo.gettone);
+      // E se sei sospeso lo devi sapere da qui, non scoprirlo davanti a
+      // un tavolo che non si apre: la pagina del profilo lo dice, con
+      // il motivo e fino a quando.
+      const sospensione = await pannello.sospensioneDi(corpo.gettone);
+      return rispondi(res, 200, { ...social, ...conto, amministratore, sospensione });
     }
 
     // Il livello ranked (server/livelli.js): chi non ha mai giocato una
@@ -756,6 +793,56 @@ const server = http.createServer(async (req, res) => {
     if (via === '/api/registro' && req.method === 'GET') {
       const r = stanze.registroDi(url.searchParams.get('codice'));
       return rispondi(res, r ? 200 : 404, r || { errore: 'Tavolo inesistente.' });
+    }
+
+    // ---------- IL PANNELLO DI CHI MANDA AVANTI IL GIOCO ----------
+    // server/amministrazione.js. Tutte in POST, con il gettone di
+    // sessione nel corpo e non in un cookie: il perché sta scritto lì.
+    //
+    // SE IL PANNELLO È SPENTO QUESTE ROTTE NON ESISTONO — stessa
+    // identica risposta di un indirizzo inventato. Un "pannello non
+    // configurato" direbbe a chiunque passi di qui che da qualche parte
+    // c'è una porta di servizio, e basterebbe quello per farla provare.
+    if (via.startsWith('/api/admin/')) {
+      if (!pannello.acceso()) return rispondi(res, 404, { errore: 'Non so cosa sia ' + via });
+      if (req.method !== 'POST') return rispondi(res, 404, { errore: 'Non so cosa sia ' + via });
+
+      const corpo = await leggiCorpo(req);
+      if (!corpo) return rispondi(res, 400, { ok: false, motivo: 'Messaggio illeggibile.' });
+
+      if (via === '/api/admin/entra') {
+        const r = await pannello.entra(corpo.gettone, corpo.password, chiChiama(req));
+        return rispondi(res, r.ok ? 200 : 401, r);
+      }
+
+      if (via === '/api/admin/esci') return rispondi(res, 200, pannello.esci(corpo.sessione));
+
+      // Da qui in giù serve una sessione valida. È QUESTO il cancello,
+      // non il bottone "entra": una rotta che si dimenticasse di
+      // chiederlo sarebbe aperta al mondo, quindi si chiede una volta
+      // sola, qui, per tutte.
+      const chi = pannello.chiSei(corpo.sessione);
+      if (!chi) return rispondi(res, 401, { ok: false, scaduta: true, motivo: 'Sessione scaduta: rientra.' });
+
+      if (via === '/api/admin/sommario') return rispondi(res, 200, await pannello.sommario());
+      if (via === '/api/admin/giocatori') {
+        return rispondi(res, 200, await pannello.elenco({
+          cerca: corpo.cerca, quanti: corpo.quanti, salta: corpo.salta
+        }));
+      }
+      if (via === '/api/admin/registro') {
+        return rispondi(res, 200, { ok: true, voci: await pannello.registro(corpo.quante) });
+      }
+      if (via === '/api/admin/sospendi') {
+        const r = await pannello.sospendi(corpo.id, corpo.giorni, corpo.motivo, chi.email);
+        return rispondi(res, r.ok ? 200 : 400, r);
+      }
+      if (via === '/api/admin/riattiva') {
+        const r = await pannello.riattiva(corpo.id, chi.email);
+        return rispondi(res, r.ok ? 200 : 400, r);
+      }
+
+      return rispondi(res, 404, { errore: 'Non so cosa sia ' + via });
     }
 
     return rispondi(res, 404, { errore: 'Non so cosa sia ' + via });

@@ -6,6 +6,15 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "server"],
       "port": 8080
+    },
+    {
+      "name": "burraco-legends-pannello",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.ADMIN_EMAIL='admin@locale.test';process.env.ADMIN_PASSWORD='solo-per-provare-in-locale';process.env.PORTA='8081';import('./server/server.js')"
+      ],
+      "port": 8081
     }
   ]
 }

@@ -87,6 +87,12 @@
     background: linear-gradient(180deg, #ffe9ae, var(--oro) 55%, #b98d2c);
   }
 
+  /* Il riquadro di chi è stato fermato: stessa forma degli altri, ma
+     bordo e testo dicono da soli che qui c'è qualcosa che non va. */
+  .riquadro.sospeso { border-color: rgba(240,115,107,0.55); }
+  .riquadro.sospeso h2 { color: #f0736b; }
+  .sospeso-motivo { margin: 0 0 10px; font-size: 0.9rem; line-height: 1.55; }
+
   .avviso-prova {
     display: none; text-align: center; font-size: 0.78rem; color: #ffb3bf;
     border: 1px solid rgba(240,115,107,0.5); border-radius: 12px; padding: 10px 14px;
@@ -165,6 +171,31 @@
     </div>
   </div>
 
+  <!-- Compare solo a chi è sospeso: meglio saperlo qui, dove uno guarda
+       le sue cose, che scoprirlo davanti a un tavolo che non si apre. -->
+  <div class="riquadro sospeso" id="riquadroSospensione" style="display:none">
+    <h2>Accesso alle partite sospeso</h2>
+    <p class="sospeso-motivo" id="sospesoMotivo"></p>
+    <p class="accesso-nota">
+      Puoi continuare a giocare contro il computer e le tue carte restano tue.
+      Quello che è sospeso è sederti ai tavoli con altri giocatori.
+    </p>
+  </div>
+
+  <!-- Solo per chi manda avanti il gioco. Il server decide chi la vede
+       (server/amministrazione.js): qui non c'è nessun controllo da
+       aggirare, solo un pulsante che compare o non compare. Entrarci
+       richiede comunque la password del pannello. -->
+  <div class="riquadro" id="riquadroPannello" style="display:none">
+    <h2>Amministrazione</h2>
+    <div class="accesso-riga">
+      <p class="accesso-nota" style="margin:0">
+        Quanti giocano, quanto girano gli sharkini, e gli strumenti per moderare.
+      </p>
+      <a class="accesso-bottone" href="pannello.html">Apri il pannello</a>
+    </div>
+  </div>
+
   <div class="avviso-prova" id="avvisoProva"></div>
 </div>
 
@@ -238,6 +269,23 @@ async function chiSono() {
     : 'Le tue carte e i tuoi sharkini vivono solo in questo browser: se cancelli i dati del sito, o cambi telefono, riparti da zero. Collegando un accesso te li porti dietro.';
   $('accessoBottone').style.display = protetto ? 'none' : '';
   $('riquadroAccesso').style.display = '';
+
+  // SE SEI SOSPESO, LO DEVI SAPERE DA QUI.
+  // Il server lo dice insieme al resto (server/amministrazione.js): con
+  // il motivo scritto da chi ha deciso, e la data in cui si rientra.
+  if (r.sospensione) {
+    const s = r.sospensione;
+    const fino = s.fino
+      ? 'Potrai tornare ai tavoli il ' + new Date(s.fino).toLocaleDateString('it-IT') + '.'
+      : 'Questa sospensione non ha una scadenza.';
+    $('sospesoMotivo').textContent = (s.motivo ? s.motivo + '. ' : '') + fino;
+    $('riquadroSospensione').style.display = '';
+  }
+
+  // La voce per il pannello: la mostra il SERVER, non questa pagina.
+  // Nasconderla non protegge niente e mostrarla non apre niente — la
+  // porta vera è la password del pannello.
+  if (r.amministratore) $('riquadroPannello').style.display = '';
 }
 
 (async function avvia() {
