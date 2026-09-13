@@ -101,7 +101,7 @@
   },
   "personaggio_112": {
     "nome": "Cão-do-Mato",
-    "descrizione": "Ricerca del bersaglio: Aumenta del 25% il danno di carte calate e abilità"
+    "descrizione": "Ricerca del bersaglio: Aumenta del 25% il danno di carte calate e abilità per 2 turni"
   },
   "personaggio_113": {
     "nome": "Onça-Pintada",
@@ -113,11 +113,11 @@
   },
   "personaggio_115": {
     "nome": "Pisadeira",
-    "descrizione": "Terrore: Riduce del 25% la difesa di tutti gli avversari"
+    "descrizione": "Terrore: Per 2 turni riduce del 25% la difesa di tutti gli avversari"
   },
   "personaggio_116": {
     "nome": "Corpo-Seco",
-    "descrizione": "Corteccia:Aumenta la difesa degli alleati del 25%"
+    "descrizione": "Corteccia: Per 2 turni aumenta la difesa degli alleati del 25%"
   },
   "personaggio_117": {
     "nome": "Mapinguari",
@@ -125,7 +125,7 @@
   },
   "personaggio_118": {
     "nome": "Curupira",
-    "descrizione": "Attacco furtivo: Fa il 20% di danno a tutti gli avversari e aumenta del 20% la difesa degli alleati"
+    "descrizione": "Attacco furtivo: Fa il 20% di danno a tutti gli avversari e per 2 turni aumenta del 20% la difesa degli alleati"
   },
   "personaggio_119": {
     "nome": "Caipora",
