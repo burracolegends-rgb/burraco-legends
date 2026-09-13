@@ -21,7 +21,14 @@
     --r1: #8d93a3; --r2: #63c27e; --r3: #4aa3f0; --r4: #b070f5; --r5: #ffb347;
   }
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; overflow: hidden; }
+  /* ERA overflow:hidden SECCO — bastava per un pacchetto piccolo (il
+     riepilogo ci sta in una schermata), ma un pacchetto da 25 o 50
+     carte fa una griglia più alta dello schermo, e con body centrato
+     in verticale (justify-content:center qui sotto) le prime file
+     restavano sopra il bordo, tagliate fuori per sempre — segnalato
+     dal vivo: "vedo solo le ultime carte". Lo scroll come rete di
+     sicurezza, stesso principio già usato per lo stesso bug su home.html. */
+  html, body { height: 100%; margin: 0; overflow-y: auto; overflow-x: hidden; }
   body {
     font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
     background:
