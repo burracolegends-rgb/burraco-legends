@@ -327,12 +327,17 @@
     // comunque acceso al minimo. Ora e' un vero acceso/spento, piu'
     // veloce (1.1s): al minimo il bagliore quasi sparisce, al massimo e'
     // molto piu' forte — lampeggia, non respira.
-    '.bb-tut-alone { position: relative; outline: 3px solid rgba(232,196,106,.5); ' +
+    //
+    // PROVATO IN ROSSO invece dell'oro del resto del pannello (titolo,
+    // bordo, bottone Avanti sono tutti oro): un colore che il pannello
+    // non usa gia' per altro salta all'occhio come un segnale a se',
+    // stesso principio provato nel tutorial del tavolo.
+    '.bb-tut-alone { position: relative; outline: 3px solid rgba(255,59,48,.55); ' +
       'outline-offset: 3px; border-radius: 10px; ' +
       'animation: bbTutPulsa 1.1s ease-in-out infinite !important; }' +
     '@keyframes bbTutPulsa { ' +
-      '0%,100% { outline-color: rgba(232,196,106,.25); box-shadow: 0 0 6px 2px rgba(232,196,106,0.15); } ' +
-      '20%,55% { outline-color: #fff8dd; box-shadow: 0 0 40px 12px rgba(255,243,207,0.95); } }' +
+      '0%,100% { outline-color: rgba(255,59,48,.28); box-shadow: 0 0 6px 2px rgba(255,59,48,0.16); } ' +
+      '20%,55% { outline-color: #ffb3ab; box-shadow: 0 0 40px 12px rgba(255,59,48,0.95); } }' +
     // POINTER-EVENTS: NONE sul riquadro — segnalato da chi ci ha sbattuto
     // contro davvero: nella schermata del riepilogo il bottone vero
     // "torna al negozio" finisce proprio sotto questo pannello (fisso in

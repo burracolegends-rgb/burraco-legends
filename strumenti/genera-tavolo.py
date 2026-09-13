@@ -5626,16 +5626,20 @@ function tutorialCostruisciPannello() {
     // si capisce cosa devo premere". Ora e' un vero acceso/spento: al
     // minimo il bagliore quasi sparisce, al massimo e' molto piu' forte
     // di prima, e il ciclo e' piu' corto (1.1s) — lampeggia, non respira.
-    '@keyframes tutorialTavoloAlone{0%,100%{outline-color:rgba(255,204,0,.20);',
-    '  box-shadow:0 0 0 2px rgba(255,204,0,.12),0 0 6px 2px rgba(255,204,0,.08);}',
-    '  20%,55%{outline-color:#fff8dd;',
-    '  box-shadow:0 0 0 4px rgba(255,243,207,1),0 0 40px 14px rgba(255,204,0,.92);}}',
+    // PROVATO IN ROSSO invece dell'oro dei bottoni/testi del pannello:
+    // proprio perche' e' un colore che il resto del pannello non usa,
+    // salta all'occhio come un vero segnale "guarda qui" invece di
+    // confondersi con l'oro del bordo, del titolo e del bottone Avanti.
+    '@keyframes tutorialTavoloAlone{0%,100%{outline-color:rgba(255,59,48,.22);',
+    '  box-shadow:0 0 0 2px rgba(255,59,48,.14),0 0 6px 2px rgba(255,59,48,.10);}',
+    '  20%,55%{outline-color:#ffb3ab;',
+    '  box-shadow:0 0 0 4px rgba(255,179,171,1),0 0 42px 15px rgba(255,59,48,.95);}}',
     '.tutorial-tavolo-alone{animation:tutorialTavoloAlone 1.1s ease-in-out infinite;border-radius:10px;position:relative;z-index:20;',
-    '  outline:3px solid rgba(255,204,0,.5);outline-offset:3px;}',
-    '#myMelds.tutorial-tavolo-alone{background:rgba(255,204,0,.10);outline:2px dashed rgba(255,204,0,.5);outline-offset:-4px;}',
+    '  outline:3px solid rgba(255,59,48,.55);outline-offset:3px;}',
+    '#myMelds.tutorial-tavolo-alone{background:rgba(255,59,48,.10);outline:2px dashed rgba(255,59,48,.55);outline-offset:-4px;}',
     '#myMatchTimer.tutorial-tavolo-alone,#oppMatchTimer.tutorial-tavolo-alone,',
     '#myAvatarBasso.tutorial-tavolo-alone,#magiaGiocatore.tutorial-tavolo-alone{',
-    '  background:rgba(255,204,0,.22)!important;outline:2px solid #ffcc00;outline-offset:2px;}',
+    '  background:rgba(255,59,48,.24)!important;outline:2px solid #ff3b30;outline-offset:2px;}',
     // LO SCUDO: si blocca ogni tocco fuori dalla zona consentita con un
     // solo ascoltatore in cattura su document (stesso principio gia'
     // provato in tutorial-gestionale.js: niente riquadro sopra la
