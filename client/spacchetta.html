@@ -26,15 +26,44 @@
      carte fa una griglia più alta dello schermo, e con body centrato
      in verticale (justify-content:center qui sotto) le prime file
      restavano sopra il bordo, tagliate fuori per sempre — segnalato
-     dal vivo: "vedo solo le ultime carte". Lo scroll come rete di
-     sicurezza, stesso principio già usato per lo stesso bug su home.html. */
-  html, body { height: 100%; margin: 0; overflow-y: auto; overflow-x: hidden; }
+     dal vivo: "vedo solo le ultime carte".
+     DUE TENTATIVI PRIMA DI QUESTO, ENTRAMBI INSUFFICIENTI (segnalati dal
+     vivo tutti e due): 1) overflow-y:auto su "html, body" insieme — con
+     ENTRAMBI alti esattamente 100%, l'html (che è l'elemento che scrolla
+     davvero, vedi document.scrollingElement) non trabocca mai — è il
+     BODY, dentro di lui, a traboccare, in un contenitore di scroll
+     annidato che il tocco/rotellina raggiungono a fatica: si scrollava
+     pochissimo. 2) altezza normale ma "height:100%" lasciato sia su
+     html sia su body: stesso problema, l'html resta bloccato a 100% e
+     non puo' mai crescere per contenere un body piu' alto di lui.
+     LA CURA VERA: l'html NON deve avere un'altezza fissa — deve poter
+     crescere quanto serve, cosi' e' la PAGINA INTERA a scrollare (il
+     meccanismo normale di qualunque sito), non un riquadro annidato.
+     Al body basta un'altezza MINIMA (min-height, non height) di tutto lo
+     schermo, cosi' il fondale riempie comunque lo schermo quando il
+     contenuto e' corto. */
+  html { margin: 0; }
   body {
+    min-height: 100%; margin: 0;
+    overflow-x: hidden;
     font-family: 'Segoe UI', system-ui, sans-serif; color: var(--pergamena);
     background:
       radial-gradient(ellipse at 50% 42%, rgba(36,26,53,0.72) 0%, rgba(18,13,28,0.85) 55%, rgba(10,7,15,0.92) 100%),
       url('immagini/decorazioni/sfondo-tavolo.webp') center / cover no-repeat;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center;
+    /* LO SCROLL DA SOLO NON BASTAVA — segnalato di nuovo dal vivo: si
+       scrollava, ma pochissimo, e delle 50 carte se ne vedevano solo
+       10-12. Motivo: "justify-content: center" da solo centra il
+       contenuto anche quando trabocca, e mezzo trabocco finisce SOPRA
+       il bordo, nell'area che lo scroll non raggiunge (si può scrollare
+       solo verso il basso rispetto al centro). "safe center" dice al
+       browser di centrare SOLO se il contenuto ci sta; se trabocca, si
+       allinea all'inizio (in alto) — tutto il contenuto diventa
+       raggiungibile scrollando. La riga sopra (solo "center") resta come
+       ripiego per i browser che non conoscono "safe": quelli continuano
+       a centrare sempre, meglio che restare senza nessun allineamento. */
+    justify-content: center;
+    justify-content: safe center;
     user-select: none;
   }
 
