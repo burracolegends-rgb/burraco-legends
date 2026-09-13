@@ -10044,7 +10044,22 @@ const ui = {
 
     bersaglioAttivo = seme;
     const t = testo(eroe.cardId);
-    const pct = (eroe._ability && eroe._ability.parametro) || 30;
+    // ERA "eroe._ability.parametro || 30" — funzionava solo per la
+    // forma vecchia (un solo "effect" in cima alla carta). Le sei carte
+    // "a scelta" (Papa Figo, Boto Felipe, Onca-Pintada, Mapinguari,
+    // Caipora, Boitata) hanno tutte la forma nuova, "effetti: [...]":
+    // eroe._ability.parametro non esiste su nessuna di loro, quindi
+    // questa riga mostrava SEMPRE 30%, il numero giusto solo per
+    // coincidenza su Papa Figo — sulle altre cinque il danno stimato nel
+    // messaggio era sbagliato (il colpo vero restava giusto: lo calcola
+    // il motore, non questa riga, che serve solo al testo che si legge
+    // PRIMA di toccare il bersaglio). Ora si cerca il vero "danno_da_attacco"
+    // dentro gli effetti della carta, qualunque sia la forma.
+    const effettiEroe = Array.isArray(eroe._ability && eroe._ability.effetti)
+      ? eroe._ability.effetti
+      : (eroe._ability && eroe._ability.effect ? [eroe._ability] : []);
+    const effettoColpo = effettiEroe.find((e) => e.effect === 'danno_da_attacco');
+    const pct = (effettoColpo && Number(effettoColpo.parametro)) || 30;
     $('istruzioneBersaglio').innerHTML =
       '<b>' + t.nome + '</b>: scegli quale personaggio avversario colpire ' +
       '(' + pct + '% del suo attacco, ' + Math.round(eroe.att * pct / 100) + ' danni circa · costa ' + costo + ' punti magia)' +
