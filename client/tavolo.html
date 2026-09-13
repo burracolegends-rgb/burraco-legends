@@ -10804,16 +10804,25 @@ function tutorialRimuoviScudo() {
 // al passo 20 puo' valere per piu' di un personaggio), o dentro una zona
 // esplicitamente libera (def.libero — serve ai passi che chiedono di
 // scegliere le carte in mano PRIMA di toccare il tavolo, o che aprono la
-// scheda #veloCarta con un bottone USA dentro). Un passo senza `azione`
-// (solo informativo: "premi Avanti quando hai capito") non installa
-// nessuno scudo — non c'e' nessun gesto da proteggere.
+// scheda #veloCarta con un bottone USA dentro).
+//
+// ERA ATTIVO SOLO SUI PASSI CON `azione`, E NON BASTAVA — segnalato dal
+// vivo: su un passo solo informativo ("guarda, poi premi Avanti") si
+// poteva comunque pescare o raccogliere per davvero, perche' quei passi
+// non installavano nessuno scudo. Il tutorial e' scriptato: un gesto
+// vero fatto un passo prima del previsto lo manda fuori copione uguale,
+// letto o no che sia il testo. Ora lo scudo e' SEMPRE attivo: un passo
+// senza `azione` lascia toccabile solo il pannello (quindi solo
+// Avanti) — se e' solo da leggere, l'unica cosa che si puo' premere e'
+// proprio "Avanti".
 function tutorialInstallaScudo(def) {
   tutorialRimuoviScudo();
-  if (!def.azione) return;
   tutorialListenerClicAttuale = function (e) {
     if (tutorialPannelloEl && tutorialPannelloEl.contains(e.target)) return;
-    if (def.illumina && e.target.closest && e.target.closest(def.illumina)) return;
-    if (def.libero && e.target.closest && e.target.closest(def.libero)) return;
+    if (def.azione) {
+      if (def.illumina && e.target.closest && e.target.closest(def.illumina)) return;
+      if (def.libero && e.target.closest && e.target.closest(def.libero)) return;
+    }
     e.preventDefault();
     e.stopPropagation();
     if (tutorialPannelloEl) {
