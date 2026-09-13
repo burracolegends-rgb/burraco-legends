@@ -2353,19 +2353,17 @@
 
     /* ============================================================
        IL JOLLY
-       Si riconosce da lontano senza dover leggere niente: fondo bianco
-       come una carta vera, bordo e stella d'oro, e la parola JOLLY di
-       taglio sul fianco — che resta visibile anche quando la carta e'
-       quasi tutta coperta dalla successiva nel ventaglio.
-       Un tentativo con un'illustrazione vera (la maschera del burlante
-       fra i rovi) e' stato tolto: il genere "carta normale" si legge
-       meglio in mezzo alle altre, dove tutto il resto e' testo e numeri
-       su fondo chiaro. La carta bianca resta un'eccezione voluta anche
-       oggi — le altre carte del mazzo restano scure — ma "eccezione
-       bianca su un mazzo scuro" e' proprio il modo in cui si riconosce
-       da lontano, non una stonatura. */
+       Un primo giro (solo stella + scritta "JOLLY" di lato) si leggeva
+       male — segnalato dal vivo — e uno ancora prima (un'illustrazione
+       vera) era stato tolto apposta perche' rischiava di sparire nel
+       ventaglio. Questa volta l'illustrazione e' un vero jolly da mazzo
+       francese (il giullare classico, gia' con "JOLLY" scritto in
+       verticale dentro l'immagine stessa): il bordo dorato resta,
+       identico a prima, proprio per continuare a garantire il
+       riconoscimento a colpo d'occhio anche a carta quasi coperta — cambia
+       solo cosa c'e' dentro il bordo. */
     .card.jolly {
-      background: #ffffff !important;
+      background: url('immagini/decorazioni/jolly.webp') center / cover no-repeat, #fdfcf7 !important;
       border-color: var(--oro, #e8c46a) !important;
       box-shadow: inset 0 0 0 1px rgba(232,196,106,0.55), 0 0 10px rgba(232,196,106,0.35);
     }
@@ -7275,20 +7273,20 @@ function corpoCarta(valore, seme, stile) {
 function cartaHtml(c, selezionabile) {
   const cls = c.isJolly ? (c.jollyColor === 'red' ? 'cuori' : 'picche') : SUIT_CLASS[c.suit];
   // IL JOLLY.
-  // Diceva "JLY", che a occhio e' un "J" con del rumore intorno: in una
-  // mano stretta a ventaglio si scambiava per un fante. Ora non ha piu'
-  // ne' un numero ne' un seme da leggere — ha una stella, e la carta
-  // intera cambia aspetto: fondo scuro e bordo dorato. Non e' una carta
-  // come le altre e non deve sembrarlo.
-  const valore = c.isJolly ? '★' : valueLabel(c.value);
-  const seme = c.isJolly ? '★' : c.suit;
+  // Ha una sua illustrazione vera (immagini/decorazioni/jolly.webp, un
+  // giullare classico da mazzo francese, con "JOLLY" gia' scritto
+  // dentro l'immagine): niente valore ne' seme da disegnare sopra,
+  // niente div di testo a parte — la carta intera e' quell'immagine,
+  // dentro il bordo dorato che la distingue dal resto del mazzo (vedi
+  // il commento su .card.jolly, piu' sopra).
+  const valore = c.isJolly ? '' : valueLabel(c.value);
+  const seme = c.isJolly ? '' : c.suit;
   const sel = selezionabile && selezione.has(c.id);
   const stile = stileCarte();
   return '<div class="card ' + cls + (c.isJolly ? ' jolly' : '') + ' disegnata st-' + stile +
          (selezionabile ? ' selectable' : '') + (sel ? ' selected' : '') +
          '" data-cid="' + c.id + '"' + (selezionabile ? ' onclick="ui.tocca(\'' + c.id + '\')"' : '') + '>' +
-           corpoCarta(valore, seme, stile) +
-           (c.isJolly ? '<div class="scritta-jolly">JOLLY</div>' : '') +
+           (c.isJolly ? '' : corpoCarta(valore, seme, stile)) +
          '</div>';
 }
 
@@ -8277,12 +8275,11 @@ let sorteggioMostrato = false;
 function cartaSorteggio(c) {
   if (!c) return '';
   const cls = c.isJolly ? (c.jollyColor === 'red' ? 'cuori' : 'picche') : SUIT_CLASS[c.suit];
-  const valore = c.isJolly ? '★' : valueLabel(c.value);
-  const seme = c.isJolly ? '★' : c.suit;
+  const valore = c.isJolly ? '' : valueLabel(c.value);
+  const seme = c.isJolly ? '' : c.suit;
   const stile = stileCarte();
   return '<div class="card ' + cls + (c.isJolly ? ' jolly' : '') + ' disegnata st-' + stile + '">' +
-           corpoCarta(valore, seme, stile) +
-           (c.isJolly ? '<div class="scritta-jolly">JOLLY</div>' : '') +
+           (c.isJolly ? '' : corpoCarta(valore, seme, stile)) +
          '</div>';
 }
 
@@ -10044,7 +10041,22 @@ const ui = {
 
     bersaglioAttivo = seme;
     const t = testo(eroe.cardId);
-    const pct = (eroe._ability && eroe._ability.parametro) || 30;
+    // ERA "eroe._ability.parametro || 30" — funzionava solo per la
+    // forma vecchia (un solo "effect" in cima alla carta). Le sei carte
+    // "a scelta" (Papa Figo, Boto Felipe, Onca-Pintada, Mapinguari,
+    // Caipora, Boitata) hanno tutte la forma nuova, "effetti: [...]":
+    // eroe._ability.parametro non esiste su nessuna di loro, quindi
+    // questa riga mostrava SEMPRE 30%, il numero giusto solo per
+    // coincidenza su Papa Figo — sulle altre cinque il danno stimato nel
+    // messaggio era sbagliato (il colpo vero restava giusto: lo calcola
+    // il motore, non questa riga, che serve solo al testo che si legge
+    // PRIMA di toccare il bersaglio). Ora si cerca il vero "danno_da_attacco"
+    // dentro gli effetti della carta, qualunque sia la forma.
+    const effettiEroe = Array.isArray(eroe._ability && eroe._ability.effetti)
+      ? eroe._ability.effetti
+      : (eroe._ability && eroe._ability.effect ? [eroe._ability] : []);
+    const effettoColpo = effettiEroe.find((e) => e.effect === 'danno_da_attacco');
+    const pct = (effettoColpo && Number(effettoColpo.parametro)) || 30;
     $('istruzioneBersaglio').innerHTML =
       '<b>' + t.nome + '</b>: scegli quale personaggio avversario colpire ' +
       '(' + pct + '% del suo attacco, ' + Math.round(eroe.att * pct / 100) + ' danni circa · costa ' + costo + ' punti magia)' +
