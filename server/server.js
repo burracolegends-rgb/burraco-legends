@@ -61,6 +61,7 @@ import { archivioSuFile } from './archivio.js';
 import { creaAnagrafe } from './giocatori.js';
 import { creaAccessi, verificatoreGoogle, verificatoreFacebook, FORNITORI } from './identita.js';
 import { creaAccessoEmail } from './accesso-email.js';
+import { creaSpedizioneResend } from './posta.js';
 
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const RADICE = path.resolve(QUI, '..');
@@ -298,14 +299,19 @@ const accessi = creaAccessi({ archivio, anagrafe, verificatori });
 
 // ------------------------------------------------------------
 // EMAIL E PASSWORD
-// Finché non c'è un servizio di posta configurato, il collegamento di
-// recupero viene scritto nella finestra del server invece di essere
-// spedito. Il recupero funziona davvero: manca solo il postino.
+// Con RESEND_API_KEY impostata (variabile d'ambiente, vedi server/posta.js)
+// il collegamento di recupero parte per davvero, tramite Resend. Senza,
+// il server torna al comportamento di sempre: il collegamento si scrive
+// nei log invece di essere spedito — il recupero funziona lo stesso,
+// manca solo il postino.
 // ------------------------------------------------------------
 const conti = creaAccessoEmail({
   archivio, anagrafe,
   indirizzoSito: process.env.INDIRIZZO_SITO || 'http://localhost:' + PORTA,
-  spedisci: null
+  spedisci: creaSpedizioneResend({
+    apiKey: process.env.RESEND_API_KEY,
+    mittente: process.env.MITTENTE_EMAIL || 'Burraco Legends <onboarding@resend.dev>'
+  })
 });
 
 // UN ACCOUNT È "REGISTRATO" SE C'È UN MODO DI RITROVARLO oltre al
