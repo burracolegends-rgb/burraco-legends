@@ -9959,6 +9959,9 @@ const ui = {
   // ------------------------------------------------------------
   impostazioni() {
     $('veloImpostazioni').classList.add('aperto');
+    // Cosi' il tasto indietro del telefono chiude il pannello invece di
+    // lasciare il tavolo — vedi "IL TASTO INDIETRO" piu' in basso.
+    history.pushState({ bbVeloAperto: true }, '');
   },
 
   // ------------------------------------------------------------
@@ -10157,29 +10160,47 @@ const ui = {
 // bottone che chiude la partita al primo colpo, dentro un pannello che
 // si apre col dito su un telefono, e' una trappola.
 // Il tempo per ripensarci e' di cinque secondi, poi torna com'era.
+//
+// STESSA FUNZIONE ANCHE PER IL TASTO INDIETRO DEL TELEFONO (vedi piu'
+// sotto, "IL TASTO INDIETRO"): un indietro per sbaglio non deve valere
+// come abbandonare senza nemmeno chiedere. Condivide questo stesso
+// "sicuro" — un tocco sul bottone e un indietro contano per la stessa
+// conferma, non due separate.
 // ------------------------------------------------------------
+let abbandonaSicuro = false;
+let abbandonaSicuroTimer = null;
+function provaAbbandonare(daIndietro) {
+  const b = $('abbandona');
+  if (!b || !S || S.status !== 'in_progress') return false;   // niente da abbandonare
+  if (!abbandonaSicuro) {
+    abbandonaSicuro = true;
+    b.classList.add('sicuro');
+    b.textContent = 'Sicuro? Premi di nuovo';
+    // Il testo del bottone non si vede se le Impostazioni sono chiuse —
+    // ed e' il caso normale quando ad "abbandonare" ci prova il tasto
+    // indietro del telefono, non un tocco sul bottone dentro il
+    // pannello. Un avviso a schermo dice la stessa cosa in un posto
+    // che si vede sempre.
+    if (daIndietro) avviso('Premi di nuovo INDIETRO per abbandonare');
+    clearTimeout(abbandonaSicuroTimer);
+    abbandonaSicuroTimer = setTimeout(() => {
+      abbandonaSicuro = false;
+      b.classList.remove('sicuro');
+      b.textContent = 'Abbandona la partita';
+    }, 5000);
+    return true;   // primo tocco: assorbito, non e' ancora successo niente
+  }
+  abbandonaSicuro = false;
+  b.classList.remove('sicuro');
+  b.textContent = 'Abbandona la partita';
+  $('veloImpostazioni').classList.remove('aperto');
+  esegui({ tipo: 'abbandona' }, () => abbandona(S, 0, Date.now())).then(disegna);
+  return true;
+}
 if ($('abbandona')) {
-  let sicuro = false;
-  $('abbandona').addEventListener('click', async () => {
-    const b = $('abbandona');
+  $('abbandona').addEventListener('click', () => {
     if (!S || S.status !== 'in_progress') { avviso('La partita è già finita.'); return; }
-    if (!sicuro) {
-      sicuro = true;
-      b.classList.add('sicuro');
-      b.textContent = 'Sicuro? Premi di nuovo';
-      setTimeout(() => {
-        sicuro = false;
-        b.classList.remove('sicuro');
-        b.textContent = 'Abbandona la partita';
-      }, 5000);
-      return;
-    }
-    sicuro = false;
-    b.classList.remove('sicuro');
-    b.textContent = 'Abbandona la partita';
-    $('veloImpostazioni').classList.remove('aperto');
-    await esegui({ tipo: 'abbandona' }, () => abbandona(S, 0, Date.now()));
-    disegna();
+    provaAbbandonare();
   });
 }
 
@@ -10206,6 +10227,52 @@ document.addEventListener('keydown', (e) => {
 // provano per primo, e non deve far partire niente
 $('veloCarta').addEventListener('click', (e) => {
   if (e.target === $('veloCarta')) chiudiCartaGrande();
+});
+
+// ------------------------------------------------------------
+// IL TASTO INDIETRO DEL TELEFONO — richiesto esplicitamente: non deve
+// mai bastare un tocco solo per lasciare il tavolo.
+//
+// Tre casi, in ordine:
+// 1) Le Impostazioni sono aperte (e' li' dentro che sta il bottone
+//    Abbandona): un indietro le chiude, come qualunque pannello — non
+//    conta come un tentativo di abbandonare, e' solo "richiudi quello
+//    che hai aperto".
+// 2) Il tutorial e' in corso: non c'e' nessun motivo valido per uscire
+//    da li' con l'indietro (e' gia' protetto dallo scudo sui tocchi
+//    sbagliati, vedi tutorialInstallaScudo) — l'indietro non fa nulla,
+//    il pannello scuote la testa per dire "sono ancora qui".
+// 3) Una partita vera e' in corso: l'indietro vale come un tocco sul
+//    bottone Abbandona — stessa conferma in due tempi, stesso "sicuro"
+//    condiviso (provaAbbandonare, qui sopra): un indietro solo non
+//    basta, ne serve un secondo entro cinque secondi.
+//
+// In ogni caso che assorbe l'indietro si ripristina subito lo stato
+// fittizio con pushState: senza, il SECONDO indietro (quello vero, non
+// piu' assorbito da questa pagina) troverebbe la cronologia gia'
+// consumata e uscirebbe dal tavolo per davvero anche quando non doveva.
+// Se invece non c'e' ne' un pannello aperto ne' una partita da
+// proteggere (partita gia' finita, per esempio) l'indietro non viene
+// toccato: si lascia fare al browser, si esce per davvero.
+// ------------------------------------------------------------
+history.pushState({ bbRadice: true }, '');
+window.addEventListener('popstate', () => {
+  if ($('veloImpostazioni').classList.contains('aperto')) {
+    $('veloImpostazioni').classList.remove('aperto');
+    return;
+  }
+  if (document.body.classList.contains('modalita-tutorial')) {
+    history.pushState({ bbRadice: true }, '');
+    if (typeof tutorialPannelloEl !== 'undefined' && tutorialPannelloEl) {
+      tutorialPannelloEl.classList.remove('tutorial-tavolo-scuoti');
+      void tutorialPannelloEl.offsetWidth; // fa ripartire l'animazione da capo
+      tutorialPannelloEl.classList.add('tutorial-tavolo-scuoti');
+    }
+    return;
+  }
+  if (provaAbbandonare(true)) {
+    history.pushState({ bbRadice: true }, '');
+  }
 });
 
 window.ui = ui;
