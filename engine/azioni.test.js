@@ -155,27 +155,28 @@ console.log('\n--- IL TEMPO ---');
   const s = nuova(19);
   applica(s, { tipo: 'pesca' }, 0, T0 + 1000);
 
-  // il giocatore 0 sparisce; passano oltre 60 secondi; poi scrive il giocatore 1
-  const dopoUnMinuto = T0 + 75000;
-  const r = applica(s, { tipo: 'pesca' }, 1, dopoUnMinuto);
+  // il giocatore 0 sparisce; passa oltre il tempo del turno (TURN_SECONDS);
+  // poi scrive il giocatore 1
+  const dopoIlTempoDelTurno = T0 + 95000;
+  const r = applica(s, { tipo: 'pesca' }, 1, dopoIlTempoDelTurno);
   check('il turno abbandonato viene chiuso d\'ufficio', r.turnoScaduto === true);
   check('e chi ha aspettato può giocare', r.ok === true);
   check('il turno adesso è suo', s.currentPlayerIndex === 1);
 
   // e chi era sparito non recupera il turno perso
   check('chi è tornato tardi non gioca il turno di prima',
-    applica(s, { tipo: 'scarta', carta: s.players[0].hand[0].id }, 0, dopoUnMinuto + 1000).ok === false);
+    applica(s, { tipo: 'scarta', carta: s.players[0].hand[0].id }, 0, dopoIlTempoDelTurno + 1000).ok === false);
 }
 
 {
   const s = nuova(29);
   applica(s, { tipo: 'pesca' }, 0, T0 + 1000);
-  const r = faiScorrereIlTempo(s, T0 + 90000);
+  const r = faiScorrereIlTempo(s, T0 + 95000);
   check('l\'orologio da solo fa scadere il turno', r.scaduto === true);
   check('e scarta una carta al posto di chi non ha risposto', r.scartata !== null);
   check('il turno passa comunque', s.currentPlayerIndex === 1);
   check('senza tempo scaduto non succede niente',
-    faiScorrereIlTempo(s, T0 + 91000).scaduto === false);
+    faiScorrereIlTempo(s, T0 + 96000).scaduto === false);
 }
 
 // ============================================================

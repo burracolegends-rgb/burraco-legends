@@ -176,9 +176,9 @@ check('nessuno dei due tavoli va in errore aprendosi', guasti.length === 0, guas
 }
 
 // ---------- GLI OROLOGI CAMMINANO SU TUTTI E DUE GLI SCHERMI ----------
-// Il minuto del turno e il monte dei sei minuti non sono "roba di chi
-// gioca": chi aspetta deve vedere quanto tempo resta all'altro, se no
-// non sa se sta pensando o se e' caduto.
+// Il tempo del turno e il monte tempo della partita non sono "roba di
+// chi gioca": chi aspetta deve vedere quanto tempo resta all'altro, se
+// no non sa se sta pensando o se e' caduto.
 {
   const leggi = (pagina, id) => {
     const e = pagina.w.document.getElementById(id);
@@ -193,7 +193,7 @@ check('nessuno dei due tavoli va in errore aprendosi', guasti.length === 0, guas
     check(chi + ' giocatore vede il minuto del turno',
       inSecondi(leggi(pagina, 'turnoMio')) !== null && inSecondi(leggi(pagina, 'turnoAvv')) !== null,
       'mio: ' + leggi(pagina, 'turnoMio') + ', avversario: ' + leggi(pagina, 'turnoAvv'));
-    check(chi + ' giocatore vede il monte dei sei minuti',
+    check(chi + ' giocatore vede il monte tempo della partita',
       inSecondi(leggi(pagina, 'myMatchTimer')) !== null && inSecondi(leggi(pagina, 'oppMatchTimer')) !== null,
       'mio: ' + leggi(pagina, 'myMatchTimer') + ', avversario: ' + leggi(pagina, 'oppMatchTimer'));
   }

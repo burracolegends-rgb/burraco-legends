@@ -161,9 +161,9 @@ console.log('\n--- IL TEMPO ---');
   check('senza tempo scaduto il battito non cambia niente',
     r.battito().scadenze === 0);
 
-  avanti(70000);                                  // più di un minuto
+  avanti(95000);                                  // più di un minuto e mezzo (TURN_SECONDS)
   const battuta = r.battito();
-  check('passato il minuto, il turno scade', battuta.scadenze === 1);
+  check('passato il tempo del turno, il turno scade', battuta.scadenze === 1);
 
   const dopo = await guarda(r, a.codice, b.segreto, -1);
   check('e la versione è salita, quindi i tavoli si aggiornano', dopo.versione > prima);
@@ -474,15 +474,15 @@ console.log('\n--- I DIECI SECONDI PRIMA DI COMINCIARE ---');
 
   const v = (await guarda(r, a.codice, a.segreto, -1)).vista;
   check('lo studio non e\' stato scalato a chi ha giocato',
-    v.giocatori[0].secondiRimasti === 360,
-    'gli restano ' + v.giocatori[0].secondiRimasti + 's invece di 360');
-  check('ne\' all\'altro', v.giocatori[1].secondiRimasti === 360);
+    v.giocatori[0].secondiRimasti === 540,
+    'gli restano ' + v.giocatori[0].secondiRimasti + 's invece di 540');
+  check('ne\' all\'altro', v.giocatori[1].secondiRimasti === 540);
 
-  // e il minuto del turno non e' partito durante l'attesa
+  // e il tempo del turno non e' partito durante l'attesa
   avanti(59000);
   r.battito();
   const ancora = (await guarda(r, a.codice, a.segreto, -1)).vista;
-  check('nemmeno il minuto del turno e\' partito durante lo studio',
+  check('nemmeno il tempo del turno e\' partito durante lo studio',
     ancora.stato === 'in_progress');
 
   // la partita resta rigiocabile identica

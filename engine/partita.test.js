@@ -754,11 +754,11 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   check('la carta rifiutata non si consuma', state.players[0].magic.consumate.length === 1);
 }
 
-// --- 27. Il monte tempo è di 6 minuti a testa (era 15: troppi) ---
+// --- 27. Il monte tempo è di 9 minuti a testa (era 15: troppi; poi 6, portato a 9) ---
 {
-  check('il monte tempo vale 6 minuti', MATCH_SECONDS === 360);
+  check('il monte tempo vale 9 minuti', MATCH_SECONDS === 540);
   const state = createMatch({ chiInizia: 0, now: T0, rng: () => 0.5 });
-  check('ogni giocatore parte con 6 minuti', state.players[0].clockSecondsLeft === 360 && state.players[1].clockSecondsLeft === 360);
+  check('ogni giocatore parte con 9 minuti', state.players[0].clockSecondsLeft === 540 && state.players[1].clockSecondsLeft === 540);
 
   // consumo tutto il monte del giocatore di turno. Il divario è più
   // largo di prima (due personaggi abbassati, non uno) apposta: da qui
@@ -769,7 +769,7 @@ function heartsSeq(values) { return values.map((v) => makeCard('♥', v)); }
   // il malus, dipendente da quante carte capitano in mano quella volta.
   state.players[1].characters['♥'].pv = 1;
   state.players[1].characters['♦'].pv = 1;
-  chargeElapsedTime(state, T0 + 361 * 1000);
+  chargeElapsedTime(state, T0 + 541 * 1000);
   check('esaurito il monte la partita finisce', state.status === 'finished' && state.winReason === 'timeout');
   check('vince chi ha più PV totali', state.winner === 0);
 }

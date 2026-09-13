@@ -2133,11 +2133,32 @@ function apriVelo(elVelo) {
 function chiudiVelo() {
   if (veliAperti > 0) history.back();   // fa scattare popstate, che chiude davvero
 }
+
+// ANCHE SULLA HOME NUDA, UN INDIETRO SOLO NON DEVE BASTARE — richiesto
+// esplicitamente: la home e' spesso il PRIMO passo della sessione (si
+// arriva da un link, da un'icona salvata), e un indietro per sbaglio a
+// quel punto non deve chiudere l'app in silenzio. Stesso principio gia'
+// in uso per "Abbandona la partita" al tavolo: un tocco avvisa, il
+// secondo (entro pochi secondi) fa succedere davvero la cosa. Uno stato
+// finto in piu' in cronologia, spinto una volta sola qui sotto, da' al
+// primo indietro qualcosa da consumare invece di uscire subito.
+history.pushState({ bbRadice: true }, '');
+let homeUscitaSicura = false;
+let homeUscitaTimer = null;
+
 window.addEventListener('popstate', () => {
-  if (veliAperti <= 0) return;
-  veliAperti--;
-  document.querySelectorAll('.velo-impostazioni.aperto')
-    .forEach((el) => el.classList.remove('aperto'));
+  if (veliAperti > 0) {
+    veliAperti--;
+    document.querySelectorAll('.velo-impostazioni.aperto')
+      .forEach((el) => el.classList.remove('aperto'));
+    return;
+  }
+  if (homeUscitaSicura) return;   // secondo indietro entro il tempo: lascialo andare davvero
+  homeUscitaSicura = true;
+  history.pushState({ bbRadice: true }, '');
+  mostraStagioneToast('Premi di nuovo <b>indietro</b> per uscire.');
+  clearTimeout(homeUscitaTimer);
+  homeUscitaTimer = setTimeout(() => { homeUscitaSicura = false; }, 2500);
 });
 
 $('apriImpostazioni').addEventListener('click', () => {

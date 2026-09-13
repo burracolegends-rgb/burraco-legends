@@ -4861,6 +4861,9 @@ const ui = {
   // ------------------------------------------------------------
   impostazioni() {
     $('veloImpostazioni').classList.add('aperto');
+    // Cosi' il tasto indietro del telefono chiude il pannello invece di
+    // lasciare il tavolo — vedi "IL TASTO INDIETRO" piu' in basso.
+    history.pushState({ bbVeloAperto: true }, '');
   },
 
   // ------------------------------------------------------------
@@ -5059,29 +5062,47 @@ const ui = {
 // bottone che chiude la partita al primo colpo, dentro un pannello che
 // si apre col dito su un telefono, e' una trappola.
 // Il tempo per ripensarci e' di cinque secondi, poi torna com'era.
+//
+// STESSA FUNZIONE ANCHE PER IL TASTO INDIETRO DEL TELEFONO (vedi piu'
+// sotto, "IL TASTO INDIETRO"): un indietro per sbaglio non deve valere
+// come abbandonare senza nemmeno chiedere. Condivide questo stesso
+// "sicuro" — un tocco sul bottone e un indietro contano per la stessa
+// conferma, non due separate.
 // ------------------------------------------------------------
+let abbandonaSicuro = false;
+let abbandonaSicuroTimer = null;
+function provaAbbandonare(daIndietro) {
+  const b = $('abbandona');
+  if (!b || !S || S.status !== 'in_progress') return false;   // niente da abbandonare
+  if (!abbandonaSicuro) {
+    abbandonaSicuro = true;
+    b.classList.add('sicuro');
+    b.textContent = 'Sicuro? Premi di nuovo';
+    // Il testo del bottone non si vede se le Impostazioni sono chiuse —
+    // ed e' il caso normale quando ad "abbandonare" ci prova il tasto
+    // indietro del telefono, non un tocco sul bottone dentro il
+    // pannello. Un avviso a schermo dice la stessa cosa in un posto
+    // che si vede sempre.
+    if (daIndietro) avviso('Premi di nuovo INDIETRO per abbandonare');
+    clearTimeout(abbandonaSicuroTimer);
+    abbandonaSicuroTimer = setTimeout(() => {
+      abbandonaSicuro = false;
+      b.classList.remove('sicuro');
+      b.textContent = 'Abbandona la partita';
+    }, 5000);
+    return true;   // primo tocco: assorbito, non e' ancora successo niente
+  }
+  abbandonaSicuro = false;
+  b.classList.remove('sicuro');
+  b.textContent = 'Abbandona la partita';
+  $('veloImpostazioni').classList.remove('aperto');
+  esegui({ tipo: 'abbandona' }, () => abbandona(S, 0, Date.now())).then(disegna);
+  return true;
+}
 if ($('abbandona')) {
-  let sicuro = false;
-  $('abbandona').addEventListener('click', async () => {
-    const b = $('abbandona');
+  $('abbandona').addEventListener('click', () => {
     if (!S || S.status !== 'in_progress') { avviso('La partita è già finita.'); return; }
-    if (!sicuro) {
-      sicuro = true;
-      b.classList.add('sicuro');
-      b.textContent = 'Sicuro? Premi di nuovo';
-      setTimeout(() => {
-        sicuro = false;
-        b.classList.remove('sicuro');
-        b.textContent = 'Abbandona la partita';
-      }, 5000);
-      return;
-    }
-    sicuro = false;
-    b.classList.remove('sicuro');
-    b.textContent = 'Abbandona la partita';
-    $('veloImpostazioni').classList.remove('aperto');
-    await esegui({ tipo: 'abbandona' }, () => abbandona(S, 0, Date.now()));
-    disegna();
+    provaAbbandonare();
   });
 }
 
@@ -5108,6 +5129,52 @@ document.addEventListener('keydown', (e) => {
 // provano per primo, e non deve far partire niente
 $('veloCarta').addEventListener('click', (e) => {
   if (e.target === $('veloCarta')) chiudiCartaGrande();
+});
+
+// ------------------------------------------------------------
+// IL TASTO INDIETRO DEL TELEFONO — richiesto esplicitamente: non deve
+// mai bastare un tocco solo per lasciare il tavolo.
+//
+// Tre casi, in ordine:
+// 1) Le Impostazioni sono aperte (e' li' dentro che sta il bottone
+//    Abbandona): un indietro le chiude, come qualunque pannello — non
+//    conta come un tentativo di abbandonare, e' solo "richiudi quello
+//    che hai aperto".
+// 2) Il tutorial e' in corso: non c'e' nessun motivo valido per uscire
+//    da li' con l'indietro (e' gia' protetto dallo scudo sui tocchi
+//    sbagliati, vedi tutorialInstallaScudo) — l'indietro non fa nulla,
+//    il pannello scuote la testa per dire "sono ancora qui".
+// 3) Una partita vera e' in corso: l'indietro vale come un tocco sul
+//    bottone Abbandona — stessa conferma in due tempi, stesso "sicuro"
+//    condiviso (provaAbbandonare, qui sopra): un indietro solo non
+//    basta, ne serve un secondo entro cinque secondi.
+//
+// In ogni caso che assorbe l'indietro si ripristina subito lo stato
+// fittizio con pushState: senza, il SECONDO indietro (quello vero, non
+// piu' assorbito da questa pagina) troverebbe la cronologia gia'
+// consumata e uscirebbe dal tavolo per davvero anche quando non doveva.
+// Se invece non c'e' ne' un pannello aperto ne' una partita da
+// proteggere (partita gia' finita, per esempio) l'indietro non viene
+// toccato: si lascia fare al browser, si esce per davvero.
+// ------------------------------------------------------------
+history.pushState({ bbRadice: true }, '');
+window.addEventListener('popstate', () => {
+  if ($('veloImpostazioni').classList.contains('aperto')) {
+    $('veloImpostazioni').classList.remove('aperto');
+    return;
+  }
+  if (document.body.classList.contains('modalita-tutorial')) {
+    history.pushState({ bbRadice: true }, '');
+    if (typeof tutorialPannelloEl !== 'undefined' && tutorialPannelloEl) {
+      tutorialPannelloEl.classList.remove('tutorial-tavolo-scuoti');
+      void tutorialPannelloEl.offsetWidth; // fa ripartire l'animazione da capo
+      tutorialPannelloEl.classList.add('tutorial-tavolo-scuoti');
+    }
+    return;
+  }
+  if (provaAbbandonare(true)) {
+    history.pushState({ bbRadice: true }, '');
+  }
 });
 
 window.ui = ui;
@@ -5172,8 +5239,8 @@ document.addEventListener('keydown', (e) => {
 // solo quello che questo passo gli sta insegnando.
 //
 // L'OROLOGIO NON GIRA. Come nel tutorial di riferimento: leggere non e'
-// perdere tempo, e con un minuto a turno (TURN_SECONDS) un principiante
-// che legge rischierebbe lo scarto d'ufficio prima ancora di capire cosa
+// perdere tempo, e con un minuto e mezzo a turno (TURN_SECONDS) un
+// principiante che legge rischierebbe lo scarto d'ufficio prima di capire cosa
 // fare. Qui gli orologi si disegnano una volta sola e restano fermi
 // (nessun setInterval su aggiornaOrologiTurno).
 // ============================================================
@@ -5372,11 +5439,11 @@ const TUTORIAL_PASSI = [
     illumina: '#pozzettiCross' },
 
   { passo: 5, titolo: 'Il tempo per muovere',
-    testo: 'Hai <b>un minuto</b> per ogni turno: il cerchietto attorno al tuo avatar si consuma ' +
+    testo: 'Hai <b>un minuto e mezzo</b> per ogni turno: il cerchietto attorno al tuo avatar si consuma ' +
            'mentre pensi. Se finisce, la mossa parte da sola — pesca e scarta la carta piu\' cara.',
     illumina: '#myAvatarBasso' },
   { passo: 5, titolo: 'Il tempo di partita',
-    testo: 'E questo e\' il <b>tuo</b> monte tempo per l\'intera partita: <b>sei minuti</b>, che ' +
+    testo: 'E questo e\' il <b>tuo</b> monte tempo per l\'intera partita: <b>nove minuti</b>, che ' +
            'scorrono solo durante i tuoi turni.',
     illumina: '#myMatchTimer' },
   { passo: 5, titolo: 'Il tempo di partita',
@@ -5396,6 +5463,10 @@ const TUTORIAL_PASSI = [
            'valore formano un <b>tris</b>. Toccale tutte e tre, poi tocca lo <b>spazio a sinistra</b> ' +
            'per calarle — e guarda cosa succede alla vita dell\'avversario.',
     illumina: '#myMelds',
+    // libero: '#handBox' — le carte da calare si scelgono PRIMA, in mano,
+    // e solo dopo si tocca lo spazio dei giochi: senza questa zona
+    // libera lo scudo bloccherebbe proprio il primo gesto richiesto.
+    libero: '#handBox',
     azione: () => !!tutMeldConValore(11),
     aiuto: 'Il J di picche, il J di cuori e il J di quadri. Toccali uno alla volta: si alzano. Poi tocca lo spazio a sinistra.' },
 
@@ -5403,6 +5474,7 @@ const TUTORIAL_PASSI = [
     testo: 'L\'altro modo di raggruppare e\' la <b>scala</b>: tre o piu\' carte <b>consecutive dello ' +
            'stesso seme</b>. Hai il <b>4, 5 e 6 di fiori</b>: toccali e calali nello stesso spazio.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => !!tutMeldScala(),
     aiuto: 'Il 4, il 5 e il 6 di fiori (♣). Tutti e tre dello stesso seme, in fila.' },
 
@@ -5411,6 +5483,7 @@ const TUTORIAL_PASSI = [
            'ancora il <b>7 di fiori</b>: toccalo, poi tocca la <b>scala</b> per allungarla — e ogni ' +
            'carta in piu\' fa piu\' danno.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => tutCarteNellaScala() >= 4,
     aiuto: 'Tocca il 7 di fiori, poi la scala 4-5-6 che hai appena calato.' },
 
@@ -5427,6 +5500,7 @@ const TUTORIAL_PASSI = [
     testo: 'Ogni turno si chiude <b>scartando una carta</b>. Sempre, senza eccezioni.<br><br>' +
            'Butta il <b>Re di quadri</b>: toccalo, poi tocca il monte degli scarti.',
     illumina: '#palScarti',
+    libero: '#handBox',
     azione: () => S && S.scarti && S.scarti.length >= 2,
     aiuto: 'Tocca prima il Re di quadri, poi il mazzetto degli scarti accanto al MAZZO.' },
 
@@ -5447,6 +5521,7 @@ const TUTORIAL_PASSI = [
   { passo: 13, titolo: 'Costruiamo un burraco',
     testo: 'Hai pescato l\'<b>8 di fiori</b>. Attaccalo alla scala: diventa 4-5-6-7-8.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => tutCarteNellaScala() >= 5,
     aiuto: 'Tocca l\'8 di fiori, poi la scala di fiori sul tavolo.' },
 
@@ -5454,6 +5529,7 @@ const TUTORIAL_PASSI = [
     testo: 'Chiudi il turno scartando una carta che non ti serve — il <b>10 di cuori</b> va bene. ' +
            'Poi guarda cosa butta l\'avversario.',
     illumina: '#palScarti',
+    libero: '#handBox',
     azione: () => S && S.currentPlayerIndex === 0 && !S.players[0].hasDrawnThisTurn && S.scarti.length >= 3,
     aiuto: 'Tocca il 10 di cuori, poi il monte degli scarti. Poi aspetta il computer.' },
 
@@ -5469,6 +5545,7 @@ const TUTORIAL_PASSI = [
     testo: 'Ora attacca alla scala il <b>9 di fiori</b> e la <b>pinella</b>: la pinella fara\' da 10.<br><br>' +
            'Sette carte. Burraco.',
     illumina: '#myMelds',
+    libero: '#handBox',
     azione: () => tutCarteNellaScala() >= 7,
     aiuto: 'Tocca il 9 di fiori e il 2 di cuori insieme, poi la scala di fiori.' },
   { passo: 16, titolo: 'Il burraco e\' servito',
@@ -5494,6 +5571,11 @@ const TUTORIAL_PASSI = [
   { passo: 19, titolo: 'Usa l\'abilita\' di un eroe',
     testo: 'Tocca il tuo eroe di <b>Fiori</b>, poi premi <b>USA ABILITA\'</b> nella scheda che si apre.',
     illumina: '.bcard[data-seme="♣"][data-lato="mio"]',
+    // libero: '#veloCarta' — il tocco sull'eroe apre la scheda a tutto
+    // schermo con dentro il bottone USA ABILITA': quella scheda non e'
+    // un discendente della carta illuminata nel DOM, quindi senza questa
+    // zona libera lo scudo bloccherebbe proprio il bottone da premere.
+    libero: '#veloCarta',
     onEntra: () => { tutorialPvAvvPrimaAbilita = tutPvTotaliAvv(); },
     azione: () => bersaglioAttivo === '♣',
     aiuto: 'Tocca la carta del tuo eroe di Fiori, poi il bottone dorato nella scheda che si apre.' },
@@ -5514,6 +5596,7 @@ const TUTORIAL_PASSI = [
     testo: 'Accanto ai tuoi eroi trovi anche le <b>Carte Magiche</b>: non costano punti magia, ma ' +
            'ogni copia si usa <b>una sola volta</b>. Tocca la tua carta <b>Sorpresa</b>, poi <b>USA</b>.',
     illumina: '#battleGiocatore .bcard.magica[data-tipo="sorpresa"]',
+    libero: '#veloCarta',
     azione: () => magie && magie[0] && (magie[0].consumate || []).length > 0,
     // Niente `aiuto` qui apposta: la carta e' gia' illuminata (il
     // bagliore dorato la indica), un'altra riga di testo che si accende
@@ -5559,6 +5642,7 @@ let tutorialTimerSblocco = null;
 let tutorialIndicePasso = 0;
 let tutorialUltimoIndiceMostrato = -1;
 let tutorialPannelloEl = null;
+let tutorialListenerClicAttuale = null;   // lo scudo del passo mostrato adesso, vedi tutorialInstallaScudo()
 
 function tutorialCostruisciPannello() {
   const stile = document.createElement('style');
@@ -5603,13 +5687,35 @@ function tutorialCostruisciPannello() {
     '#tutorialPannello .principale.sblocco{display:block;width:100%;margin-top:9px;}',
     '#tutorialPannello .aiuto{margin-top:7px;font-size:10.5px;color:#ffcc00;opacity:0;transition:opacity .5s;}',
     '#tutorialPannello .aiuto.visibile{opacity:.9;}',
-    '@keyframes tutorialTavoloAlone{0%,100%{box-shadow:0 0 0 2px rgba(255,204,0,.30),0 0 12px 3px rgba(255,204,0,.18);}',
-    '  50%{box-shadow:0 0 0 3px rgba(255,204,0,.95),0 0 26px 8px rgba(255,204,0,.50);}}',
-    '.tutorial-tavolo-alone{animation:tutorialTavoloAlone 1.9s ease-in-out infinite;border-radius:10px;position:relative;z-index:20;}',
-    '#myMelds.tutorial-tavolo-alone{background:rgba(255,204,0,.10);outline:2px dashed rgba(255,204,0,.5);outline-offset:-4px;}',
+    // ERA UN RESPIRO LENTO (1.9s, mai davvero spento: anche al minimo
+    // restava un bagliore visibile) — segnalato da chi ci ha fatto
+    // giocare qualcuno che non conosceva il burraco: "qualche volta non
+    // si capisce cosa devo premere". Ora e' un vero acceso/spento: al
+    // minimo il bagliore quasi sparisce, al massimo e' molto piu' forte
+    // di prima, e il ciclo e' piu' corto (1.1s) — lampeggia, non respira.
+    // PROVATO IN ROSSO invece dell'oro dei bottoni/testi del pannello:
+    // proprio perche' e' un colore che il resto del pannello non usa,
+    // salta all'occhio come un vero segnale "guarda qui" invece di
+    // confondersi con l'oro del bordo, del titolo e del bottone Avanti.
+    '@keyframes tutorialTavoloAlone{0%,100%{outline-color:rgba(255,59,48,.22);',
+    '  box-shadow:0 0 0 2px rgba(255,59,48,.14),0 0 6px 2px rgba(255,59,48,.10);}',
+    '  20%,55%{outline-color:#ffb3ab;',
+    '  box-shadow:0 0 0 4px rgba(255,179,171,1),0 0 42px 15px rgba(255,59,48,.95);}}',
+    '.tutorial-tavolo-alone{animation:tutorialTavoloAlone 1.1s ease-in-out infinite;border-radius:10px;position:relative;z-index:20;',
+    '  outline:3px solid rgba(255,59,48,.55);outline-offset:3px;}',
+    '#myMelds.tutorial-tavolo-alone{background:rgba(255,59,48,.10);outline:2px dashed rgba(255,59,48,.55);outline-offset:-4px;}',
     '#myMatchTimer.tutorial-tavolo-alone,#oppMatchTimer.tutorial-tavolo-alone,',
     '#myAvatarBasso.tutorial-tavolo-alone,#magiaGiocatore.tutorial-tavolo-alone{',
-    '  background:rgba(255,204,0,.22)!important;outline:2px solid #ffcc00;outline-offset:2px;}'
+    '  background:rgba(255,59,48,.24)!important;outline:2px solid #ff3b30;outline-offset:2px;}',
+    // LO SCUDO: si blocca ogni tocco fuori dalla zona consentita con un
+    // solo ascoltatore in cattura su document (stesso principio gia'
+    // provato in tutorial-gestionale.js: niente riquadro sopra la
+    // pagina, quello si e' rivelato fragile — un antenato con una sua
+    // animazione puo' intrappolare sotto di se' anche un elemento con
+    // z-index altissimo). Il pannello scuote la testa per dire "sono io
+    // quello da guardare" invece di restare muto.
+    '.tutorial-tavolo-scuoti{animation:tutorialTavoloScuoti 0.32s ease-in-out;}',
+    '@keyframes tutorialTavoloScuoti{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}'
   ].join('\n');
   document.head.appendChild(stile);
 
@@ -5642,6 +5748,59 @@ function tutorialIllumina(selettore, onEsito) {
     tutorialRiprovaAlone = setTimeout(prova, 400);
   };
   prova();
+}
+
+function tutorialRimuoviScudo() {
+  if (tutorialListenerClicAttuale) {
+    document.removeEventListener('click', tutorialListenerClicAttuale, true);
+    tutorialListenerClicAttuale = null;
+  }
+}
+
+// LO SCUDO — segnalato dal vivo: chi non conosce il burraco, al passo
+// "pesca dal mazzo", ha toccato invece "raccogli gli scarti" (l'altra
+// scelta possibile a inizio turno, spiegata due righe sopra nello stesso
+// testo). Il tutorial e' uno stato TUTTO scriptato (vedi la nota in cima
+// al file su tutorial-v1.js): una carta pescata dal posto sbagliato, o
+// un mucchio raccolto quando non doveva esserlo, manda fuori copione
+// ogni passo successivo — proprio il "non riusciva piu' ad andare
+// avanti, l'otto di fiori non e' piu' venuto" segnalato per davvero.
+//
+// Un passo con `azione` (serve un gesto preciso, non solo leggere) ora
+// blocca ogni tocco che non sia: dentro il pannello (i suoi bottoni si
+// gestiscono da soli), dentro l'elemento illuminato (def.illumina — con
+// closest(), non solo l'unico elemento gia' trovato: ".bcard.mirabile"
+// al passo 20 puo' valere per piu' di un personaggio), o dentro una zona
+// esplicitamente libera (def.libero — serve ai passi che chiedono di
+// scegliere le carte in mano PRIMA di toccare il tavolo, o che aprono la
+// scheda #veloCarta con un bottone USA dentro).
+//
+// ERA ATTIVO SOLO SUI PASSI CON `azione`, E NON BASTAVA — segnalato dal
+// vivo: su un passo solo informativo ("guarda, poi premi Avanti") si
+// poteva comunque pescare o raccogliere per davvero, perche' quei passi
+// non installavano nessuno scudo. Il tutorial e' scriptato: un gesto
+// vero fatto un passo prima del previsto lo manda fuori copione uguale,
+// letto o no che sia il testo. Ora lo scudo e' SEMPRE attivo: un passo
+// senza `azione` lascia toccabile solo il pannello (quindi solo
+// Avanti) — se e' solo da leggere, l'unica cosa che si puo' premere e'
+// proprio "Avanti".
+function tutorialInstallaScudo(def) {
+  tutorialRimuoviScudo();
+  tutorialListenerClicAttuale = function (e) {
+    if (tutorialPannelloEl && tutorialPannelloEl.contains(e.target)) return;
+    if (def.azione) {
+      if (def.illumina && e.target.closest && e.target.closest(def.illumina)) return;
+      if (def.libero && e.target.closest && e.target.closest(def.libero)) return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    if (tutorialPannelloEl) {
+      tutorialPannelloEl.classList.remove('tutorial-tavolo-scuoti');
+      void tutorialPannelloEl.offsetWidth; // fa ripartire l'animazione da capo
+      tutorialPannelloEl.classList.add('tutorial-tavolo-scuoti');
+    }
+  };
+  document.addEventListener('click', tutorialListenerClicAttuale, true);
 }
 
 // LA VIA D'USCITA, QUANDO SERVE DAVVERO.
@@ -5681,6 +5840,7 @@ function tutorialMostraPasso() {
   clearInterval(tutorialGuardia); tutorialGuardia = null;
   clearTimeout(tutorialTimerAiuto);
   clearTimeout(tutorialTimerSblocco);
+  tutorialRimuoviScudo();
 
   if (!tutorialPannelloEl) tutorialPannelloEl = tutorialCostruisciPannello();
   const totale = TUTORIAL_PASSI[TUTORIAL_PASSI.length - 1].passo || TUTORIAL_PASSI.length;
@@ -5714,6 +5874,8 @@ function tutorialMostraPasso() {
   const bottoneAvanti = document.getElementById('tutAvanti');
   if (bottoneAvanti) bottoneAvanti.addEventListener('click', () => tutorialAvanti());
 
+  tutorialInstallaScudo(def);
+
   if (def.azione) {
     if (def.aiuto) {
       tutorialTimerAiuto = setTimeout(() => {
@@ -5744,6 +5906,7 @@ function tutorialAvanti() {
 }
 
 function tutorialFinisci() {
+  tutorialRimuoviScudo();
   if (tutorialElementoIlluminato) { tutorialElementoIlluminato.classList.remove('tutorial-tavolo-alone'); tutorialElementoIlluminato = null; }
   if (tutorialPannelloEl) { tutorialPannelloEl.remove(); tutorialPannelloEl = null; }
   try {
