@@ -5239,8 +5239,8 @@ document.addEventListener('keydown', (e) => {
 // solo quello che questo passo gli sta insegnando.
 //
 // L'OROLOGIO NON GIRA. Come nel tutorial di riferimento: leggere non e'
-// perdere tempo, e con un minuto a turno (TURN_SECONDS) un principiante
-// che legge rischierebbe lo scarto d'ufficio prima ancora di capire cosa
+// perdere tempo, e con un minuto e mezzo a turno (TURN_SECONDS) un
+// principiante che legge rischierebbe lo scarto d'ufficio prima di capire cosa
 // fare. Qui gli orologi si disegnano una volta sola e restano fermi
 // (nessun setInterval su aggiornaOrologiTurno).
 // ============================================================
@@ -5439,11 +5439,11 @@ const TUTORIAL_PASSI = [
     illumina: '#pozzettiCross' },
 
   { passo: 5, titolo: 'Il tempo per muovere',
-    testo: 'Hai <b>un minuto</b> per ogni turno: il cerchietto attorno al tuo avatar si consuma ' +
+    testo: 'Hai <b>un minuto e mezzo</b> per ogni turno: il cerchietto attorno al tuo avatar si consuma ' +
            'mentre pensi. Se finisce, la mossa parte da sola — pesca e scarta la carta piu\' cara.',
     illumina: '#myAvatarBasso' },
   { passo: 5, titolo: 'Il tempo di partita',
-    testo: 'E questo e\' il <b>tuo</b> monte tempo per l\'intera partita: <b>sei minuti</b>, che ' +
+    testo: 'E questo e\' il <b>tuo</b> monte tempo per l\'intera partita: <b>nove minuti</b>, che ' +
            'scorrono solo durante i tuoi turni.',
     illumina: '#myMatchTimer' },
   { passo: 5, titolo: 'Il tempo di partita',

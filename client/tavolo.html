@@ -4873,9 +4873,9 @@ const __M_partita = (function(){
 // 4. AoE (7+): il danno pieno calcolato colpisce ciascuno dei 4 personaggi
 //    avversari (non diviso per 4).
 // 5. Il monte tempo è PER GIOCATORE (come il monte a squadra di Burraco
-//    Pulito), non un unico orologio condiviso: 1 minuto a turno, 6 minuti
-//    totali a testa.
-// 6. Orologio a zero (6 minuti) senza chiusura né KO → vince chi ha più PV
+//    Pulito), non un unico orologio condiviso: un minuto e mezzo a turno,
+//    nove minuti totali a testa (vedi TURN_SECONDS/MATCH_SECONDS più sotto).
+// 6. Orologio a zero (nove minuti) senza chiusura né KO → vince chi ha più PV
 //    totali rimasti sui propri 4 personaggi. CONFERMATO dal committente.
 //    Stessa regola estesa anche al caso "mazzo esaurito" (non coperto dalla
 //    spec, ma è lo stesso scenario: partita finita senza vincitore netto).
@@ -4894,11 +4894,16 @@ const { SUITS, createFullDeck, shuffle, interoCasuale, validateMeld, meldLengthT
 const { attachAbility, tickCharacterAbility, checkAbilityTrigger } = __M_character_abilities;
 const { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata, risolviBersaglio, tickActiveEffects } = __M_magic_cards;
 const { elencoEffetti, CONDIZIONI, EFFETTI_DIFFERITI } = __M_vocabolario;
-const TURN_SECONDS = 60;      // spec §2: 1 minuto per turno a giocatore
+// Era 60 (1 minuto): richiesto piu' tempo per turno, chi fa piu' mosse
+// (tris, scale, allunghi, abilita') si trovava il tempo scaduto prima
+// di finire di pensare.
+const TURN_SECONDS = 90;
 // Monte tempo dell'intera partita, per giocatore. Era 15 minuti: troppi,
 // una partita non ci arriva mai e l'orologio non conta niente. Con 6
-// minuti a testa il tempo torna a essere una risorsa vera.
-const MATCH_SECONDS = 6 * 60;
+// minuti a testa il tempo torna a essere una risorsa vera. Poi portato a
+// 9 (richiesto insieme al minuto in piu' a turno: il monte partita deve
+// restare capiente rispetto al turno, non solo il singolo turno).
+const MATCH_SECONDS = 9 * 60;
 const HAND_SIZE = 11;          // invariato da Burraco Pulito
 const POZZETTO_SIZE = 11;      // invariato da Burraco Pulito
 
@@ -4919,7 +4924,7 @@ const CARTE_PER_PESCATA = 1;
 // bastano per un'occhiata, non per aspettare.
 //
 // Non e' un timer che gira nel browser: e' un istante scritto nello
-// stato della partita. Il minuto del turno e il monte dei sei minuti
+// stato della partita. Il turno e il monte tempo della partita
 // partono da LI', non dalla distribuzione — se no lo studio si
 // pagherebbe col proprio tempo, che e' esattamente il contrario.
 // Sta a zero per difetto: le prove del motore misurano le regole, non
@@ -10337,8 +10342,8 @@ document.addEventListener('keydown', (e) => {
 // solo quello che questo passo gli sta insegnando.
 //
 // L'OROLOGIO NON GIRA. Come nel tutorial di riferimento: leggere non e'
-// perdere tempo, e con un minuto a turno (TURN_SECONDS) un principiante
-// che legge rischierebbe lo scarto d'ufficio prima ancora di capire cosa
+// perdere tempo, e con un minuto e mezzo a turno (TURN_SECONDS) un
+// principiante che legge rischierebbe lo scarto d'ufficio prima di capire cosa
 // fare. Qui gli orologi si disegnano una volta sola e restano fermi
 // (nessun setInterval su aggiornaOrologiTurno).
 // ============================================================
@@ -10537,11 +10542,11 @@ const TUTORIAL_PASSI = [
     illumina: '#pozzettiCross' },
 
   { passo: 5, titolo: 'Il tempo per muovere',
-    testo: 'Hai <b>un minuto</b> per ogni turno: il cerchietto attorno al tuo avatar si consuma ' +
+    testo: 'Hai <b>un minuto e mezzo</b> per ogni turno: il cerchietto attorno al tuo avatar si consuma ' +
            'mentre pensi. Se finisce, la mossa parte da sola — pesca e scarta la carta piu\' cara.',
     illumina: '#myAvatarBasso' },
   { passo: 5, titolo: 'Il tempo di partita',
-    testo: 'E questo e\' il <b>tuo</b> monte tempo per l\'intera partita: <b>sei minuti</b>, che ' +
+    testo: 'E questo e\' il <b>tuo</b> monte tempo per l\'intera partita: <b>nove minuti</b>, che ' +
            'scorrono solo durante i tuoi turni.',
     illumina: '#myMatchTimer' },
   { passo: 5, titolo: 'Il tempo di partita',

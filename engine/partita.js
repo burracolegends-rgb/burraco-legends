@@ -23,9 +23,9 @@
 // 4. AoE (7+): il danno pieno calcolato colpisce ciascuno dei 4 personaggi
 //    avversari (non diviso per 4).
 // 5. Il monte tempo è PER GIOCATORE (come il monte a squadra di Burraco
-//    Pulito), non un unico orologio condiviso: 1 minuto a turno, 6 minuti
-//    totali a testa.
-// 6. Orologio a zero (6 minuti) senza chiusura né KO → vince chi ha più PV
+//    Pulito), non un unico orologio condiviso: un minuto e mezzo a turno,
+//    nove minuti totali a testa (vedi TURN_SECONDS/MATCH_SECONDS più sotto).
+// 6. Orologio a zero (nove minuti) senza chiusura né KO → vince chi ha più PV
 //    totali rimasti sui propri 4 personaggi. CONFERMATO dal committente.
 //    Stessa regola estesa anche al caso "mazzo esaurito" (non coperto dalla
 //    spec, ma è lo stesso scenario: partita finita senza vincitore netto).
@@ -45,11 +45,16 @@ import { attachAbility, tickCharacterAbility, checkAbilityTrigger } from './char
 import { makeMagicState, checkTrapTrigger, tickTrapExpiry, resetTurnoMagie, activateSorpresa, armTrappola, applyEffect, cartaConsumata, risolviBersaglio, tickActiveEffects } from './magic-cards.js';
 import { elencoEffetti, CONDIZIONI, EFFETTI_DIFFERITI } from './vocabolario.js';
 
-export const TURN_SECONDS = 60;      // spec §2: 1 minuto per turno a giocatore
+// Era 60 (1 minuto): richiesto piu' tempo per turno, chi fa piu' mosse
+// (tris, scale, allunghi, abilita') si trovava il tempo scaduto prima
+// di finire di pensare.
+export const TURN_SECONDS = 90;
 // Monte tempo dell'intera partita, per giocatore. Era 15 minuti: troppi,
 // una partita non ci arriva mai e l'orologio non conta niente. Con 6
-// minuti a testa il tempo torna a essere una risorsa vera.
-export const MATCH_SECONDS = 6 * 60;
+// minuti a testa il tempo torna a essere una risorsa vera. Poi portato a
+// 9 (richiesto insieme al minuto in piu' a turno: il monte partita deve
+// restare capiente rispetto al turno, non solo il singolo turno).
+export const MATCH_SECONDS = 9 * 60;
 export const HAND_SIZE = 11;          // invariato da Burraco Pulito
 export const POZZETTO_SIZE = 11;      // invariato da Burraco Pulito
 
@@ -70,7 +75,7 @@ export const CARTE_PER_PESCATA = 1;
 // bastano per un'occhiata, non per aspettare.
 //
 // Non e' un timer che gira nel browser: e' un istante scritto nello
-// stato della partita. Il minuto del turno e il monte dei sei minuti
+// stato della partita. Il turno e il monte tempo della partita
 // partono da LI', non dalla distribuzione — se no lo studio si
 // pagherebbe col proprio tempo, che e' esattamente il contrario.
 // Sta a zero per difetto: le prove del motore misurano le regole, non
