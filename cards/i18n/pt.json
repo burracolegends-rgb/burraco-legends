@@ -97,7 +97,7 @@
   },
   "personaggio_111": {
     "nome": "Queixada della Caipora",
-    "descrizione": "Investida: golpeia com duas investidas de 20% de dano cada"
+    "descrizione": "Investida: causa dois golpes independentes de 20% de dano cada, cada um em um adversário aleatório — podem atingir o mesmo adversário ou dois diferentes"
   },
   "personaggio_112": {
     "nome": "Cão-do-Mato",
@@ -149,7 +149,7 @@
   },
   "personaggio_124": {
     "nome": "Cuca",
-    "descrizione": "Maldição da bruxa: Reduz os pontos de magia do adversário em 3, reduz a defesa do adversário em 30%"
+    "descrizione": "Maldição da bruxa: Reduz em 3 os pontos de magia de um adversário, reduz em 30% a defesa de todos os adversários por 2 turnos"
   },
   "sorpresa_101": {
     "nome": "Fulmine Nero",

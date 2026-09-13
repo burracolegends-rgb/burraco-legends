@@ -97,7 +97,7 @@
   },
   "personaggio_111": {
     "nome": "Queixada della Caipora",
-    "descrizione": "Carga: golpea con dos embestidas del 20% de daño cada una"
+    "descrizione": "Carga: inflige dos golpes independientes del 20% de daño cada uno, cada uno a un oponente al azar — pueden golpear al mismo oponente o a dos diferentes"
   },
   "personaggio_112": {
     "nome": "Cão-do-Mato",
@@ -149,7 +149,7 @@
   },
   "personaggio_124": {
     "nome": "Cuca",
-    "descrizione": "Maleficio de la bruja: Reduce los puntos de magia del oponente en 3, reduce la defensa del oponente en un 30%"
+    "descrizione": "Maleficio de la bruja: Reduce en 3 los puntos de magia de un oponente, reduce en un 30% la defensa de todos los oponentes durante 2 turnos"
   },
   "sorpresa_101": {
     "nome": "Fulmine Nero",

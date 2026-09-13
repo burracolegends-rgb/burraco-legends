@@ -97,7 +97,7 @@
   },
   "personaggio_111": {
     "nome": "Queixada della Caipora",
-    "descrizione": "Carica: colpisce con due cariche da 20% di danno ognuna"
+    "descrizione": "Carica: infligge due colpi indipendenti da 20% di danno ciascuno, ognuno a un avversario casuale — possono colpire lo stesso avversario o due diversi"
   },
   "personaggio_112": {
     "nome": "Cão-do-Mato",
@@ -149,7 +149,7 @@
   },
   "personaggio_124": {
     "nome": "Cuca",
-    "descrizione": "Maleficio della strega:Riduce i pm avversari di 3, riduce la difesa avversaria del 30%"
+    "descrizione": "Maleficio della strega: Riduce di 3 i punti magia di un avversario, riduce del 30% la difesa di tutti gli avversari per 2 turni"
   },
   "sorpresa_101": {
     "nome": "Fulmine Nero",
