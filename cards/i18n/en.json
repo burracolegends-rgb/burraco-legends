@@ -97,11 +97,11 @@
   },
   "personaggio_111": {
     "nome": "Queixada della Caipora",
-    "descrizione": "Charge: strikes with two charges dealing 20% damage each"
+    "descrizione": "Charge: deals two independent hits of 20% damage each, each one to a random opponent — they may strike the same opponent or two different ones"
   },
   "personaggio_112": {
     "nome": "Cão-do-Mato",
-    "descrizione": "Target tracking: Increases the damage of played cards and abilities by 25%"
+    "descrizione": "Target tracking: Increases the damage of played cards and abilities by 25% for 2 turns"
   },
   "personaggio_113": {
     "nome": "Onça-Pintada",
@@ -113,11 +113,11 @@
   },
   "personaggio_115": {
     "nome": "Pisadeira",
-    "descrizione": "Terror: Reduces the defense of all opponents by 25%"
+    "descrizione": "Terror: For 2 turns, reduces the defense of all opponents by 25%"
   },
   "personaggio_116": {
     "nome": "Corpo-Seco",
-    "descrizione": "Bark shell: Increases allies' defense by 25%"
+    "descrizione": "Bark shell: For 2 turns, increases allies' defense by 25%"
   },
   "personaggio_117": {
     "nome": "Mapinguari",
@@ -125,7 +125,7 @@
   },
   "personaggio_118": {
     "nome": "Curupira",
-    "descrizione": "Stealth attack: Deals 20% damage to all opponents and increases allies' defense by 20%"
+    "descrizione": "Stealth attack: Deals 20% damage to all opponents and increases allies' defense by 20% for 2 turns"
   },
   "personaggio_119": {
     "nome": "Caipora",
@@ -149,7 +149,7 @@
   },
   "personaggio_124": {
     "nome": "Cuca",
-    "descrizione": "Witch's curse: Reduces the opponent's magic points by 3, reduces the opponent's defense by 30%"
+    "descrizione": "Witch's curse: Reduces one opponent's magic points by 3, reduces all opponents' defense by 30% for 2 turns"
   },
   "sorpresa_101": {
     "nome": "Fulmine Nero",

@@ -97,11 +97,11 @@
   },
   "personaggio_111": {
     "nome": "Queixada della Caipora",
-    "descrizione": "Investida: golpeia com duas investidas de 20% de dano cada"
+    "descrizione": "Investida: causa dois golpes independentes de 20% de dano cada, cada um em um adversário aleatório — podem atingir o mesmo adversário ou dois diferentes"
   },
   "personaggio_112": {
     "nome": "Cão-do-Mato",
-    "descrizione": "Rastreamento do alvo: Aumenta em 25% o dano das cartas jogadas e das habilidades"
+    "descrizione": "Rastreamento do alvo: Aumenta em 25% o dano das cartas jogadas e das habilidades por 2 turnos"
   },
   "personaggio_113": {
     "nome": "Onça-Pintada",
@@ -113,11 +113,11 @@
   },
   "personaggio_115": {
     "nome": "Pisadeira",
-    "descrizione": "Terror: Reduz a defesa de todos os adversários em 25%"
+    "descrizione": "Terror: Por 2 turnos, reduz a defesa de todos os adversários em 25%"
   },
   "personaggio_116": {
     "nome": "Corpo-Seco",
-    "descrizione": "Casca: Aumenta a defesa dos aliados em 25%"
+    "descrizione": "Casca: Por 2 turnos, aumenta a defesa dos aliados em 25%"
   },
   "personaggio_117": {
     "nome": "Mapinguari",
@@ -125,7 +125,7 @@
   },
   "personaggio_118": {
     "nome": "Curupira",
-    "descrizione": "Ataque furtivo: Causa 20% de dano a todos os adversários e aumenta a defesa dos aliados em 20%"
+    "descrizione": "Ataque furtivo: Causa 20% de dano a todos os adversários e aumenta a defesa dos aliados em 20% por 2 turnos"
   },
   "personaggio_119": {
     "nome": "Caipora",
@@ -149,7 +149,7 @@
   },
   "personaggio_124": {
     "nome": "Cuca",
-    "descrizione": "Maldição da bruxa: Reduz os pontos de magia do adversário em 3, reduz a defesa do adversário em 30%"
+    "descrizione": "Maldição da bruxa: Reduz em 3 os pontos de magia de um adversário, reduz em 30% a defesa de todos os adversários por 2 turnos"
   },
   "sorpresa_101": {
     "nome": "Fulmine Nero",
